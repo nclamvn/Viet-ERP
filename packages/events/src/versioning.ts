@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events — Event Schema Versioning + Idempotency
+// @vierp/events — Event Schema Versioning + Idempotency
 // RRI-T Upgrade: BA Analyst × D5 Data Integrity × DATA Axis
 //
 // Fixes:

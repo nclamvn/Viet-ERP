@@ -1,12 +1,12 @@
 // ============================================================
-// @erp/master-data - API Route Handlers
+// @vierp/master-data - API Route Handlers
 // Generic API handlers for master data CRUD operations.
 // Designed for Next.js API routes but framework-agnostic.
 // ============================================================
 
-import type { ApiResponse, PaginationMeta } from '@erp/shared';
-import { publish } from '@erp/events';
-import { EVENT_SUBJECTS } from '@erp/shared';
+import type { ApiResponse, PaginationMeta } from '@vierp/shared';
+import { publish } from '@vierp/events';
+import { EVENT_SUBJECTS } from '@vierp/shared';
 import { customerService } from '../services/customer.service';
 import { productService } from '../services/product.service';
 import { employeeService } from '../services/employee.service';
@@ -249,7 +249,7 @@ function handleServiceError(error: unknown): ApiResponse<never> {
  *
  * ```ts
  * // app/api/master/customers/route.ts
- * import { createEntityRoutes } from '@erp/master-data/api';
+ * import { createEntityRoutes } from '@vierp/master-data/api';
  * export const { GET, POST, PUT, DELETE } = createEntityRoutes('customer');
  * ```
  */

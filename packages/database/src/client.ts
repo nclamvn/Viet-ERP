@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/database - Prisma Client Singleton
+// @vierp/database - Prisma Client Singleton
 // Shared database client with connection pooling
 // ============================================================
 

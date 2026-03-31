@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - Ecommerce Event Schemas
+// @vierp/events - Ecommerce Event Schemas
 // Sự kiện từ module Ecommerce (Thương mại điện tử)
 // ============================================================
 

@@ -1,7 +1,7 @@
 // ============================================================
-// @erp/events - Event Subscriber
+// @vierp/events - Event Subscriber
 // Usage:
-//   import { subscribe } from '@erp/events/subscriber';
+//   import { subscribe } from '@vierp/events/subscriber';
 //   await subscribe('vierp.customer.created', 'crm-service', async (event) => {
 //     console.log('New customer:', event.data);
 //   });
@@ -9,7 +9,7 @@
 
 import { AckPolicy, DeliverPolicy } from 'nats';
 import { getJetStream, getJetStreamManager, sc } from './connection';
-import type { EventEnvelope } from '@erp/shared';
+import type { EventEnvelope } from '@vierp/shared';
 
 export type EventHandler<T = unknown> = (event: EventEnvelope<T>) => Promise<void>;
 

@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - NATS JetStream Connection Manager
+// @vierp/events - NATS JetStream Connection Manager
 // Singleton connection with auto-reconnect
 // ============================================================
 

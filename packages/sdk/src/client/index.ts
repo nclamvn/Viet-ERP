@@ -1,9 +1,9 @@
 // ============================================================
-// @erp/sdk — REST API Client
+// @vierp/sdk — REST API Client
 // Type-safe client for consuming ERP APIs from external apps
 // ============================================================
 
-import type { ApiResponse, PaginationParams, PaginationMeta, Customer, Product, Employee, Supplier } from '@erp/shared';
+import type { ApiResponse, PaginationParams, PaginationMeta, Customer, Product, Employee, Supplier } from '@vierp/shared';
 
 // ==================== Configuration ====================
 

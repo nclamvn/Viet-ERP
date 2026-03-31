@@ -1,5 +1,5 @@
 {
-  "name": "@erp/saas",
+  "name": "@vierp/saas",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -9,10 +9,10 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@erp/shared": "*",
-    "@erp/database": "*",
-    "@erp/events": "*",
-    "@erp/notifications": "*",
+    "@vierp/shared": "*",
+    "@vierp/database": "*",
+    "@vierp/events": "*",
+    "@vierp/notifications": "*",
     "decimal.js": "^10.4.3",
     "date-fns": "^3.0.0",
     "zod": "^3.22.0"

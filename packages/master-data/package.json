@@ -1,5 +1,5 @@
 {
-  "name": "@erp/master-data",
+  "name": "@vierp/master-data",
   "version": "1.0.0",
   "private": true,
   "description": "ERP Master Data Service — Single source of truth for shared entities (Customers, Products, Employees, Suppliers)",
@@ -20,10 +20,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@erp/shared": "*",
-    "@erp/database": "*",
-    "@erp/events": "*",
-    "@erp/auth": "*"
+    "@vierp/shared": "*",
+    "@vierp/database": "*",
+    "@vierp/events": "*",
+    "@vierp/auth": "*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

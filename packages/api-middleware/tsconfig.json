@@ -10,7 +10,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@erp/*": ["../*/src"]
+      "@vierp/*": ["../*/src"]
     }
   },
   "include": ["src/**/*.ts"],

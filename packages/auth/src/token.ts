@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/auth - JWT Token Verification (using jose)
+// @vierp/auth - JWT Token Verification (using jose)
 // Works in both Node.js and Edge Runtime
 // ============================================================
 

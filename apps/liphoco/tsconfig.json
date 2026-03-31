@@ -16,7 +16,7 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
-      "@erp/database": ["../../packages/database/src"]
+      "@vierp/database": ["../../packages/database/src"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

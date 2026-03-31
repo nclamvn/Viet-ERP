@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - Event Flow: HRM → Accounting
+// @vierp/events - Event Flow: HRM → Accounting
 // When PayrollProcessed → auto-create JournalEntryPosted
 // Creates salary expense entries
 // ============================================================

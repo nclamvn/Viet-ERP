@@ -1,8 +1,8 @@
 // ============================================================
-// @erp/master-data - Type Definitions
+// @vierp/master-data - Type Definitions
 // ============================================================
 
-import type { PaginationParams, Customer, Product, Employee, EventEnvelope } from '@erp/shared';
+import type { PaginationParams, Customer, Product, Employee, EventEnvelope } from '@vierp/shared';
 
 // ==================== Supplier (New Entity) ====================
 

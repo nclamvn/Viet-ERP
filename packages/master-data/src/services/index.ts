@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/master-data - Services barrel export
+// @vierp/master-data - Services barrel export
 // ============================================================
 
 export { BaseMasterDataService, MasterDataError } from './base.service';

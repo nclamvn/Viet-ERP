@@ -1,10 +1,10 @@
 // ============================================================
-// @erp/master-data - Employee Event Handler
+// @vierp/master-data - Employee Event Handler
 // Listens for employee events from HRM
 // ============================================================
 
-import { subscribe } from '@erp/events';
-import { EVENT_SUBJECTS } from '@erp/shared';
+import { subscribe } from '@vierp/events';
+import { EVENT_SUBJECTS } from '@vierp/shared';
 import { employeeService } from '../services/employee.service';
 import type { SyncResult } from '../types';
 

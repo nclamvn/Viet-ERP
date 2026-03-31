@@ -1,5 +1,5 @@
 {
-  "name": "@erp/ai-copilot",
+  "name": "@vierp/ai-copilot",
   "version": "1.0.0",
   "private": true,
   "description": "ERP AI Copilot — Shared conversational AI engine with module-specific assistants",
@@ -20,11 +20,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
-    "@erp/shared": "*",
-    "@erp/database": "*",
-    "@erp/events": "*",
-    "@erp/feature-flags": "*",
-    "@erp/master-data": "*"
+    "@vierp/shared": "*",
+    "@vierp/database": "*",
+    "@vierp/events": "*",
+    "@vierp/feature-flags": "*",
+    "@vierp/master-data": "*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

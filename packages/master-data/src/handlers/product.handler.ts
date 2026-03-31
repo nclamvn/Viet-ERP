@@ -1,10 +1,10 @@
 // ============================================================
-// @erp/master-data - Product Event Handler
+// @vierp/master-data - Product Event Handler
 // Listens for product events from MRP, OTB, Inventory
 // ============================================================
 
-import { subscribe } from '@erp/events';
-import { EVENT_SUBJECTS } from '@erp/shared';
+import { subscribe } from '@vierp/events';
+import { EVENT_SUBJECTS } from '@vierp/shared';
 import { productService } from '../services/product.service';
 import type { SyncResult } from '../types';
 

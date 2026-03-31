@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - Event Schemas Index
+// @vierp/events - Event Schemas Index
 // Re-export all event schemas
 // ============================================================
 

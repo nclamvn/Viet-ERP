@@ -1,5 +1,5 @@
 {
-  "name": "@erp/feature-flags",
+  "name": "@vierp/feature-flags",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@erp/shared": "*",
-    "@erp/database": "*"
+    "@vierp/shared": "*",
+    "@vierp/database": "*"
   },
   "devDependencies": {
     "typescript": "^5.9.0"

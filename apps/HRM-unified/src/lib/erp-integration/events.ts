@@ -3,8 +3,8 @@
 // Publishes HR events to ERP ecosystem event bus
 // ============================================================
 
-import { publish, subscribe, ensureStreams } from '@erp/events';
-import { EVENT_SUBJECTS } from '@erp/shared';
+import { publish, subscribe, ensureStreams } from '@vierp/events';
+import { EVENT_SUBJECTS } from '@vierp/shared';
 
 // ==================== Event Publishers ====================
 

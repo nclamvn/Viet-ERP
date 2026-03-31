@@ -1,12 +1,12 @@
 // ============================================================
-// @erp/events - Event Publisher
+// @vierp/events - Event Publisher
 // Usage:
-//   import { publish } from '@erp/events/publisher';
+//   import { publish } from '@vierp/events/publisher';
 //   await publish('vierp.customer.created', { id, name, email }, ctx);
 // ============================================================
 
 import { getJetStream, sc } from './connection';
-import type { EventEnvelope } from '@erp/shared';
+import type { EventEnvelope } from '@vierp/shared';
 
 /**
  * Publish an event to NATS JetStream

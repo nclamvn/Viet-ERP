@@ -1,5 +1,5 @@
 {
-  "name": "@erp/events",
+  "name": "@vierp/events",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -17,7 +17,7 @@
   "dependencies": {
     "nats": "^2.19.0",
     "zod": "^3.22.0",
-    "@erp/shared": "*"
+    "@vierp/shared": "*"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

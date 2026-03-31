@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - MRP Event Schemas
+// @vierp/events - MRP Event Schemas
 // Sự kiện từ module MRP (Lập kế hoạch sản xuất)
 // ============================================================
 

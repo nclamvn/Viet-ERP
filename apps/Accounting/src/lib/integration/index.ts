@@ -4,8 +4,8 @@
 // Auto-generates journal entries from business events
 // ============================================================
 
-import { subscribe, publish } from '@erp/events';
-import { EVENT_SUBJECTS } from '@erp/shared';
+import { subscribe, publish } from '@vierp/events';
+import { EVENT_SUBJECTS } from '@vierp/shared';
 import type { GLJournalEntry } from '../gl-engine';
 import { validateJournalEntry } from '../gl-engine';
 import { generateAPJournalEntry, generateARJournalEntry, calculateInvoice } from '../invoice-engine';

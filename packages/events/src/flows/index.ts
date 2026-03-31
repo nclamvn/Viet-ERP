@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - Event Flows Index
+// @vierp/events - Event Flows Index
 // Re-export all event flow definitions
 // ============================================================
 

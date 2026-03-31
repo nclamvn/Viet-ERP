@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/api-middleware — API Middleware Stack
+// @vierp/api-middleware — API Middleware Stack
 // RRI-T Upgrade: DevOps Persona × D6 Infrastructure × INFRA Axis
 //              + Security Auditor × D4 Security × SEC Axis
 //

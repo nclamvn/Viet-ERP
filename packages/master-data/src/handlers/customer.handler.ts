@@ -1,11 +1,11 @@
 // ============================================================
-// @erp/master-data - Customer Event Handler
+// @vierp/master-data - Customer Event Handler
 // Listens for customer events from CRM, OTB, Accounting
 // Syncs to master data store
 // ============================================================
 
-import { subscribe } from '@erp/events';
-import { EVENT_SUBJECTS } from '@erp/shared';
+import { subscribe } from '@vierp/events';
+import { EVENT_SUBJECTS } from '@vierp/shared';
 import { customerService } from '../services/customer.service';
 import type { SyncResult } from '../types';
 

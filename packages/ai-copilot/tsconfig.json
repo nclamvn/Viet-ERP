@@ -15,9 +15,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "paths": {
-      "@erp/shared": ["../shared/src"],
-      "@erp/database": ["../database/src"],
-      "@erp/events": ["../events/src"]
+      "@vierp/shared": ["../shared/src"],
+      "@vierp/database": ["../database/src"],
+      "@vierp/events": ["../events/src"]
     }
   },
   "include": ["src/**/*"],

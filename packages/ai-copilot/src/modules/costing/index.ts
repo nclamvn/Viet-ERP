@@ -1,12 +1,12 @@
 // ============================================================
-// @erp/ai-copilot — LIPHOCO Costing Module
+// @vierp/ai-copilot — LIPHOCO Costing Module
 // ============================================================
 //
 // Tích hợp LIPHOCO Costing Skill v2 vào hệ thống AI Copilot
 // Module này xử lý: BOM extraction → Fabrication classification →
 // Cost calculation → Quotation generation
 //
-// Sử dụng: import { costingModule } from '@erp/ai-copilot/modules/costing'
+// Sử dụng: import { costingModule } from '@vierp/ai-copilot/modules/costing'
 // ============================================================
 
 import type { CopilotTool, ToolCall, ToolResult } from '../types';

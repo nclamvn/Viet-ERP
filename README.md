@@ -16,32 +16,30 @@ VietERP Platform is a comprehensive, enterprise-grade ERP ecosystem built with m
 
 | Chỉ số / Metric | Giá trị / Value |
 |--------|-------|
-| Tổng dòng mã / Total LOC | **812,879** |
-| Ứng dụng / Applications | 14 modules |
+| Tổng dòng mã / Total LOC | **809,735** (excl. generated/lock files) |
+| Ứng dụng / Applications | 15 modules |
 | Gói chia sẻ / Shared Packages | 27 |
-| Prisma Models | 971 |
-| API Routes | 1,293 |
-| E2E Test Specs | 154 |
+| Prisma Models | 980 |
+| API Routes | 1,302 |
+| Test/Spec Files | 624 |
 | Dockerfiles | 17 |
 | Terraform Files | 29 (AWS + GCP + Azure) |
 | Grafana Dashboards | 6 |
 | CI/CD Workflows | 3 (ci, release, docker-push) |
-| Tổng tệp / Total Files | 8,957 |
+| Tổng tệp / Total Files | 8,959 |
 
 ### Phân bổ mã nguồn / Code Breakdown
 
 | Ngôn ngữ / Language | LOC | Ghi chú |
 |---|---|---|
-| TypeScript (.ts) | 363,273 | Mã nguồn chính |
-| React TSX (.tsx) | 161,767 | Giao diện |
-| JavaScript (.js/.jsx) | 27,871 | Config + scripts |
-| CSS / Tailwind | 47,417 | Styles |
-| Prisma Schema | 36,517 | 971 models, 13 schemas |
-| SQL Migrations | 17,402 | 34 migrations |
+| TypeScript (.ts/.tsx) | 548,154 | Mã nguồn chính + giao diện |
+| CSS / Tailwind | 47,551 | Styles |
+| Prisma Schema | 36,830 | 980 models, 13 schemas |
+| JSON / YAML Config | 36,912 | Package configs + Helm + monitoring |
+| SQL Migrations | 17,462 | 34 migrations |
 | Terraform (.tf) | 6,168 | AWS + GCP + Azure |
 | Shell Scripts | 3,943 | DevOps + automation |
-| JSON / YAML Config | 35,765 | Package configs + Helm + monitoring |
-| Markdown Docs | 112,756 | 32 guides + ADRs + API refs |
+| Markdown Docs | 112,715 | 32 guides + ADRs + API refs |
 
 ## Độ hoàn thiện / Completion Status
 
@@ -51,7 +49,7 @@ Tổng thể / Overall:  ██████████████████�
 
 | Lĩnh vực / Area | Trạng thái | Chi tiết |
 |---|---|---|
-| Core Modules (14 apps) | ✅ Hoàn thiện | HRM, CRM, MRP, Accounting, Ecommerce, OTB, TPM, PM, ExcelAI, Docs |
+| Core Modules (15 apps) | ✅ Hoàn thiện | HRM, CRM, MRP, Accounting, Ecommerce, OTB, TPM, PM, ExcelAI, Docs, Landing Page |
 | Shared Packages (27) | ✅ Hoàn thiện | auth, events, metrics, openapi, search, audit, notifications, dashboard, vietnam, rate-limit, security... |
 | CI/CD Pipeline | ✅ Hoàn thiện | 7-job pipeline: lint, typecheck, test, build, coverage, security-audit, docker-build |
 | Testing | ✅ Hoàn thiện | 154 E2E specs (Playwright), Vitest unit tests, coverage reporting |

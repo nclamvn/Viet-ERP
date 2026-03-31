@@ -1,9 +1,9 @@
 // ============================================================
-// @erp/master-data - Event Handlers
+// @vierp/master-data - Event Handlers
 // Bootstrap all NATS event listeners for master data sync
 // ============================================================
 
-import { ensureStreams } from '@erp/events';
+import { ensureStreams } from '@vierp/events';
 import { startCustomerHandlers } from './customer.handler';
 import { startProductHandlers } from './product.handler';
 import { startEmployeeHandlers } from './employee.handler';

@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - Accounting Event Schemas
+// @vierp/events - Accounting Event Schemas
 // Sự kiện từ module Accounting (Kế toán)
 // ============================================================
 

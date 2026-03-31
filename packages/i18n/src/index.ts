@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/i18n — Vietnamese-first Internationalization Engine
+// @vierp/i18n — Vietnamese-first Internationalization Engine
 // RRI-T Upgrade: End User Persona × D1 UI/UX × LOCALE Axis
 // RRI-UX: Vietnamese-Specific UI Patterns (10 items)
 //

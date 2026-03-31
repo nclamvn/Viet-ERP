@@ -16,12 +16,12 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
-      "@erp/shared": ["../../packages/shared/src"],
-      "@erp/database": ["../../packages/database/src"],
-      "@erp/auth": ["../../packages/auth/src"],
-      "@erp/events": ["../../packages/events/src"],
-      "@erp/feature-flags": ["../../packages/feature-flags/src"],
-      "@erp/master-data": ["../../packages/master-data/src"]
+      "@vierp/shared": ["../../packages/shared/src"],
+      "@vierp/database": ["../../packages/database/src"],
+      "@vierp/auth": ["../../packages/auth/src"],
+      "@vierp/events": ["../../packages/events/src"],
+      "@vierp/feature-flags": ["../../packages/feature-flags/src"],
+      "@vierp/master-data": ["../../packages/master-data/src"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"],

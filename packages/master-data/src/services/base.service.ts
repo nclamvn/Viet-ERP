@@ -1,9 +1,9 @@
 // ============================================================
-// @erp/master-data - Base Service
+// @vierp/master-data - Base Service
 // Generic CRUD operations for all master data entities
 // ============================================================
 
-import type { PaginationMeta } from '@erp/shared';
+import type { PaginationMeta } from '@vierp/shared';
 import type { MasterDataQuery, BulkOperation, BulkResult, ChangeRecord, MasterDataEntity, SyncAction } from '../types';
 
 /**

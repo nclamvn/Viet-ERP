@@ -1,5 +1,5 @@
 {
-  "name": "@erp/logger",
+  "name": "@vierp/logger",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -9,7 +9,7 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@erp/shared": "*"
+    "@vierp/shared": "*"
   },
   "devDependencies": {
     "typescript": "^5.3.0",

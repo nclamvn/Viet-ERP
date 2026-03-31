@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - HRM Event Schemas
+// @vierp/events - HRM Event Schemas
 // Sự kiện từ module HRM (Quản lý Nguồn nhân lực)
 // ============================================================
 

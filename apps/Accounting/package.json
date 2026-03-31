@@ -21,12 +21,12 @@
     "db:seed": "npx ts-node prisma/seed.ts"
   },
   "dependencies": {
-    "@erp/shared": "*",
-    "@erp/database": "*",
-    "@erp/auth": "*",
-    "@erp/events": "*",
-    "@erp/feature-flags": "*",
-    "@erp/master-data": "*",
+    "@vierp/shared": "*",
+    "@vierp/database": "*",
+    "@vierp/auth": "*",
+    "@vierp/events": "*",
+    "@vierp/feature-flags": "*",
+    "@vierp/master-data": "*",
     "@prisma/client": "^5.14.0",
     "next": "^14.2.0",
     "react": "^18.3.0",

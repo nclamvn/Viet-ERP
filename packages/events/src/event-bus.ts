@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events - Event Bus Client
+// @vierp/events - Event Bus Client
 // Type-safe event publishing and subscription with validation
 // ============================================================
 

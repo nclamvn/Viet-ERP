@@ -1,10 +1,10 @@
 // ============================================================
-// @erp/admin — Admin Console Services
+// @vierp/admin — Admin Console Services
 // Tenant management, system monitoring, usage analytics,
 // audit logging, system config
 // ============================================================
 
-import { prisma } from '@erp/database';
+import { prisma } from '@vierp/database';
 
 // ==================== Types ====================
 

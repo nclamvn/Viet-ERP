@@ -16,10 +16,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "paths": {
-      "@erp/shared": ["../shared/src"],
-      "@erp/database": ["../database/src"],
-      "@erp/events": ["../events/src"],
-      "@erp/auth": ["../auth/src"]
+      "@vierp/shared": ["../shared/src"],
+      "@vierp/database": ["../database/src"],
+      "@vierp/events": ["../events/src"],
+      "@vierp/auth": ["../auth/src"]
     }
   },
   "include": ["src/**/*.ts"],

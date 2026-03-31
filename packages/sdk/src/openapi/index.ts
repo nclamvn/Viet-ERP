@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/sdk — OpenAPI Specification Generator
+// @vierp/sdk — OpenAPI Specification Generator
 // Generates OpenAPI 3.1 specs for all ERP modules
 // ============================================================
 

@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/database - Main Entry Point
+// @vierp/database - Main Entry Point
 // ============================================================
 
 export { prisma } from './client';

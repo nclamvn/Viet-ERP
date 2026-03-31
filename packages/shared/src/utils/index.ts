@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/shared - Utility Functions
+// @vierp/shared - Utility Functions
 // ============================================================
 
 import type { ApiResponse, ApiError, PaginationMeta, EventEnvelope, Tier } from '../types';

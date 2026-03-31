@@ -1,5 +1,5 @@
 {
-  "name": "@erp/auth",
+  "name": "@vierp/auth",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",

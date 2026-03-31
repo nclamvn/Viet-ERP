@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/auth - Type Definitions
+// @vierp/auth - Type Definitions
 // ============================================================
 
 export interface KeycloakConfig {

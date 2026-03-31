@@ -3,8 +3,8 @@
 // Controls which HRM features are available per tier
 // ============================================================
 
-import { isFeatureEnabled, requireFeature, type FeatureFlagError } from '@erp/feature-flags';
-import type { Tier } from '@erp/shared';
+import { isFeatureEnabled, requireFeature, type FeatureFlagError } from '@vierp/feature-flags';
+import type { Tier } from '@vierp/shared';
 
 /**
  * HRM feature keys mapped to tier requirements

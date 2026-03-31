@@ -15,7 +15,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "paths": {
-      "@erp/shared": ["../shared/src"]
+      "@vierp/shared": ["../shared/src"]
     }
   },
   "include": ["src/**/*"],

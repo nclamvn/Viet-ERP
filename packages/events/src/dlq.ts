@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/events — Dead Letter Queue (DLQ)
+// @vierp/events — Dead Letter Queue (DLQ)
 // RRI-T Upgrade: QA Destroyer × D7 Edge Cases × ERROR Axis
 //
 // Fixes:
@@ -9,7 +9,7 @@
 // - No DLQ monitoring → Inspection + replay APIs
 // ============================================================
 
-import type { EventEnvelope } from '@erp/shared';
+import type { EventEnvelope } from '@vierp/shared';
 
 // ─── Types ───────────────────────────────────────────────────
 

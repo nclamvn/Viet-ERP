@@ -1,5 +1,5 @@
 {
-  "name": "@erp/security",
+  "name": "@vierp/security",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -9,7 +9,7 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@erp/shared": "*",
+    "@vierp/shared": "*",
     "zod": "^3.22.0",
     "jose": "^5.2.0"
   },

@@ -1,10 +1,10 @@
 // ============================================================
-// @erp/master-data - Customer Service
+// @vierp/master-data - Customer Service
 // CRUD + sync for Customer master data
 // ============================================================
 
-import { prisma } from '@erp/database';
-import type { Customer } from '@erp/shared';
+import { prisma } from '@vierp/database';
+import type { Customer } from '@vierp/shared';
 import type { MasterDataQuery, MasterDataEntity } from '../types';
 import { BaseMasterDataService, MasterDataError } from './base.service';
 

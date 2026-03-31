@@ -1,5 +1,5 @@
 {
-  "name": "@erp/shared",
+  "name": "@vierp/shared",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",

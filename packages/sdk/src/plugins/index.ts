@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/sdk — Plugin System
+// @vierp/sdk — Plugin System
 // Extensible plugin architecture for custom modules
 // ============================================================
 

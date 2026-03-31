@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/ai-copilot — Conversational Engine
+// @vierp/ai-copilot — Conversational Engine
 // Core engine that handles LLM interaction, tool use, streaming
 // ============================================================
 

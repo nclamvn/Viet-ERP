@@ -26,7 +26,15 @@
     "docker:down": "docker compose down",
     "db:migrate": "turbo run db:generate && turbo run db:push"
   },
+  "lint-staged": {
+    "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,yml,yaml}": ["prettier --write"]
+  },
   "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
     "turbo": "^2.0.0",
     "prettier": "^3.2.0"
   },

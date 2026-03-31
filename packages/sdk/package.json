@@ -1,5 +1,5 @@
 {
-  "name": "@erp/sdk",
+  "name": "@vierp/sdk",
   "version": "1.0.0",
   "private": true,
   "description": "ERP Developer SDK — REST client, webhooks, plugins, OpenAPI",
@@ -20,7 +20,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@erp/shared": "*",
+    "@vierp/shared": "*",
     "zod": "^3.23.0"
   },
   "devDependencies": {

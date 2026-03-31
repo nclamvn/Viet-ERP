@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/shared - Shared Types across ERP Ecosystem
+// @vierp/shared - Shared Types across ERP Ecosystem
 // ============================================================
 
 // ==================== Core Entities ====================

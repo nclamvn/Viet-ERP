@@ -1,8 +1,8 @@
 // ============================================================
-// @erp/auth - Next.js Middleware for Keycloak SSO
+// @vierp/auth - Next.js Middleware for Keycloak SSO
 // Drop-in replacement for NextAuth middleware
 // Usage in any module's middleware.ts:
-//   import { withAuth } from '@erp/auth/middleware';
+//   import { withAuth } from '@vierp/auth/middleware';
 //   export default withAuth({ requiredRoles: ['admin'] });
 // ============================================================
 

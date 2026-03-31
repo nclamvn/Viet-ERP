@@ -1,10 +1,10 @@
 // ============================================================
-// @erp/master-data - Employee Service
+// @vierp/master-data - Employee Service
 // CRUD + sync for Employee master data
 // ============================================================
 
-import { prisma } from '@erp/database';
-import type { Employee } from '@erp/shared';
+import { prisma } from '@vierp/database';
+import type { Employee } from '@vierp/shared';
 import type { MasterDataQuery, MasterDataEntity } from '../types';
 import { BaseMasterDataService, MasterDataError } from './base.service';
 

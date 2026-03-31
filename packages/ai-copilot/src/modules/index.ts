@@ -1,5 +1,5 @@
 // ============================================================
-// @erp/ai-copilot — Module-Specific Assistants
+// @vierp/ai-copilot — Module-Specific Assistants
 // Each module gets a specialized assistant with domain knowledge,
 // tools, and context builders
 // ============================================================

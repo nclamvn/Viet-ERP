@@ -1,10 +1,10 @@
 // ============================================================
-// @erp/ai-copilot — Context Builder
+// @vierp/ai-copilot — Context Builder
 // Builds rich context from ERP data for AI conversations
 // ============================================================
 
 import type { ConversationContext, DataCard } from '../types';
-import { customerService, productService, employeeService } from '@erp/master-data';
+import { customerService, productService, employeeService } from '@vierp/master-data';
 
 /**
  * Build ERP context string for the AI model
