@@ -340,6 +340,14 @@ model Tenant {
   internalApplications InternalApplication[]
   careerProfiles       CareerProfile[]
 
+  // Data Import & KPI
+  kpiPeriods           KPIPeriod[]
+  kpiScores            KPIScore[]
+  disciplinaryRecords  DisciplinaryRecord[]
+  salaryAdvances       SalaryAdvance[]
+  importSessions       ImportSession[]
+  systemSettings       SystemSetting[]
+
   @@map("tenants")
 }
 
@@ -443,6 +451,12 @@ model User {
 
   // Phase 7: Custom Roles
   customRoles UserCustomRole[]
+
+  // Data Import & KPI
+  createdKPIPeriods KPIPeriod[] @relation("KPICreator")
+  enteredKPIScores  KPIScore[]  @relation("KPIEnterer")
+  approvedAdvances  SalaryAdvance[] @relation("AdvanceApprover")
+  importedSessions  ImportSession[] @relation("ImportUser")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -708,6 +722,11 @@ model Employee {
   jobPostingsAsHiringManager InternalJobPosting[]    @relation("PostingHiringManager")
   internalApplications       InternalApplication[]
   careerProfile              CareerProfile?
+
+  // Data Import & KPI
+  kpiScores           KPIScore[]
+  disciplinaryRecords DisciplinaryRecord[]
+  salaryAdvances      SalaryAdvance[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId, status])
@@ -7204,7 +7223,7 @@ enum ImportType {
   POSITIONS
 }
 
-enum ImportStatus {
+enum ImportSessionStatus {
   DRY_RUN
   PREVIEWING
   EXECUTING
@@ -7214,10 +7233,10 @@ enum ImportStatus {
 }
 
 model ImportSession {
-  id            String       @id @default(cuid())
-  tenantId      String       @map("tenant_id")
+  id            String              @id @default(cuid())
+  tenantId      String              @map("tenant_id")
   type          ImportType
-  status        ImportStatus @default(DRY_RUN)
+  status        ImportSessionStatus @default(DRY_RUN)
   fileName      String       @map("file_name")
   fileSize      Int          @map("file_size")
   totalRows     Int          @map("total_rows")
