@@ -1,18 +1,18 @@
-import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
+import { db } from "@/lib/db";
+import type { Prisma } from ".prisma/hrm-ai-client";
 
 export async function createCalibrationSession(
   tenantId: string,
   data: {
-    reviewCycleId: string
-    name: string
-    description?: string
-    departmentId?: string
-    scheduledAt: Date
-    facilitatorId: string
-    participantIds: string[]
-    notes?: string
-  }
+    reviewCycleId: string;
+    name: string;
+    description?: string;
+    departmentId?: string;
+    scheduledAt: Date;
+    facilitatorId: string;
+    participantIds: string[];
+    notes?: string;
+  },
 ) {
   return db.calibrationSession.create({
     data: {
@@ -37,17 +37,17 @@ export async function createCalibrationSession(
         select: { id: true, name: true, year: true },
       },
     },
-  })
+  });
 }
 
 export async function getCalibrationSessions(
   tenantId: string,
   filters?: {
-    reviewCycleId?: string
-    departmentId?: string
-    facilitatorId?: string
-    isCompleted?: boolean
-  }
+    reviewCycleId?: string;
+    departmentId?: string;
+    facilitatorId?: string;
+    isCompleted?: boolean;
+  },
 ) {
   const where: Prisma.CalibrationSessionWhereInput = {
     tenantId,
@@ -57,7 +57,7 @@ export async function getCalibrationSessions(
     ...(filters?.isCompleted !== undefined && {
       completedAt: filters.isCompleted ? { not: null } : null,
     }),
-  }
+  };
 
   return db.calibrationSession.findMany({
     where,
@@ -75,8 +75,8 @@ export async function getCalibrationSessions(
         select: { decisions: true },
       },
     },
-    orderBy: { scheduledAt: 'desc' },
-  })
+    orderBy: { scheduledAt: "desc" },
+  });
 }
 
 export async function getCalibrationSessionById(id: string, tenantId: string) {
@@ -101,21 +101,21 @@ export async function getCalibrationSessionById(id: string, tenantId: string) {
             select: { id: true, name: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       },
     },
-  })
+  });
 }
 
 export async function submitCalibrationDecision(
   sessionId: string,
   data: {
-    employeeId: string
-    originalRating: number
-    calibratedRating: number
-    reason?: string
-    decidedById: string
-  }
+    employeeId: string;
+    originalRating: number;
+    calibratedRating: number;
+    reason?: string;
+    decidedById: string;
+  },
 ) {
   return db.calibrationDecision.upsert({
     where: {
@@ -146,7 +146,7 @@ export async function submitCalibrationDecision(
         select: { id: true, name: true },
       },
     },
-  })
+  });
 }
 
 export async function completeCalibration(sessionId: string, tenantId: string) {
@@ -155,16 +155,16 @@ export async function completeCalibration(sessionId: string, tenantId: string) {
     include: {
       decisions: true,
     },
-  })
+  });
 
   if (!session) {
-    throw new Error('Calibration session not found')
+    throw new Error("Calibration session not found");
   }
 
   // Apply calibrated ratings to performance reviews
   await db.$transaction([
     // Update each employee's performance review with calibrated rating
-    ...session.decisions.map(decision =>
+    ...session.decisions.map((decision) =>
       db.performanceReview.updateMany({
         where: {
           tenantId,
@@ -175,16 +175,16 @@ export async function completeCalibration(sessionId: string, tenantId: string) {
           calibratedRating: decision.calibratedRating,
           finalRating: decision.calibratedRating,
           calibratedAt: new Date(),
-          status: 'COMPLETED',
+          status: "COMPLETED",
         },
-      })
+      }),
     ),
     // Mark session as completed
     db.calibrationSession.update({
       where: { id: sessionId },
       data: { completedAt: new Date() },
     }),
-  ])
+  ]);
 
   return db.calibrationSession.findFirst({
     where: { id: sessionId },
@@ -197,5 +197,5 @@ export async function completeCalibration(sessionId: string, tenantId: string) {
         },
       },
     },
-  })
+  });
 }

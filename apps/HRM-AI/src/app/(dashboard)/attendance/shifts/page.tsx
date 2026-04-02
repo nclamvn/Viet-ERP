@@ -1,14 +1,14 @@
 // src/app/(dashboard)/attendance/shifts/page.tsx
 // Shift management page
 
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Plus, Edit, Trash2, MoreHorizontal, Clock } from "lucide-react"
+import { useState } from "react";
+import { Plus, Edit, Trash2, MoreHorizontal, Clock } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -16,19 +16,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,70 +38,77 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { ShiftForm } from "@/components/attendance/shift-form"
-import { useShifts, useCreateShift, useUpdateShift, useDeleteShift } from "@/hooks/use-shifts"
-import { useToast } from "@/hooks/use-toast"
-import { SHIFT_TYPE_LABELS } from "@/constants/attendance"
-import type { Shift } from "@prisma/client"
-import type { ShiftFormData } from "@/lib/validations/shift"
+} from "@/components/ui/alert-dialog";
+import { ShiftForm } from "@/components/attendance/shift-form";
+import {
+  useShifts,
+  useCreateShift,
+  useUpdateShift,
+  useDeleteShift,
+} from "@/hooks/use-shifts";
+import { useToast } from "@/hooks/use-toast";
+import { SHIFT_TYPE_LABELS } from "@/constants/attendance";
+import type { Shift } from ".prisma/hrm-ai-client";
+import type { ShiftFormData } from "@/lib/validations/shift";
 
 export default function ShiftsPage() {
-  const { toast } = useToast()
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingShift, setEditingShift] = useState<Shift | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const { toast } = useToast();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data: shifts, isLoading } = useShifts({ pageSize: 100 })
-  const createShift = useCreateShift()
-  const updateShift = useUpdateShift()
-  const deleteShift = useDeleteShift()
+  const { data: shifts, isLoading } = useShifts({ pageSize: 100 });
+  const createShift = useCreateShift();
+  const updateShift = useUpdateShift();
+  const deleteShift = useDeleteShift();
 
   const handleCreate = async (data: ShiftFormData) => {
     try {
-      await createShift.mutateAsync(data)
-      toast({ title: "Tạo ca làm việc thành công" })
-      setIsFormOpen(false)
+      await createShift.mutateAsync(data);
+      toast({ title: "Tạo ca làm việc thành công" });
+      setIsFormOpen(false);
     } catch (error) {
       toast({
         title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể tạo ca làm việc",
+        description:
+          error instanceof Error ? error.message : "Không thể tạo ca làm việc",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleUpdate = async (data: ShiftFormData) => {
-    if (!editingShift) return
+    if (!editingShift) return;
 
     try {
-      await updateShift.mutateAsync({ id: editingShift.id, data })
-      toast({ title: "Cập nhật thành công" })
-      setEditingShift(null)
+      await updateShift.mutateAsync({ id: editingShift.id, data });
+      toast({ title: "Cập nhật thành công" });
+      setEditingShift(null);
     } catch (error) {
       toast({
         title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể cập nhật",
+        description:
+          error instanceof Error ? error.message : "Không thể cập nhật",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!deletingId) return
+    if (!deletingId) return;
 
     try {
-      await deleteShift.mutateAsync(deletingId)
-      toast({ title: "Xóa thành công" })
-      setDeletingId(null)
+      await deleteShift.mutateAsync(deletingId);
+      toast({ title: "Xóa thành công" });
+      setDeletingId(null);
     } catch (error) {
       toast({
         title: "Lỗi",
         description: error instanceof Error ? error.message : "Không thể xóa",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -146,7 +153,10 @@ export default function ShiftsPage() {
                 </TableRow>
               ) : !shifts?.data.length ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     Chưa có ca làm việc nào
                   </TableCell>
                 </TableRow>
@@ -165,18 +175,14 @@ export default function ShiftsPage() {
                     <TableCell>
                       <code className="text-sm">{shift.code}</code>
                     </TableCell>
-                    <TableCell>
-                      {SHIFT_TYPE_LABELS[shift.shiftType]}
-                    </TableCell>
+                    <TableCell>{SHIFT_TYPE_LABELS[shift.shiftType]}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />
                         {shift.startTime} - {shift.endTime}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {Number(shift.workHoursPerDay)}h/ngày
-                    </TableCell>
+                    <TableCell>{Number(shift.workHoursPerDay)}h/ngày</TableCell>
                     <TableCell>
                       <Badge variant={shift.isActive ? "default" : "secondary"}>
                         {shift.isActive ? "Hoạt động" : "Ngưng"}
@@ -190,7 +196,9 @@ export default function ShiftsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditingShift(shift as Shift)}>
+                          <DropdownMenuItem
+                            onClick={() => setEditingShift(shift as Shift)}
+                          >
                             <Edit className="mr-2 h-4 w-4" />
                             Chỉnh sửa
                           </DropdownMenuItem>
@@ -247,7 +255,8 @@ export default function ShiftsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc muốn xóa ca làm việc này? Hành động này không thể hoàn tác.
+              Bạn có chắc muốn xóa ca làm việc này? Hành động này không thể hoàn
+              tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -257,5 +266,5 @@ export default function ShiftsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

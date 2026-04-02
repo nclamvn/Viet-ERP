@@ -6,7 +6,7 @@
  * Business logic for employee benefits management
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from ".prisma/hrm-ai-client";
 import {
   BenefitPlan,
   BenefitCategory,
@@ -32,7 +32,7 @@ import {
   SubmitClaimDto,
   BenefitPlanFilters,
   EnrollmentFilters,
-} from '../types/benefits.types';
+} from "../types/benefits.types";
 
 export class BenefitsService {
   constructor(private prisma: PrismaClient) {}
@@ -61,7 +61,10 @@ export class BenefitsService {
     return plan as unknown as BenefitPlan;
   }
 
-  async updateBenefitPlan(planId: string, data: Partial<BenefitPlan>): Promise<BenefitPlan> {
+  async updateBenefitPlan(
+    planId: string,
+    data: Partial<BenefitPlan>,
+  ): Promise<BenefitPlan> {
     const plan = await this.prisma.benefitPlan.update({
       where: { id: planId },
       data: {
@@ -83,7 +86,11 @@ export class BenefitsService {
     }) as unknown as BenefitPlan;
   }
 
-  async listBenefitPlans(filters: BenefitPlanFilters, page: number = 1, limit: number = 20) {
+  async listBenefitPlans(
+    filters: BenefitPlanFilters,
+    page: number = 1,
+    limit: number = 20,
+  ) {
     const where: Prisma.BenefitPlanWhereInput = {};
 
     if (filters.category) where.category = filters.category;
@@ -99,7 +106,7 @@ export class BenefitsService {
           vendor: true,
           _count: { select: { enrollments: true } },
         },
-        orderBy: { name: 'asc' },
+        orderBy: { name: "asc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -115,13 +122,15 @@ export class BenefitsService {
     };
   }
 
-  async getEligiblePlansForEmployee(employeeId: string): Promise<BenefitPlan[]> {
+  async getEligiblePlansForEmployee(
+    employeeId: string,
+  ): Promise<BenefitPlan[]> {
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
       include: { department: true },
     });
 
-    if (!employee) throw new Error('Employee not found');
+    if (!employee) throw new Error("Employee not found");
 
     const plans = await this.prisma.benefitPlan.findMany({
       where: { isActive: true },
@@ -129,27 +138,39 @@ export class BenefitsService {
     });
 
     // Filter by eligibility rules
-    const eligiblePlans = plans.filter(plan => {
+    const eligiblePlans = plans.filter((plan) => {
       const rules = plan.eligibilityRules as any;
-      
+
       // Check employment type
-      if (rules.employmentTypes?.length && !rules.employmentTypes.includes(employee.employmentType)) {
+      if (
+        rules.employmentTypes?.length &&
+        !rules.employmentTypes.includes(employee.employmentType)
+      ) {
         return false;
       }
 
       // Check employment status
-      if (rules.employmentStatuses?.length && !rules.employmentStatuses.includes(employee.status)) {
+      if (
+        rules.employmentStatuses?.length &&
+        !rules.employmentStatuses.includes(employee.status)
+      ) {
         return false;
       }
 
       // Check tenure
       if (rules.minTenureDays) {
-        const tenureDays = Math.floor((Date.now() - new Date(employee.hireDate).getTime()) / (1000 * 60 * 60 * 24));
+        const tenureDays = Math.floor(
+          (Date.now() - new Date(employee.hireDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        );
         if (tenureDays < rules.minTenureDays) return false;
       }
 
       // Check department
-      if (rules.eligibleDepartmentIds?.length && !rules.eligibleDepartmentIds.includes(employee.departmentId)) {
+      if (
+        rules.eligibleDepartmentIds?.length &&
+        !rules.eligibleDepartmentIds.includes(employee.departmentId)
+      ) {
         return false;
       }
 
@@ -168,9 +189,14 @@ export class BenefitsService {
   // ENROLLMENT PERIODS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async createEnrollmentPeriod(data: Partial<EnrollmentPeriod>, createdBy: string): Promise<EnrollmentPeriod> {
+  async createEnrollmentPeriod(
+    data: Partial<EnrollmentPeriod>,
+    createdBy: string,
+  ): Promise<EnrollmentPeriod> {
     // Get eligible employee count
-    const eligibleCount = await this.getEligibleEmployeeCount(data.planIds || []);
+    const eligibleCount = await this.getEligibleEmployeeCount(
+      data.planIds || [],
+    );
 
     const period = await this.prisma.enrollmentPeriod.create({
       data: {
@@ -202,7 +228,7 @@ export class BenefitsService {
         startDate: { lte: now },
         endDate: { gte: now },
       },
-      orderBy: { endDate: 'asc' },
+      orderBy: { endDate: "asc" },
     }) as unknown as EnrollmentPeriod[];
   }
 
@@ -216,7 +242,7 @@ export class BenefitsService {
   private async getEligibleEmployeeCount(planIds: string[]): Promise<number> {
     // Simplified - would need to check each plan's eligibility rules
     return this.prisma.employee.count({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
     });
   }
 
@@ -224,19 +250,22 @@ export class BenefitsService {
   // ENROLLMENTS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async createEnrollment(data: CreateEnrollmentDto, enrolledBy: string): Promise<BenefitEnrollment> {
+  async createEnrollment(
+    data: CreateEnrollmentDto,
+    enrolledBy: string,
+  ): Promise<BenefitEnrollment> {
     // Validate enrollment period is active
     const period = await this.prisma.enrollmentPeriod.findUnique({
       where: { id: data.enrollmentPeriodId },
     });
 
     if (!period || period.isLocked) {
-      throw new Error('Enrollment period is not available');
+      throw new Error("Enrollment period is not available");
     }
 
     const now = new Date();
     if (now < period.startDate || now > period.endDate) {
-      throw new Error('Outside enrollment period dates');
+      throw new Error("Outside enrollment period dates");
     }
 
     // Get plan and coverage option
@@ -245,27 +274,31 @@ export class BenefitsService {
       include: { coverageOptions: true },
     });
 
-    if (!plan) throw new Error('Benefit plan not found');
+    if (!plan) throw new Error("Benefit plan not found");
 
-    const coverageOption = plan.coverageOptions.find(o => o.id === data.coverageOptionId);
-    if (!coverageOption) throw new Error('Coverage option not found');
+    const coverageOption = plan.coverageOptions.find(
+      (o) => o.id === data.coverageOptionId,
+    );
+    if (!coverageOption) throw new Error("Coverage option not found");
 
     // Check for existing enrollment
     const existing = await this.prisma.benefitEnrollment.findFirst({
       where: {
         employeeId: data.employeeId,
         planId: data.planId,
-        status: { in: ['ENROLLED', 'PENDING'] },
+        status: { in: ["ENROLLED", "PENDING"] },
       },
     });
 
     if (existing) {
-      throw new Error('Already enrolled in this plan');
+      throw new Error("Already enrolled in this plan");
     }
 
     // Calculate costs
-    const employeeContribution = coverageOption.employeePremium?.annualAmount || 0;
-    const employerContribution = coverageOption.employerPremium?.annualAmount || 0;
+    const employeeContribution =
+      coverageOption.employeePremium?.annualAmount || 0;
+    const employerContribution =
+      coverageOption.employerPremium?.annualAmount || 0;
 
     const enrollment = await this.prisma.benefitEnrollment.create({
       data: {
@@ -273,14 +306,16 @@ export class BenefitsService {
         enrollmentPeriodId: data.enrollmentPeriodId,
         planId: data.planId,
         coverageOptionId: data.coverageOptionId,
-        status: data.waiverReason ? EnrollmentStatus.WAIVED : EnrollmentStatus.PENDING,
+        status: data.waiverReason
+          ? EnrollmentStatus.WAIVED
+          : EnrollmentStatus.PENDING,
         coverageStartDate: period.effectiveDate,
         dependentIds: data.dependentIds || [],
         beneficiaries: data.beneficiaries as unknown as Prisma.JsonArray,
         employeeContribution,
         employerContribution,
         totalCost: employeeContribution + employerContribution,
-        paymentFrequency: 'MONTHLY',
+        paymentFrequency: "MONTHLY",
         waiverReason: data.waiverReason,
         enrolledAt: new Date(),
         enrolledBy,
@@ -295,7 +330,10 @@ export class BenefitsService {
     return enrollment as unknown as BenefitEnrollment;
   }
 
-  async approveEnrollment(enrollmentId: string, approvedBy: string): Promise<BenefitEnrollment> {
+  async approveEnrollment(
+    enrollmentId: string,
+    approvedBy: string,
+  ): Promise<BenefitEnrollment> {
     const enrollment = await this.prisma.benefitEnrollment.update({
       where: { id: enrollmentId },
       data: {
@@ -316,7 +354,7 @@ export class BenefitsService {
     enrollmentId: string,
     terminationDate: Date,
     reason: string,
-    terminatedBy: string
+    terminatedBy: string,
   ): Promise<BenefitEnrollment> {
     const enrollment = await this.prisma.benefitEnrollment.update({
       where: { id: enrollmentId },
@@ -332,9 +370,12 @@ export class BenefitsService {
     return enrollment as unknown as BenefitEnrollment;
   }
 
-  async getEmployeeEnrollments(employeeId: string, activeOnly: boolean = true): Promise<BenefitEnrollment[]> {
+  async getEmployeeEnrollments(
+    employeeId: string,
+    activeOnly: boolean = true,
+  ): Promise<BenefitEnrollment[]> {
     const where: Prisma.BenefitEnrollmentWhereInput = { employeeId };
-    
+
     if (activeOnly) {
       where.status = EnrollmentStatus.ENROLLED;
       where.OR = [
@@ -350,29 +391,39 @@ export class BenefitsService {
         coverageOption: true,
         enrollmentPeriod: true,
       },
-      orderBy: { coverageStartDate: 'desc' },
+      orderBy: { coverageStartDate: "desc" },
     }) as unknown as BenefitEnrollment[];
   }
 
-  async listEnrollments(filters: EnrollmentFilters, page: number = 1, limit: number = 50) {
+  async listEnrollments(
+    filters: EnrollmentFilters,
+    page: number = 1,
+    limit: number = 50,
+  ) {
     const where: Prisma.BenefitEnrollmentWhereInput = {};
 
     if (filters.employeeId) where.employeeId = filters.employeeId;
     if (filters.planId) where.planId = filters.planId;
     if (filters.status) where.status = filters.status;
-    if (filters.enrollmentPeriodId) where.enrollmentPeriodId = filters.enrollmentPeriodId;
+    if (filters.enrollmentPeriodId)
+      where.enrollmentPeriodId = filters.enrollmentPeriodId;
 
     const [enrollments, total] = await Promise.all([
       this.prisma.benefitEnrollment.findMany({
         where,
         include: {
           employee: {
-            select: { id: true, firstName: true, lastName: true, employeeCode: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employeeCode: true,
+            },
           },
           plan: true,
           coverageOption: true,
         },
-        orderBy: { enrolledAt: 'desc' },
+        orderBy: { enrolledAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -390,14 +441,14 @@ export class BenefitsService {
 
   private async updateEnrollmentPeriodStats(periodId: string): Promise<void> {
     const stats = await this.prisma.benefitEnrollment.groupBy({
-      by: ['status'],
+      by: ["status"],
       where: { enrollmentPeriodId: periodId },
       _count: true,
     });
 
-    const enrolled = stats.find(s => s.status === 'ENROLLED')?._count || 0;
-    const waived = stats.find(s => s.status === 'WAIVED')?._count || 0;
-    const pending = stats.find(s => s.status === 'PENDING')?._count || 0;
+    const enrolled = stats.find((s) => s.status === "ENROLLED")?._count || 0;
+    const waived = stats.find((s) => s.status === "WAIVED")?._count || 0;
+    const pending = stats.find((s) => s.status === "PENDING")?._count || 0;
 
     await this.prisma.enrollmentPeriod.update({
       where: { id: periodId },
@@ -418,7 +469,11 @@ export class BenefitsService {
     let eligibilityEndDate: Date | undefined;
     if (data.relationship === DependentRelationship.CHILD && !data.isDisabled) {
       const dob = new Date(data.dateOfBirth);
-      eligibilityEndDate = new Date(dob.getFullYear() + 26, dob.getMonth(), dob.getDate());
+      eligibilityEndDate = new Date(
+        dob.getFullYear() + 26,
+        dob.getMonth(),
+        dob.getDate(),
+      );
     }
 
     const dependent = await this.prisma.dependent.create({
@@ -432,7 +487,7 @@ export class BenefitsService {
         nationalId: data.nationalId,
         isDisabled: data.isDisabled || false,
         isStudent: data.isStudent || false,
-        verificationStatus: 'PENDING',
+        verificationStatus: "PENDING",
         isEligible: true,
         eligibilityEndDate,
       },
@@ -441,7 +496,10 @@ export class BenefitsService {
     return dependent as unknown as Dependent;
   }
 
-  async updateDependent(dependentId: string, data: Partial<Dependent>): Promise<Dependent> {
+  async updateDependent(
+    dependentId: string,
+    data: Partial<Dependent>,
+  ): Promise<Dependent> {
     const dependent = await this.prisma.dependent.update({
       where: { id: dependentId },
       data,
@@ -452,8 +510,8 @@ export class BenefitsService {
 
   async verifyDependent(
     dependentId: string,
-    status: 'VERIFIED' | 'REJECTED',
-    verifiedBy: string
+    status: "VERIFIED" | "REJECTED",
+    verifiedBy: string,
   ): Promise<Dependent> {
     const dependent = await this.prisma.dependent.update({
       where: { id: dependentId },
@@ -461,7 +519,7 @@ export class BenefitsService {
         verificationStatus: status,
         verifiedAt: new Date(),
         verifiedBy,
-        isEligible: status === 'VERIFIED',
+        isEligible: status === "VERIFIED",
       },
     });
 
@@ -471,7 +529,7 @@ export class BenefitsService {
   async getEmployeeDependents(employeeId: string): Promise<Dependent[]> {
     return this.prisma.dependent.findMany({
       where: { employeeId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     }) as unknown as Dependent[];
   }
 
@@ -485,7 +543,9 @@ export class BenefitsService {
     windowEnd.setDate(windowEnd.getDate() + 30); // 30-day window
 
     // Get affected plans based on event type
-    const affectedPlanIds = await this.getAffectedPlansByEventType(data.eventType);
+    const affectedPlanIds = await this.getAffectedPlansByEventType(
+      data.eventType,
+    );
 
     const lifeEvent = await this.prisma.lifeEvent.create({
       data: {
@@ -493,11 +553,12 @@ export class BenefitsService {
         eventType: data.eventType,
         eventDate: data.eventDate,
         description: data.description,
-        supportingDocuments: data.supportingDocuments as unknown as Prisma.JsonArray,
+        supportingDocuments:
+          data.supportingDocuments as unknown as Prisma.JsonArray,
         enrollmentWindowStart: eventDate,
         enrollmentWindowEnd: windowEnd,
         affectedPlanIds,
-        status: 'PENDING',
+        status: "PENDING",
         submittedAt: new Date(),
       },
     });
@@ -508,12 +569,12 @@ export class BenefitsService {
   async approveLifeEvent(
     lifeEventId: string,
     reviewedBy: string,
-    notes?: string
+    notes?: string,
   ): Promise<LifeEvent> {
     const lifeEvent = await this.prisma.lifeEvent.update({
       where: { id: lifeEventId },
       data: {
-        status: 'APPROVED',
+        status: "APPROVED",
         reviewedBy,
         reviewedAt: new Date(),
         reviewNotes: notes,
@@ -526,40 +587,86 @@ export class BenefitsService {
   async getEmployeeLifeEvents(employeeId: string): Promise<LifeEvent[]> {
     return this.prisma.lifeEvent.findMany({
       where: { employeeId },
-      orderBy: { eventDate: 'desc' },
+      orderBy: { eventDate: "desc" },
     }) as unknown as LifeEvent[];
   }
 
   async getPendingLifeEvents(): Promise<LifeEvent[]> {
     return this.prisma.lifeEvent.findMany({
-      where: { status: 'PENDING' },
+      where: { status: "PENDING" },
       include: {
         employee: {
-          select: { id: true, firstName: true, lastName: true, employeeCode: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+          },
         },
       },
-      orderBy: { submittedAt: 'asc' },
+      orderBy: { submittedAt: "asc" },
     }) as unknown as LifeEvent[];
   }
 
-  private async getAffectedPlansByEventType(eventType: LifeEventType): Promise<string[]> {
+  private async getAffectedPlansByEventType(
+    eventType: LifeEventType,
+  ): Promise<string[]> {
     // Map event types to benefit categories that can be changed
     const categoryMap: Record<LifeEventType, BenefitCategory[]> = {
-      [LifeEventType.MARRIAGE]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION, BenefitCategory.LIFE_INSURANCE],
-      [LifeEventType.DIVORCE]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION, BenefitCategory.LIFE_INSURANCE],
-      [LifeEventType.BIRTH_ADOPTION]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION, BenefitCategory.LIFE_INSURANCE],
-      [LifeEventType.DEATH_DEPENDENT]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION, BenefitCategory.LIFE_INSURANCE],
-      [LifeEventType.SPOUSE_JOB_LOSS]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION],
-      [LifeEventType.SPOUSE_JOB_GAIN]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION],
+      [LifeEventType.MARRIAGE]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+        BenefitCategory.LIFE_INSURANCE,
+      ],
+      [LifeEventType.DIVORCE]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+        BenefitCategory.LIFE_INSURANCE,
+      ],
+      [LifeEventType.BIRTH_ADOPTION]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+        BenefitCategory.LIFE_INSURANCE,
+      ],
+      [LifeEventType.DEATH_DEPENDENT]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+        BenefitCategory.LIFE_INSURANCE,
+      ],
+      [LifeEventType.SPOUSE_JOB_LOSS]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+      ],
+      [LifeEventType.SPOUSE_JOB_GAIN]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+      ],
       [LifeEventType.ADDRESS_CHANGE]: [BenefitCategory.HEALTH],
-      [LifeEventType.DEPENDENT_AGE_OUT]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION],
-      [LifeEventType.DISABILITY_STATUS]: [BenefitCategory.DISABILITY, BenefitCategory.LIFE_INSURANCE],
-      [LifeEventType.COURT_ORDER]: [BenefitCategory.HEALTH, BenefitCategory.DENTAL, BenefitCategory.VISION],
+      [LifeEventType.DEPENDENT_AGE_OUT]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+      ],
+      [LifeEventType.DISABILITY_STATUS]: [
+        BenefitCategory.DISABILITY,
+        BenefitCategory.LIFE_INSURANCE,
+      ],
+      [LifeEventType.COURT_ORDER]: [
+        BenefitCategory.HEALTH,
+        BenefitCategory.DENTAL,
+        BenefitCategory.VISION,
+      ],
       [LifeEventType.OTHER]: [],
     };
 
     const categories = categoryMap[eventType] || [];
-    
+
     const plans = await this.prisma.benefitPlan.findMany({
       where: {
         category: { in: categories },
@@ -568,19 +675,22 @@ export class BenefitsService {
       select: { id: true },
     });
 
-    return plans.map(p => p.id);
+    return plans.map((p) => p.id);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // CLAIMS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async submitClaim(data: SubmitClaimDto, submittedBy: string): Promise<BenefitClaim> {
+  async submitClaim(
+    data: SubmitClaimDto,
+    submittedBy: string,
+  ): Promise<BenefitClaim> {
     const claimNumber = await this.generateClaimNumber();
 
     // Get patient name
     let patientName: string;
-    if (data.patientRelationship === 'SELF') {
+    if (data.patientRelationship === "SELF") {
       const employee = await this.prisma.employee.findUnique({
         where: { id: submittedBy },
       });
@@ -606,11 +716,13 @@ export class BenefitsService {
         dependentId: data.dependentId,
         billedAmount: data.billedAmount,
         status: ClaimStatus.SUBMITTED,
-        statusHistory: [{
-          status: ClaimStatus.SUBMITTED,
-          changedAt: new Date(),
-          changedBy: submittedBy,
-        }] as unknown as Prisma.JsonArray,
+        statusHistory: [
+          {
+            status: ClaimStatus.SUBMITTED,
+            changedAt: new Date(),
+            changedBy: submittedBy,
+          },
+        ] as unknown as Prisma.JsonArray,
         documents: data.documents as unknown as Prisma.JsonArray,
       },
     });
@@ -628,13 +740,13 @@ export class BenefitsService {
       employeeResponsibility?: number;
       notes?: string;
       denialReason?: string;
-    }
+    },
   ): Promise<BenefitClaim> {
     const claim = await this.prisma.benefitClaim.findUnique({
       where: { id: claimId },
     });
 
-    if (!claim) throw new Error('Claim not found');
+    if (!claim) throw new Error("Claim not found");
 
     const statusHistory = (claim.statusHistory as any[]) || [];
     statusHistory.push({
@@ -663,7 +775,11 @@ export class BenefitsService {
     return updated as unknown as BenefitClaim;
   }
 
-  async getEmployeeClaims(employeeId: string, page: number = 1, limit: number = 20) {
+  async getEmployeeClaims(
+    employeeId: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
     const [claims, total] = await Promise.all([
       this.prisma.benefitClaim.findMany({
         where: { employeeId },
@@ -672,7 +788,7 @@ export class BenefitsService {
             include: { plan: true },
           },
         },
-        orderBy: { submissionDate: 'desc' },
+        orderBy: { submissionDate: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -691,21 +807,30 @@ export class BenefitsService {
   async getPendingClaims(page: number = 1, limit: number = 50) {
     const [claims, total] = await Promise.all([
       this.prisma.benefitClaim.findMany({
-        where: { status: { in: [ClaimStatus.SUBMITTED, ClaimStatus.UNDER_REVIEW] } },
+        where: {
+          status: { in: [ClaimStatus.SUBMITTED, ClaimStatus.UNDER_REVIEW] },
+        },
         include: {
           employee: {
-            select: { id: true, firstName: true, lastName: true, employeeCode: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employeeCode: true,
+            },
           },
           enrollment: {
             include: { plan: true },
           },
         },
-        orderBy: { submissionDate: 'asc' },
+        orderBy: { submissionDate: "asc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.benefitClaim.count({
-        where: { status: { in: [ClaimStatus.SUBMITTED, ClaimStatus.UNDER_REVIEW] } },
+        where: {
+          status: { in: [ClaimStatus.SUBMITTED, ClaimStatus.UNDER_REVIEW] },
+        },
       }),
     ]);
 
@@ -728,14 +853,19 @@ export class BenefitsService {
         },
       },
     });
-    return `CLM-${year}-${String(count + 1).padStart(6, '0')}`;
+    return `CLM-${year}-${String(count + 1).padStart(6, "0")}`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // FLEXIBLE BENEFITS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async createFlexAccount(employeeId: string, planYear: number, totalPoints: number, pointValue: number): Promise<FlexBenefitAccount> {
+  async createFlexAccount(
+    employeeId: string,
+    planYear: number,
+    totalPoints: number,
+    pointValue: number,
+  ): Promise<FlexBenefitAccount> {
     const account = await this.prisma.flexBenefitAccount.create({
       data: {
         employeeId,
@@ -745,7 +875,7 @@ export class BenefitsService {
         remainingPoints: totalPoints,
         pointValue,
         totalValue: totalPoints * pointValue,
-        status: 'DRAFT',
+        status: "DRAFT",
       },
     });
 
@@ -756,25 +886,25 @@ export class BenefitsService {
     accountId: string,
     planId: string,
     coverageOptionId: string | null,
-    pointsToUse: number
+    pointsToUse: number,
   ): Promise<FlexBenefitAccount> {
     const account = await this.prisma.flexBenefitAccount.findUnique({
       where: { id: accountId },
     });
 
-    if (!account) throw new Error('Flex account not found');
-    if (account.status !== 'DRAFT' && account.status !== 'SUBMITTED') {
-      throw new Error('Account is not editable');
+    if (!account) throw new Error("Flex account not found");
+    if (account.status !== "DRAFT" && account.status !== "SUBMITTED") {
+      throw new Error("Account is not editable");
     }
     if (pointsToUse > account.remainingPoints) {
-      throw new Error('Insufficient flex points');
+      throw new Error("Insufficient flex points");
     }
 
     const plan = await this.prisma.benefitPlan.findUnique({
       where: { id: planId },
     });
 
-    if (!plan) throw new Error('Plan not found');
+    if (!plan) throw new Error("Plan not found");
 
     // Create selection
     await this.prisma.flexBenefitSelection.create({
@@ -784,7 +914,7 @@ export class BenefitsService {
         coverageOptionId,
         pointsUsed: pointsToUse,
         cashValue: pointsToUse * account.pointValue,
-        status: 'SELECTED',
+        status: "SELECTED",
         effectiveDate: new Date(account.planYear, 0, 1),
       },
     });
@@ -806,7 +936,7 @@ export class BenefitsService {
     const account = await this.prisma.flexBenefitAccount.update({
       where: { id: accountId },
       data: {
-        status: 'SUBMITTED',
+        status: "SUBMITTED",
         submittedAt: new Date(),
       },
     });
@@ -831,18 +961,22 @@ export class BenefitsService {
     });
 
     const totalEligible = await this.prisma.employee.count({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
     });
 
-    const enrolledEmployees = new Set(enrollments.filter(e => e.status === 'ENROLLED').map(e => e.employeeId));
+    const enrolledEmployees = new Set(
+      enrollments
+        .filter((e) => e.status === "ENROLLED")
+        .map((e) => e.employeeId),
+    );
 
     // Cost calculations
     const totalEmployerCost = enrollments
-      .filter(e => e.status === 'ENROLLED')
+      .filter((e) => e.status === "ENROLLED")
       .reduce((sum, e) => sum + (e.employerContribution || 0), 0);
-    
+
     const totalEmployeeCost = enrollments
-      .filter(e => e.status === 'ENROLLED')
+      .filter((e) => e.status === "ENROLLED")
       .reduce((sum, e) => sum + (e.employeeContribution || 0), 0);
 
     // Claims stats
@@ -863,7 +997,10 @@ export class BenefitsService {
       enrollmentSummary: {
         totalEligible,
         totalEnrolled: enrolledEmployees.size,
-        enrollmentRate: totalEligible > 0 ? (enrolledEmployees.size / totalEligible) * 100 : 0,
+        enrollmentRate:
+          totalEligible > 0
+            ? (enrolledEmployees.size / totalEligible) * 100
+            : 0,
         byPlan: [],
         byCoverageLevel: [],
       },
@@ -871,22 +1008,41 @@ export class BenefitsService {
         totalEmployerCost,
         totalEmployeeCost,
         totalCost: totalEmployerCost + totalEmployeeCost,
-        averageEmployerCostPerEmployee: enrolledEmployees.size > 0 ? totalEmployerCost / enrolledEmployees.size : 0,
-        averageEmployeeCostPerEmployee: enrolledEmployees.size > 0 ? totalEmployeeCost / enrolledEmployees.size : 0,
+        averageEmployerCostPerEmployee:
+          enrolledEmployees.size > 0
+            ? totalEmployerCost / enrolledEmployees.size
+            : 0,
+        averageEmployeeCostPerEmployee:
+          enrolledEmployees.size > 0
+            ? totalEmployeeCost / enrolledEmployees.size
+            : 0,
         byCategory: [],
       },
       claimsSummary: {
         totalClaims: claims.length,
-        totalClaimedAmount: claims.reduce((sum, c) => sum + (c.billedAmount || 0), 0),
-        totalPaidAmount: claims.reduce((sum, c) => sum + (c.paidAmount || 0), 0),
-        averageClaimAmount: claims.length > 0 ? claims.reduce((sum, c) => sum + (c.billedAmount || 0), 0) / claims.length : 0,
+        totalClaimedAmount: claims.reduce(
+          (sum, c) => sum + (c.billedAmount || 0),
+          0,
+        ),
+        totalPaidAmount: claims.reduce(
+          (sum, c) => sum + (c.paidAmount || 0),
+          0,
+        ),
+        averageClaimAmount:
+          claims.length > 0
+            ? claims.reduce((sum, c) => sum + (c.billedAmount || 0), 0) /
+              claims.length
+            : 0,
         byStatus: [],
         byCategory: [],
       },
       dependentsSummary: {
         totalDependents: dependents.length,
         byRelationship: [],
-        averageDependentsPerEmployee: enrolledEmployees.size > 0 ? dependents.length / enrolledEmployees.size : 0,
+        averageDependentsPerEmployee:
+          enrolledEmployees.size > 0
+            ? dependents.length / enrolledEmployees.size
+            : 0,
       },
       trends: {
         enrollmentTrend: [],
@@ -896,13 +1052,15 @@ export class BenefitsService {
     };
   }
 
-  async getEmployeeBenefitsSummary(employeeId: string): Promise<EmployeeBenefitsSummary> {
+  async getEmployeeBenefitsSummary(
+    employeeId: string,
+  ): Promise<EmployeeBenefitsSummary> {
     const enrollments = await this.getEmployeeEnrollments(employeeId, true);
     const dependents = await this.getEmployeeDependents(employeeId);
     const claimsResult = await this.getEmployeeClaims(employeeId, 1, 5);
     const activePeriods = await this.getActiveEnrollmentPeriods();
     const lifeEvents = await this.prisma.lifeEvent.findMany({
-      where: { employeeId, status: 'PENDING' },
+      where: { employeeId, status: "PENDING" },
     });
 
     const flexAccount = await this.prisma.flexBenefitAccount.findFirst({
@@ -910,16 +1068,24 @@ export class BenefitsService {
       include: { selections: true },
     });
 
-    const totalEmployeeContribution = enrollments.reduce((sum, e) => sum + (e.employeeContribution || 0), 0);
-    const totalEmployerContribution = enrollments.reduce((sum, e) => sum + (e.employerContribution || 0), 0);
+    const totalEmployeeContribution = enrollments.reduce(
+      (sum, e) => sum + (e.employeeContribution || 0),
+      0,
+    );
+    const totalEmployerContribution = enrollments.reduce(
+      (sum, e) => sum + (e.employerContribution || 0),
+      0,
+    );
 
     return {
       employeeId,
-      enrollments: enrollments.map(e => ({
+      enrollments: enrollments.map((e) => ({
         planId: e.planId,
-        planName: (e as any).plan?.name || '',
+        planName: (e as any).plan?.name || "",
         category: (e as any).plan?.category || BenefitCategory.OTHER,
-        coverageLevel: (e as any).coverageOption?.coverageLevel || CoverageLevel.EMPLOYEE_ONLY,
+        coverageLevel:
+          (e as any).coverageOption?.coverageLevel ||
+          CoverageLevel.EMPLOYEE_ONLY,
         status: e.status,
         employeeContribution: e.employeeContribution,
         employerContribution: e.employerContribution,

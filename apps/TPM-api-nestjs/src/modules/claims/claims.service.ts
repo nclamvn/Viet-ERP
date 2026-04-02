@@ -5,7 +5,7 @@ import { UpdateClaimDto } from './dto/update-claim.dto';
 import { ClaimQueryDto } from './dto/claim-query.dto';
 import { ReviewClaimDto } from './dto/review-claim.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class ClaimsService {

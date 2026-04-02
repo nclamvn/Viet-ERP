@@ -1,42 +1,42 @@
 // src/lib/recruitment/services/interview.service.ts
 // Interview Service - Schedule and manage interviews
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   InterviewType,
   InterviewResult,
   ApplicationStatus,
-  Prisma
-} from '@prisma/client'
+  Prisma,
+} from ".prisma/hrm-unified-client";
 
 // Types
 export interface ScheduleInterviewInput {
-  applicationId: string
-  interviewType: InterviewType
-  round?: number
-  scheduledAt: Date
-  duration?: number
-  location?: string
-  interviewerIds: string[]
-  notes?: string
+  applicationId: string;
+  interviewType: InterviewType;
+  round?: number;
+  scheduledAt: Date;
+  duration?: number;
+  location?: string;
+  interviewerIds: string[];
+  notes?: string;
 }
 
 export interface UpdateInterviewInput {
-  scheduledAt?: Date
-  duration?: number
-  location?: string
-  interviewerIds?: string[]
-  result?: InterviewResult
-  notes?: string
+  scheduledAt?: Date;
+  duration?: number;
+  location?: string;
+  interviewerIds?: string[];
+  result?: InterviewResult;
+  notes?: string;
 }
 
 export interface InterviewFilters {
-  applicationId?: string
-  interviewType?: InterviewType[]
-  result?: InterviewResult[]
-  interviewerId?: string
-  fromDate?: Date
-  toDate?: Date
+  applicationId?: string;
+  interviewType?: InterviewType[];
+  result?: InterviewResult[];
+  interviewerId?: string;
+  fromDate?: Date;
+  toDate?: Date;
 }
 
 export class InterviewService {
@@ -51,25 +51,35 @@ export class InterviewService {
       where: {
         id: input.applicationId,
         tenantId: this.tenantId,
-        status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN, ApplicationStatus.HIRED] },
+        status: {
+          notIn: [
+            ApplicationStatus.REJECTED,
+            ApplicationStatus.WITHDRAWN,
+            ApplicationStatus.HIRED,
+          ],
+        },
       },
       include: {
         interviews: {
-          orderBy: { round: 'desc' },
+          orderBy: { round: "desc" },
           take: 1,
         },
       },
-    })
+    });
 
     if (!application) {
-      throw new Error('Application not found or not in valid status')
+      throw new Error("Application not found or not in valid status");
     }
 
     // Determine round number
-    const round = input.round || (application.interviews[0]?.round || 0) + 1
+    const round = input.round || (application.interviews[0]?.round || 0) + 1;
 
     // Check for scheduling conflicts
-    await this.checkConflicts(input.scheduledAt, input.duration || 60, input.interviewerIds)
+    await this.checkConflicts(
+      input.scheduledAt,
+      input.duration || 60,
+      input.interviewerIds,
+    );
 
     const interview = await db.interview.create({
       data: {
@@ -103,26 +113,26 @@ export class InterviewService {
           },
         },
       },
-    })
+    });
 
     // Update application status to INTERVIEW if not already
     if (application.status !== ApplicationStatus.INTERVIEW) {
       await db.application.update({
         where: { id: input.applicationId },
         data: { status: ApplicationStatus.INTERVIEW, stage: 4 },
-      })
+      });
 
       // Create activity
       await db.applicationActivity.create({
         data: {
           applicationId: input.applicationId,
-          action: 'INTERVIEW_SCHEDULED',
+          action: "INTERVIEW_SCHEDULED",
           description: `${input.interviewType} interview scheduled for ${input.scheduledAt.toISOString()}`,
         },
-      })
+      });
     }
 
-    return interview
+    return interview;
   }
 
   /**
@@ -164,63 +174,70 @@ export class InterviewService {
           },
         },
       },
-    })
+    });
 
     if (!interview) {
-      throw new Error('Interview not found')
+      throw new Error("Interview not found");
     }
 
     // Get interviewer details
-    const interviewerIds = interview.interviewerIds as string[]
+    const interviewerIds = interview.interviewerIds as string[];
     const interviewers = await db.user.findMany({
       where: { id: { in: interviewerIds } },
       select: { id: true, name: true, email: true },
-    })
+    });
 
     return {
       ...interview,
       interviewers,
-    }
+    };
   }
 
   /**
    * List interviews with filters
    */
-  async list(filters: InterviewFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: InterviewFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.InterviewWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.applicationId) {
-      where.applicationId = filters.applicationId
+      where.applicationId = filters.applicationId;
     }
 
     if (filters.interviewType?.length) {
-      where.interviewType = { in: filters.interviewType }
+      where.interviewType = { in: filters.interviewType };
     }
 
     if (filters.result?.length) {
-      where.result = { in: filters.result }
+      where.result = { in: filters.result };
     }
 
     if (filters.interviewerId) {
-      where.interviewerIds = { array_contains: [filters.interviewerId] }
+      where.interviewerIds = { array_contains: [filters.interviewerId] };
     }
 
     if (filters.fromDate) {
-      where.scheduledAt = { gte: filters.fromDate }
+      where.scheduledAt = { gte: filters.fromDate };
     }
 
     if (filters.toDate) {
-      where.scheduledAt = { ...(where.scheduledAt as object || {}), lte: filters.toDate }
+      where.scheduledAt = {
+        ...((where.scheduledAt as object) || {}),
+        lte: filters.toDate,
+      };
     }
 
     const [interviews, total] = await Promise.all([
       db.interview.findMany({
         where,
-        orderBy: { scheduledAt: 'asc' },
+        orderBy: { scheduledAt: "asc" },
         skip,
         take: pageSize,
         include: {
@@ -247,27 +264,31 @@ export class InterviewService {
         },
       }),
       db.interview.count({ where }),
-    ])
+    ]);
 
     // Get interviewer names
-    const allInterviewerIds = interviews.flatMap(i => i.interviewerIds as string[])
-    const uniqueInterviewerIds = Array.from(new Set(allInterviewerIds))
+    const allInterviewerIds = interviews.flatMap(
+      (i) => i.interviewerIds as string[],
+    );
+    const uniqueInterviewerIds = Array.from(new Set(allInterviewerIds));
     const interviewers = await db.user.findMany({
       where: { id: { in: uniqueInterviewerIds } },
       select: { id: true, name: true },
-    })
-    const interviewerMap = new Map(interviewers.map(i => [i.id, i.name]))
+    });
+    const interviewerMap = new Map(interviewers.map((i) => [i.id, i.name]));
 
     return {
-      data: interviews.map(i => ({
+      data: interviews.map((i) => ({
         ...i,
-        interviewerNames: (i.interviewerIds as string[]).map(id => interviewerMap.get(id) || 'Unknown'),
+        interviewerNames: (i.interviewerIds as string[]).map(
+          (id) => interviewerMap.get(id) || "Unknown",
+        ),
       })),
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -281,7 +302,7 @@ export class InterviewService {
         scheduledAt: { gte: new Date() },
         result: InterviewResult.PENDING,
       },
-      orderBy: { scheduledAt: 'asc' },
+      orderBy: { scheduledAt: "asc" },
       take: limit,
       include: {
         application: {
@@ -303,19 +324,19 @@ export class InterviewService {
           },
         },
       },
-    })
+    });
 
-    return interviews
+    return interviews;
   }
 
   /**
    * Get today's interviews
    */
   async getTodayInterviews() {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     return db.interview.findMany({
       where: {
@@ -325,7 +346,7 @@ export class InterviewService {
           lt: tomorrow,
         },
       },
-      orderBy: { scheduledAt: 'asc' },
+      orderBy: { scheduledAt: "asc" },
       include: {
         application: {
           include: {
@@ -346,7 +367,7 @@ export class InterviewService {
           },
         },
       },
-    })
+    });
   }
 
   /**
@@ -355,10 +376,10 @@ export class InterviewService {
   async update(id: string, input: UpdateInterviewInput) {
     const interview = await db.interview.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!interview) {
-      throw new Error('Interview not found')
+      throw new Error("Interview not found");
     }
 
     // Check for scheduling conflicts if time is changed
@@ -367,8 +388,8 @@ export class InterviewService {
         input.scheduledAt || interview.scheduledAt,
         input.duration || interview.duration,
         input.interviewerIds || (interview.interviewerIds as string[]),
-        id
-      )
+        id,
+      );
     }
 
     return db.interview.update({
@@ -381,7 +402,7 @@ export class InterviewService {
         result: input.result,
         notes: input.notes,
       },
-    })
+    });
   }
 
   /**
@@ -390,17 +411,22 @@ export class InterviewService {
   async reschedule(id: string, newTime: Date, reason?: string) {
     const interview = await db.interview.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!interview) {
-      throw new Error('Interview not found')
+      throw new Error("Interview not found");
     }
 
     if (interview.result !== InterviewResult.PENDING) {
-      throw new Error('Cannot reschedule a completed interview')
+      throw new Error("Cannot reschedule a completed interview");
     }
 
-    await this.checkConflicts(newTime, interview.duration, interview.interviewerIds as string[], id)
+    await this.checkConflicts(
+      newTime,
+      interview.duration,
+      interview.interviewerIds as string[],
+      id,
+    );
 
     const updated = await db.interview.update({
       where: { id },
@@ -408,29 +434,29 @@ export class InterviewService {
         scheduledAt: newTime,
         result: InterviewResult.RESCHEDULED,
         notes: reason
-          ? `${interview.notes || ''}\nRescheduled: ${reason}`
+          ? `${interview.notes || ""}\nRescheduled: ${reason}`
           : interview.notes,
       },
-    })
+    });
 
     // Create activity
     await db.applicationActivity.create({
       data: {
         applicationId: interview.applicationId,
-        action: 'INTERVIEW_RESCHEDULED',
-        description: `Interview rescheduled to ${newTime.toISOString()}${reason ? `: ${reason}` : ''}`,
+        action: "INTERVIEW_RESCHEDULED",
+        description: `Interview rescheduled to ${newTime.toISOString()}${reason ? `: ${reason}` : ""}`,
         oldValue: interview.scheduledAt.toISOString(),
         newValue: newTime.toISOString(),
       },
-    })
+    });
 
     // Reset result to PENDING
     await db.interview.update({
       where: { id },
       data: { result: InterviewResult.PENDING },
-    })
+    });
 
-    return updated
+    return updated;
   }
 
   /**
@@ -439,10 +465,10 @@ export class InterviewService {
   async recordResult(id: string, result: InterviewResult, notes?: string) {
     const interview = await db.interview.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!interview) {
-      throw new Error('Interview not found')
+      throw new Error("Interview not found");
     }
 
     const updated = await db.interview.update({
@@ -450,30 +476,30 @@ export class InterviewService {
       data: {
         result,
         notes: notes
-          ? `${interview.notes || ''}\nResult: ${notes}`
+          ? `${interview.notes || ""}\nResult: ${notes}`
           : interview.notes,
       },
-    })
+    });
 
     // Create activity
     await db.applicationActivity.create({
       data: {
         applicationId: interview.applicationId,
-        action: 'INTERVIEW_COMPLETED',
+        action: "INTERVIEW_COMPLETED",
         description: `Interview completed with result: ${result}`,
         oldValue: InterviewResult.PENDING,
         newValue: result,
       },
-    })
+    });
 
-    return updated
+    return updated;
   }
 
   /**
    * Mark as no-show
    */
   async markNoShow(id: string, notes?: string) {
-    return this.recordResult(id, InterviewResult.NO_SHOW, notes)
+    return this.recordResult(id, InterviewResult.NO_SHOW, notes);
   }
 
   /**
@@ -482,29 +508,29 @@ export class InterviewService {
   async cancel(id: string, reason: string) {
     const interview = await db.interview.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!interview) {
-      throw new Error('Interview not found')
+      throw new Error("Interview not found");
     }
 
     if (interview.result !== InterviewResult.PENDING) {
-      throw new Error('Cannot cancel a completed interview')
+      throw new Error("Cannot cancel a completed interview");
     }
 
     // Delete the interview
-    await db.interview.delete({ where: { id } })
+    await db.interview.delete({ where: { id } });
 
     // Create activity
     await db.applicationActivity.create({
       data: {
         applicationId: interview.applicationId,
-        action: 'INTERVIEW_CANCELLED',
+        action: "INTERVIEW_CANCELLED",
         description: `Interview cancelled: ${reason}`,
       },
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   }
 
   /**
@@ -514,15 +540,15 @@ export class InterviewService {
     return db.interview.update({
       where: { id },
       data: { reminderSent: true },
-    })
+    });
   }
 
   /**
    * Get interviews needing reminders
    */
   async getInterviewsNeedingReminders(hoursBeforeInterview: number = 24) {
-    const reminderTime = new Date()
-    reminderTime.setHours(reminderTime.getHours() + hoursBeforeInterview)
+    const reminderTime = new Date();
+    reminderTime.setHours(reminderTime.getHours() + hoursBeforeInterview);
 
     return db.interview.findMany({
       where: {
@@ -547,7 +573,7 @@ export class InterviewService {
           },
         },
       },
-    })
+    });
   }
 
   /**
@@ -557,9 +583,9 @@ export class InterviewService {
     scheduledAt: Date,
     duration: number,
     interviewerIds: string[],
-    excludeId?: string
+    excludeId?: string,
   ) {
-    const endTime = new Date(scheduledAt.getTime() + duration * 60 * 1000)
+    const endTime = new Date(scheduledAt.getTime() + duration * 60 * 1000);
 
     // Check each interviewer
     for (const interviewerId of interviewerIds) {
@@ -586,16 +612,16 @@ export class InterviewService {
             },
           ],
         },
-      })
+      });
 
       if (conflicts.length > 0) {
         const interviewer = await db.user.findUnique({
           where: { id: interviewerId },
           select: { name: true },
-        })
+        });
         throw new Error(
-          `Scheduling conflict: ${interviewer?.name || 'Interviewer'} has another interview at this time`
-        )
+          `Scheduling conflict: ${interviewer?.name || "Interviewer"} has another interview at this time`,
+        );
       }
     }
   }
@@ -606,26 +632,26 @@ export class InterviewService {
   async getStats(dateRange?: { from: Date; to: Date }) {
     const where: Prisma.InterviewWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (dateRange) {
       where.scheduledAt = {
         gte: dateRange.from,
         lte: dateRange.to,
-      }
+      };
     }
 
     const [total, byType, byResult, upcoming] = await Promise.all([
       db.interview.count({ where }),
 
       db.interview.groupBy({
-        by: ['interviewType'],
+        by: ["interviewType"],
         where,
         _count: true,
       }),
 
       db.interview.groupBy({
-        by: ['result'],
+        by: ["result"],
         where,
         _count: true,
       }),
@@ -637,24 +663,24 @@ export class InterviewService {
           result: InterviewResult.PENDING,
         },
       }),
-    ])
+    ]);
 
     return {
       total,
       upcoming,
-      byType: byType.map(t => ({
+      byType: byType.map((t) => ({
         type: t.interviewType,
         count: t._count,
       })),
-      byResult: byResult.map(r => ({
+      byResult: byResult.map((r) => ({
         result: r.result,
         count: r._count,
       })),
-    }
+    };
   }
 }
 
 // Factory function
 export function createInterviewService(tenantId: string): InterviewService {
-  return new InterviewService(tenantId)
+  return new InterviewService(tenantId);
 }

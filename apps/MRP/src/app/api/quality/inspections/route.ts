@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma } from ".prisma/mrp-client";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api/with-auth";
 import { logger } from "@/lib/logger";
 import { generateInspectionNumber } from "@/lib/quality/inspection-engine";
 import { buildSearchQuery, parsePaginationParams } from "@/lib/pagination";
 import { z } from "zod";
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 
 // Validation schema for Inspection creation
 const InspectionCreateSchema = z.object({
   type: z.preprocess(
-    (v) => (typeof v === 'string' ? v.toUpperCase() : v),
-    z.enum(["RECEIVING", "IN_PROCESS", "FINAL"])
+    (v) => (typeof v === "string" ? v.toUpperCase() : v),
+    z.enum(["RECEIVING", "IN_PROCESS", "FINAL"]),
   ),
   sourceType: z.enum(["PO", "NON_PO", "PRODUCTION"]).optional(),
   planId: z.string().optional().nullable(),
@@ -41,7 +44,11 @@ export const GET = withAuth(async (request, _context, _session) => {
     const search = searchParams.get("search");
     const { page, pageSize } = parsePaginationParams(request);
 
-    const searchQuery = buildSearchQuery(search, ["inspectionNumber", "lotNumber", "notes"]);
+    const searchQuery = buildSearchQuery(search, [
+      "inspectionNumber",
+      "lotNumber",
+      "notes",
+    ]);
     const where: Prisma.InspectionWhereInput = {
       ...searchQuery,
     };
@@ -66,13 +73,20 @@ export const GET = withAuth(async (request, _context, _session) => {
 
     return NextResponse.json({
       data: inspections,
-      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'GET /api/quality/inspections' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "GET /api/quality/inspections",
+    });
     return NextResponse.json(
       { error: "Lỗi tải danh sách kiểm tra" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
@@ -89,8 +103,11 @@ export const POST = withAuth(async (request, context, session) => {
     const validationResult = InspectionCreateSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Dữ liệu không hợp lệ", details: validationResult.error.issues },
-        { status: 400 }
+        {
+          error: "Dữ liệu không hợp lệ",
+          details: validationResult.error.issues,
+        },
+        { status: 400 },
       );
     }
 
@@ -104,7 +121,7 @@ export const POST = withAuth(async (request, context, session) => {
         if (!data.poLineId) {
           return NextResponse.json(
             { error: "Phải chọn dòng PO (poLineId) cho kiểm tra nhận hàng" },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -116,14 +133,14 @@ export const POST = withAuth(async (request, context, session) => {
         if (!poLine) {
           return NextResponse.json(
             { error: "Dòng PO không tồn tại" },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
         if (poLine.po.status !== "received") {
           return NextResponse.json(
             { error: "PO phải ở trạng thái Đã nhận hàng" },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -139,17 +156,20 @@ export const POST = withAuth(async (request, context, session) => {
             {
               error: `Dòng PO này đã có inspection hoàn thành (${existingCompleted.inspectionNumber}). Không thể tạo thêm.`,
             },
-            { status: 409 }
+            { status: 409 },
           );
         }
 
         const remaining = poLine.quantity - poLine.receivedQty;
-        if (data.quantityReceived !== undefined && data.quantityReceived > remaining) {
+        if (
+          data.quantityReceived !== undefined &&
+          data.quantityReceived > remaining
+        ) {
           return NextResponse.json(
             {
               error: `Số lượng nhận (${data.quantityReceived}) vượt quá số lượng còn lại (${remaining})`,
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
       } else if (sourceType === "NON_PO") {
@@ -157,21 +177,24 @@ export const POST = withAuth(async (request, context, session) => {
         if (!data.partId) {
           return NextResponse.json(
             { error: "Phải chọn linh kiện (partId) cho nhận hàng ngoài PO" },
-            { status: 400 }
+            { status: 400 },
           );
         }
         if (!data.quantityReceived || data.quantityReceived <= 0) {
           return NextResponse.json(
             { error: "Số lượng nhận phải lớn hơn 0" },
-            { status: 400 }
+            { status: 400 },
           );
         }
       } else if (sourceType === "PRODUCTION") {
         // Production source: require workOrderId
         if (!data.workOrderId) {
           return NextResponse.json(
-            { error: "Phải chọn lệnh sản xuất (workOrderId) cho nhận hàng từ sản xuất" },
-            { status: 400 }
+            {
+              error:
+                "Phải chọn lệnh sản xuất (workOrderId) cho nhận hàng từ sản xuất",
+            },
+            { status: 400 },
           );
         }
 
@@ -182,15 +205,18 @@ export const POST = withAuth(async (request, context, session) => {
         if (!wo) {
           return NextResponse.json(
             { error: "Lệnh sản xuất không tồn tại" },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
         const woStatus = wo.status.toLowerCase();
         if (woStatus !== "completed" && woStatus !== "in_progress") {
           return NextResponse.json(
-            { error: "Lệnh sản xuất phải ở trạng thái Hoàn thành hoặc Đang thực hiện" },
-            { status: 400 }
+            {
+              error:
+                "Lệnh sản xuất phải ở trạng thái Hoàn thành hoặc Đang thực hiện",
+            },
+            { status: 400 },
           );
         }
 
@@ -208,7 +234,7 @@ export const POST = withAuth(async (request, context, session) => {
             {
               error: `WO này đã có inspection hoàn thành (${existingWOInspection.inspectionNumber}). Không thể tạo thêm.`,
             },
-            { status: 409 }
+            { status: 409 },
           );
         }
 
@@ -219,37 +245,60 @@ export const POST = withAuth(async (request, context, session) => {
 
     // Validate entity references exist
     if (data.planId) {
-      const plan = await prisma.inspectionPlan.findUnique({ where: { id: data.planId } });
+      const plan = await prisma.inspectionPlan.findUnique({
+        where: { id: data.planId },
+      });
       if (!plan) {
-        return NextResponse.json({ error: "Kế hoạch kiểm tra không tồn tại" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Kế hoạch kiểm tra không tồn tại" },
+          { status: 400 },
+        );
       }
     }
 
     if (data.partId) {
       const part = await prisma.part.findUnique({ where: { id: data.partId } });
       if (!part) {
-        return NextResponse.json({ error: "Linh kiện không tồn tại" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Linh kiện không tồn tại" },
+          { status: 400 },
+        );
       }
     }
 
     if (data.productId) {
-      const product = await prisma.product.findUnique({ where: { id: data.productId } });
+      const product = await prisma.product.findUnique({
+        where: { id: data.productId },
+      });
       if (!product) {
-        return NextResponse.json({ error: "Sản phẩm không tồn tại" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Sản phẩm không tồn tại" },
+          { status: 400 },
+        );
       }
     }
 
     if (data.workOrderId && sourceType !== "PRODUCTION") {
-      const wo = await prisma.workOrder.findUnique({ where: { id: data.workOrderId } });
+      const wo = await prisma.workOrder.findUnique({
+        where: { id: data.workOrderId },
+      });
       if (!wo) {
-        return NextResponse.json({ error: "Lệnh sản xuất không tồn tại" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Lệnh sản xuất không tồn tại" },
+          { status: 400 },
+        );
       }
     }
 
     if (data.warehouseId) {
-      const warehouse = await prisma.warehouse.findUnique({ where: { id: data.warehouseId } });
+      const warehouse = await prisma.warehouse.findUnique({
+        where: { id: data.warehouseId },
+      });
       if (!warehouse) {
-        return NextResponse.json({ error: "Kho không tồn tại" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Kho không tồn tại" },
+          { status: 400 },
+        );
       }
     }
 
@@ -278,14 +327,21 @@ export const POST = withAuth(async (request, context, session) => {
     });
 
     // For PRODUCTION source: create RECEIVING inventory record + PRODUCED lot transaction
-    if (data.type === "RECEIVING" && sourceType === "PRODUCTION" && data.partId && data.quantityReceived) {
+    if (
+      data.type === "RECEIVING" &&
+      sourceType === "PRODUCTION" &&
+      data.partId &&
+      data.quantityReceived
+    ) {
       const receivingWarehouse = await prisma.warehouse.findFirst({
         where: { type: "RECEIVING" },
       });
       // Fallback to default warehouse if no RECEIVING warehouse exists
-      const targetWarehouse = receivingWarehouse || await prisma.warehouse.findFirst({
-        where: { isDefault: true },
-      });
+      const targetWarehouse =
+        receivingWarehouse ||
+        (await prisma.warehouse.findFirst({
+          where: { isDefault: true },
+        }));
 
       if (targetWarehouse) {
         const lotNumber = data.lotNumber || `LOT-WO-${inspectionNumber}`;
@@ -337,10 +393,9 @@ export const POST = withAuth(async (request, context, session) => {
 
     return NextResponse.json(inspection, { status: 201 });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'POST /api/quality/inspections' });
-    return NextResponse.json(
-      { error: "Lỗi tạo kiểm tra" },
-      { status: 500 }
-    );
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "POST /api/quality/inspections",
+    });
+    return NextResponse.json({ error: "Lỗi tạo kiểm tra" }, { status: 500 });
   }
 });

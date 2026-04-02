@@ -1,30 +1,30 @@
 // src/services/delegation.service.ts
 // Delegation Service
 
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
-import type { WorkflowType } from '@prisma/client'
-import type { PaginatedResponse } from '@/types'
+import { db } from "@/lib/db";
+import { Prisma } from ".prisma/hrm-unified-client";
+import type { WorkflowType } from ".prisma/hrm-unified-client";
+import type { PaginatedResponse } from "@/types";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
 
 export interface DelegationFilters {
-  delegatorId?: string
-  delegateId?: string
-  isActive?: boolean
-  page?: number
-  pageSize?: number
+  delegatorId?: string;
+  delegateId?: string;
+  isActive?: boolean;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface CreateDelegationInput {
-  delegatorId: string
-  delegateId: string
-  startDate: Date
-  endDate: Date
-  workflowTypes?: WorkflowType[]
-  reason?: string
+  delegatorId: string;
+  delegateId: string;
+  startDate: Date;
+  endDate: Date;
+  workflowTypes?: WorkflowType[];
+  reason?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -37,18 +37,24 @@ export const delegationService = {
    */
   async getAll(
     tenantId: string,
-    filters: DelegationFilters = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    filters: DelegationFilters = {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<PaginatedResponse<any>> {
-    const { delegatorId, delegateId, isActive, page = 1, pageSize = 20 } = filters
-    const skip = (page - 1) * pageSize
+    const {
+      delegatorId,
+      delegateId,
+      isActive,
+      page = 1,
+      pageSize = 20,
+    } = filters;
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.DelegationWhereInput = {
       tenantId,
       ...(delegatorId && { delegatorId }),
       ...(delegateId && { delegateId }),
       ...(isActive !== undefined && { isActive }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.delegation.findMany({
@@ -61,12 +67,12 @@ export const delegationService = {
             select: { id: true, name: true, email: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
       }),
       db.delegation.count({ where }),
-    ])
+    ]);
 
     return {
       data,
@@ -76,7 +82,7 @@ export const delegationService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
 
   /**
@@ -90,8 +96,8 @@ export const delegationService = {
           select: { id: true, name: true, email: true },
         },
       },
-      orderBy: { startDate: 'desc' },
-    })
+      orderBy: { startDate: "desc" },
+    });
   },
 
   /**
@@ -105,16 +111,16 @@ export const delegationService = {
           select: { id: true, name: true, email: true },
         },
       },
-      orderBy: { startDate: 'desc' },
-    })
+      orderBy: { startDate: "desc" },
+    });
   },
 
   /**
    * Get active delegation for a user
    */
   async getActiveDelegation(tenantId: string, userId: string) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     return db.delegation.findFirst({
       where: {
@@ -129,7 +135,7 @@ export const delegationService = {
           select: { id: true, name: true, email: true },
         },
       },
-    })
+    });
   },
 
   /**
@@ -146,7 +152,7 @@ export const delegationService = {
           select: { id: true, name: true, email: true },
         },
       },
-    })
+    });
   },
 
   /**
@@ -155,12 +161,12 @@ export const delegationService = {
   async create(tenantId: string, data: CreateDelegationInput) {
     // Validate delegator and delegate are different
     if (data.delegatorId === data.delegateId) {
-      throw new Error('Không thể ủy quyền cho chính mình')
+      throw new Error("Không thể ủy quyền cho chính mình");
     }
 
     // Validate dates
     if (data.endDate < data.startDate) {
-      throw new Error('Ngày kết thúc phải sau ngày bắt đầu')
+      throw new Error("Ngày kết thúc phải sau ngày bắt đầu");
     }
 
     // Check for overlapping delegations
@@ -190,10 +196,10 @@ export const delegationService = {
           },
         ],
       },
-    })
+    });
 
     if (existing) {
-      throw new Error('Đã có ủy quyền trong khoảng thời gian này')
+      throw new Error("Đã có ủy quyền trong khoảng thời gian này");
     }
 
     // Create delegation
@@ -216,22 +222,22 @@ export const delegationService = {
           select: { id: true, name: true, email: true },
         },
       },
-    })
+    });
 
     // Notify delegate
     await db.notification.create({
       data: {
         tenantId,
         userId: data.delegateId,
-        type: 'DELEGATION_ASSIGNED',
-        title: 'Được ủy quyền',
+        type: "DELEGATION_ASSIGNED",
+        title: "Được ủy quyền",
         message: `Bạn được ủy quyền duyệt thay từ ${delegation.delegator.name}`,
-        referenceType: 'DELEGATION',
+        referenceType: "DELEGATION",
         referenceId: delegation.id,
       },
-    })
+    });
 
-    return delegation
+    return delegation;
   },
 
   /**
@@ -240,15 +246,18 @@ export const delegationService = {
   async update(
     tenantId: string,
     id: string,
-    data: Partial<Omit<CreateDelegationInput, 'delegatorId'>>
+    data: Partial<Omit<CreateDelegationInput, "delegatorId">>,
   ) {
-    const delegation = await this.getById(tenantId, id)
+    const delegation = await this.getById(tenantId, id);
     if (!delegation) {
-      throw new Error('Ủy quyền không tồn tại')
+      throw new Error("Ủy quyền không tồn tại");
     }
 
-    if (data.endDate && data.endDate < (data.startDate || delegation.startDate)) {
-      throw new Error('Ngày kết thúc phải sau ngày bắt đầu')
+    if (
+      data.endDate &&
+      data.endDate < (data.startDate || delegation.startDate)
+    ) {
+      throw new Error("Ngày kết thúc phải sau ngày bắt đầu");
     }
 
     return db.delegation.update({
@@ -257,39 +266,41 @@ export const delegationService = {
         ...(data.delegateId && { delegateId: data.delegateId }),
         ...(data.startDate && { startDate: data.startDate }),
         ...(data.endDate && { endDate: data.endDate }),
-        ...(data.workflowTypes !== undefined && { workflowTypes: data.workflowTypes || null }),
+        ...(data.workflowTypes !== undefined && {
+          workflowTypes: data.workflowTypes || null,
+        }),
         ...(data.reason !== undefined && { reason: data.reason }),
       },
-    })
+    });
   },
 
   /**
    * Deactivate a delegation
    */
   async deactivate(tenantId: string, id: string) {
-    const delegation = await this.getById(tenantId, id)
+    const delegation = await this.getById(tenantId, id);
     if (!delegation) {
-      throw new Error('Ủy quyền không tồn tại')
+      throw new Error("Ủy quyền không tồn tại");
     }
 
     return db.delegation.update({
       where: { id },
       data: { isActive: false },
-    })
+    });
   },
 
   /**
    * Delete a delegation
    */
   async delete(tenantId: string, id: string) {
-    const delegation = await this.getById(tenantId, id)
+    const delegation = await this.getById(tenantId, id);
     if (!delegation) {
-      throw new Error('Ủy quyền không tồn tại')
+      throw new Error("Ủy quyền không tồn tại");
     }
 
     return db.delegation.delete({
       where: { id },
-    })
+    });
   },
 
   /**
@@ -298,25 +309,25 @@ export const delegationService = {
   async hasActiveDelegation(
     tenantId: string,
     userId: string,
-    workflowType: WorkflowType
+    workflowType: WorkflowType,
   ): Promise<{ hasDelegate: boolean; delegateId?: string }> {
-    const delegation = await this.getActiveDelegation(tenantId, userId)
+    const delegation = await this.getActiveDelegation(tenantId, userId);
 
     if (!delegation) {
-      return { hasDelegate: false }
+      return { hasDelegate: false };
     }
 
     // If workflowTypes is null, delegation applies to all types
     if (!delegation.workflowTypes) {
-      return { hasDelegate: true, delegateId: delegation.delegateId }
+      return { hasDelegate: true, delegateId: delegation.delegateId };
     }
 
     // Check if workflow type is in the list
-    const types = delegation.workflowTypes as WorkflowType[]
+    const types = delegation.workflowTypes as WorkflowType[];
     if (types.includes(workflowType)) {
-      return { hasDelegate: true, delegateId: delegation.delegateId }
+      return { hasDelegate: true, delegateId: delegation.delegateId };
     }
 
-    return { hasDelegate: false }
+    return { hasDelegate: false };
   },
-}
+};

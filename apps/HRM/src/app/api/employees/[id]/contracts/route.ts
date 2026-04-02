@@ -1,30 +1,31 @@
-import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { UserRole } from "@prisma/client"
-import { ContractCreateSchema } from "@/lib/validations/contract"
-import { format } from "date-fns"
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { UserRole } from ".prisma/hrm-client";
+import { ContractCreateSchema } from "@/lib/validations/contract";
+import { format } from "date-fns";
 
-const HR_ROLES: UserRole[] = ["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF"]
+const HR_ROLES: UserRole[] = ["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF"];
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth();
+  if (!session?.user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id } = await params
+  const { id } = await params;
 
   // EMPLOYEE can view own contracts (without baseSalary)
-  const isHR = HR_ROLES.includes(session.user.role)
+  const isHR = HR_ROLES.includes(session.user.role);
   if (!isHR) {
     const ownEmployee = await prisma.employee.findFirst({
       where: { userId: session.user.id },
       select: { id: true },
-    })
+    });
     if (!ownEmployee || ownEmployee.id !== id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 
@@ -37,7 +38,7 @@ export async function GET(
       },
     },
     orderBy: { createdAt: "desc" },
-  })
+  });
 
   // Hide salary for EMPLOYEE role
   if (!isHR) {
@@ -51,61 +52,68 @@ export async function GET(
         perfAllowance: undefined,
         kpiAmount: undefined,
       })),
-    })
+    });
   }
 
-  return NextResponse.json({ data: contracts })
+  return NextResponse.json({ data: contracts });
 }
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth();
+  if (!session?.user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!HR_ROLES.includes(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { id } = await params
+  const { id } = await params;
 
   const employee = await prisma.employee.findUnique({
     where: { id },
     select: { id: true, employeeCode: true },
-  })
-  if (!employee) return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+  });
+  if (!employee)
+    return NextResponse.json({ error: "Employee not found" }, { status: 404 });
 
-  const body = await request.json()
-  const parsed = ContractCreateSchema.safeParse(body)
+  const body = await request.json();
+  const parsed = ContractCreateSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
-      { status: 400 }
-    )
+      {
+        error: "Validation failed",
+        details: parsed.error.flatten().fieldErrors,
+      },
+      { status: 400 },
+    );
   }
 
-  const data = parsed.data
-  const year = format(new Date(), "yyyy")
+  const data = parsed.data;
+  const year = format(new Date(), "yyyy");
 
   // Count existing contracts for numbering
-  const contractCount = await prisma.contract.count({ where: { employeeId: id } })
-  const seq = String(contractCount + 1).padStart(2, "0")
+  const contractCount = await prisma.contract.count({
+    where: { employeeId: id },
+  });
+  const seq = String(contractCount + 1).padStart(2, "0");
 
   // Auto-generate contract number based on type
-  let contractNo = data.contractNo
-  let probationNo = data.probationNo
+  let contractNo = data.contractNo;
+  let probationNo = data.probationNo;
   if (!contractNo && !probationNo) {
     switch (data.type) {
       case "PROBATION":
-        probationNo = `${seq}/${year}-HĐTV-RTR`
-        break
+        probationNo = `${seq}/${year}-HĐTV-RTR`;
+        break;
       case "INTERN":
-        contractNo = `${seq}/${year}-TTTT-RTR`
-        break
+        contractNo = `${seq}/${year}-TTTT-RTR`;
+        break;
       default:
-        contractNo = `${seq}/${year}-HĐLĐ-RTR`
-        break
+        contractNo = `${seq}/${year}-HĐLĐ-RTR`;
+        break;
     }
   }
 
@@ -128,7 +136,7 @@ export async function POST(
       kpiAmount: data.kpiAmount || null,
       notes: data.notes || null,
     },
-  })
+  });
 
   // Audit log
   await prisma.auditLog.create({
@@ -140,7 +148,7 @@ export async function POST(
       entityId: contract.id,
       newData: JSON.parse(JSON.stringify(contract)),
     },
-  })
+  });
 
-  return NextResponse.json(contract, { status: 201 })
+  return NextResponse.json(contract, { status: 201 });
 }

@@ -3,7 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
 import { AuditQueryDto, AuditActionEnum } from './dto/audit-query.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 import { createHash } from 'crypto';
 
 @Injectable()

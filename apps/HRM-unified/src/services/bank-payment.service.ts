@@ -1,9 +1,13 @@
 // src/services/bank-payment.service.ts
 // Bank Payment Batch Service
 
-import { db } from '@/lib/db'
-import type { Prisma, PayrollStatus, BankCode } from '@prisma/client'
-import type { PaginatedResponse } from '@/types'
+import { db } from "@/lib/db";
+import type {
+  Prisma,
+  PayrollStatus,
+  BankCode,
+} from ".prisma/hrm-unified-client";
+import type { PaginatedResponse } from "@/types";
 import {
   generateBankFile,
   createPaymentRecords,
@@ -12,50 +16,50 @@ import {
   type BankFileFormat,
   type GeneratedFile,
   type BankFileOptions,
-} from '@/lib/payroll/bank-file-generator'
+} from "@/lib/payroll/bank-file-generator";
 
 export interface BankPaymentFilters {
-  periodId?: string
-  bankCode?: BankCode
-  status?: PayrollStatus
-  page?: number
-  pageSize?: number
+  periodId?: string;
+  bankCode?: BankCode;
+  status?: PayrollStatus;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface BankPaymentWithRelations {
-  id: string
-  tenantId: string
-  periodId: string
-  batchNumber: string
-  bankCode: BankCode
-  bankName: string
-  totalRecords: number
-  totalAmount: Prisma.Decimal
-  fileName: string | null
-  fileUrl: string | null
-  fileFormat: string | null
-  status: PayrollStatus
-  generatedAt: Date | null
-  processedAt: Date | null
-  processedBy: string | null
-  bankReference: string | null
-  successCount: number | null
-  failedCount: number | null
-  bankResponseFile: string | null
-  notes: string | null
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  tenantId: string;
+  periodId: string;
+  batchNumber: string;
+  bankCode: BankCode;
+  bankName: string;
+  totalRecords: number;
+  totalAmount: Prisma.Decimal;
+  fileName: string | null;
+  fileUrl: string | null;
+  fileFormat: string | null;
+  status: PayrollStatus;
+  generatedAt: Date | null;
+  processedAt: Date | null;
+  processedBy: string | null;
+  bankReference: string | null;
+  successCount: number | null;
+  failedCount: number | null;
+  bankResponseFile: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   period: {
-    id: string
-    name: string
-    year: number
-    month: number
-  }
+    id: string;
+    name: string;
+    year: number;
+    month: number;
+  };
   processor: {
-    id: string
-    name: string
-    email: string
-  } | null
+    id: string;
+    name: string;
+    email: string;
+  } | null;
 }
 
 export const bankPaymentService = {
@@ -68,16 +72,16 @@ export const bankPaymentService = {
    */
   async findAll(
     tenantId: string,
-    filters: BankPaymentFilters = {}
+    filters: BankPaymentFilters = {},
   ): Promise<PaginatedResponse<BankPaymentWithRelations>> {
-    const { periodId, bankCode, status, page = 1, pageSize = 20 } = filters
+    const { periodId, bankCode, status, page = 1, pageSize = 20 } = filters;
 
     const where: Prisma.BankPaymentBatchWhereInput = {
       tenantId,
       ...(periodId && { periodId }),
       ...(bankCode && { bankCode }),
       ...(status && { status }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.bankPaymentBatch.findMany({
@@ -90,12 +94,12 @@ export const bankPaymentService = {
             select: { id: true, name: true, email: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       db.bankPaymentBatch.count({ where }),
-    ])
+    ]);
 
     return {
       data: data as unknown as BankPaymentWithRelations[],
@@ -105,7 +109,7 @@ export const bankPaymentService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
 
   /**
@@ -122,7 +126,7 @@ export const bankPaymentService = {
           select: { id: true, name: true, email: true },
         },
       },
-    })
+    });
   },
 
   /**
@@ -136,8 +140,8 @@ export const bankPaymentService = {
           select: { id: true, name: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
-    })
+      orderBy: { createdAt: "desc" },
+    });
   },
 
   /**
@@ -146,36 +150,36 @@ export const bankPaymentService = {
   async create(
     tenantId: string,
     data: {
-      periodId: string
-      bankCode: BankCode
-      bankName: string
-      totalRecords: number
-      totalAmount: number
-      fileName?: string
-      fileUrl?: string
-      fileFormat?: string
-      notes?: string
-    }
+      periodId: string;
+      bankCode: BankCode;
+      bankName: string;
+      totalRecords: number;
+      totalAmount: number;
+      fileName?: string;
+      fileUrl?: string;
+      fileFormat?: string;
+      notes?: string;
+    },
   ) {
     // Get period for batch number
     const period = await db.payrollPeriod.findFirst({
       where: { id: data.periodId, tenantId },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
     // Count existing batches for sequence
     const existingCount = await db.bankPaymentBatch.count({
       where: { tenantId, periodId: data.periodId },
-    })
+    });
 
     const batchNumber = generateBatchNumber(
       period.year,
       period.month,
-      existingCount + 1
-    )
+      existingCount + 1,
+    );
 
     return db.bankPaymentBatch.create({
       data: {
@@ -189,11 +193,11 @@ export const bankPaymentService = {
         fileName: data.fileName,
         fileUrl: data.fileUrl,
         fileFormat: data.fileFormat,
-        status: 'DRAFT',
+        status: "DRAFT",
         generatedAt: new Date(),
         notes: data.notes,
       },
-    })
+    });
   },
 
   /**
@@ -202,19 +206,19 @@ export const bankPaymentService = {
   async delete(tenantId: string, id: string) {
     const batch = await db.bankPaymentBatch.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!batch) {
-      throw new Error('Đợt thanh toán không tồn tại')
+      throw new Error("Đợt thanh toán không tồn tại");
     }
 
-    if (batch.status === 'PAID') {
-      throw new Error('Không thể xóa đợt thanh toán đã xử lý')
+    if (batch.status === "PAID") {
+      throw new Error("Không thể xóa đợt thanh toán đã xử lý");
     }
 
     return db.bankPaymentBatch.delete({
       where: { id },
-    })
+    });
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -229,22 +233,22 @@ export const bankPaymentService = {
     periodId: string,
     bankCode: BankFileFormat,
     companyInfo: {
-      companyName: string
-      companyAccount: string
-      companyBankCode: string
-    }
+      companyName: string;
+      companyAccount: string;
+      companyBankCode: string;
+    },
   ): Promise<GeneratedFile> {
     // Get period
     const period = await db.payrollPeriod.findFirst({
       where: { id: periodId, tenantId },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
-    if (period.status !== 'APPROVED' && period.status !== 'PAID') {
-      throw new Error('Kỳ lương chưa được duyệt')
+    if (period.status !== "APPROVED" && period.status !== "PAID") {
+      throw new Error("Kỳ lương chưa được duyệt");
     }
 
     // Get payrolls with bank info
@@ -263,33 +267,33 @@ export const bankPaymentService = {
         bankCode: true,
         netSalary: true,
       },
-    })
+    });
 
     if (payrolls.length === 0) {
-      throw new Error('Không có nhân viên cần thanh toán')
+      throw new Error("Không có nhân viên cần thanh toán");
     }
 
     // Create payment records
     const records = createPaymentRecords(
-      payrolls.map(p => ({
+      payrolls.map((p) => ({
         ...p,
         netSalary: Number(p.netSalary),
       })),
       period.month,
       period.year,
-      companyInfo.companyName
-    )
+      companyInfo.companyName,
+    );
 
     // Filter by bank if not generic
-    let filteredRecords = records
-    if (bankCode !== 'GENERIC') {
-      filteredRecords = records.filter(r =>
-        r.bankCode === bankCode || r.bankCode === 'OTHER'
-      )
+    let filteredRecords = records;
+    if (bankCode !== "GENERIC") {
+      filteredRecords = records.filter(
+        (r) => r.bankCode === bankCode || r.bankCode === "OTHER",
+      );
     }
 
     if (filteredRecords.length === 0) {
-      throw new Error(`Không có nhân viên có tài khoản ${bankCode}`)
+      throw new Error(`Không có nhân viên có tài khoản ${bankCode}`);
     }
 
     // Generate file
@@ -301,9 +305,9 @@ export const bankPaymentService = {
       companyName: companyInfo.companyName,
       companyAccount: companyInfo.companyAccount,
       companyBankCode: companyInfo.companyBankCode,
-    }
+    };
 
-    const file = generateBankFile(bankCode, filteredRecords, options)
+    const file = generateBankFile(bankCode, filteredRecords, options);
 
     // Save batch record
     await this.create(tenantId, {
@@ -314,9 +318,9 @@ export const bankPaymentService = {
       totalAmount: file.totalAmount,
       fileName: file.fileName,
       fileFormat: file.format,
-    })
+    });
 
-    return file
+    return file;
   },
 
   /**
@@ -326,18 +330,18 @@ export const bankPaymentService = {
     tenantId: string,
     periodId: string,
     companyInfo: {
-      companyName: string
-      companyAccount: string
-      companyBankCode: string
-    }
+      companyName: string;
+      companyAccount: string;
+      companyBankCode: string;
+    },
   ): Promise<GeneratedFile[]> {
     // Get period
     const period = await db.payrollPeriod.findFirst({
       where: { id: periodId, tenantId },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
     // Get payrolls with bank info
@@ -356,29 +360,29 @@ export const bankPaymentService = {
         bankCode: true,
         netSalary: true,
       },
-    })
+    });
 
     if (payrolls.length === 0) {
-      throw new Error('Không có nhân viên cần thanh toán')
+      throw new Error("Không có nhân viên cần thanh toán");
     }
 
     // Create payment records
     const records = createPaymentRecords(
-      payrolls.map(p => ({
+      payrolls.map((p) => ({
         ...p,
         netSalary: Number(p.netSalary),
       })),
       period.month,
       period.year,
-      companyInfo.companyName
-    )
+      companyInfo.companyName,
+    );
 
     // Group by bank
-    const grouped = groupRecordsByBank(records)
-    const files: GeneratedFile[] = []
+    const grouped = groupRecordsByBank(records);
+    const files: GeneratedFile[] = [];
 
     // Generate file for each bank
-    let sequence = 1
+    let sequence = 1;
     for (const [bankCode, bankRecords] of Array.from(grouped.entries())) {
       const options: BankFileOptions = {
         batchNumber: generateBatchNumber(period.year, period.month, sequence),
@@ -388,11 +392,11 @@ export const bankPaymentService = {
         companyName: companyInfo.companyName,
         companyAccount: companyInfo.companyAccount,
         companyBankCode: companyInfo.companyBankCode,
-      }
+      };
 
-      const format = this.getBankFormat(bankCode)
-      const file = generateBankFile(format, bankRecords, options)
-      files.push(file)
+      const format = this.getBankFormat(bankCode);
+      const file = generateBankFile(format, bankRecords, options);
+      files.push(file);
 
       // Save batch record
       await this.create(tenantId, {
@@ -403,12 +407,12 @@ export const bankPaymentService = {
         totalAmount: file.totalAmount,
         fileName: file.fileName,
         fileFormat: file.format,
-      })
+      });
 
-      sequence++
+      sequence++;
     }
 
-    return files
+    return files;
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -422,27 +426,27 @@ export const bankPaymentService = {
     tenantId: string,
     id: string,
     userId: string,
-    bankReference?: string
+    bankReference?: string,
   ) {
     const batch = await db.bankPaymentBatch.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!batch) {
-      throw new Error('Đợt thanh toán không tồn tại')
+      throw new Error("Đợt thanh toán không tồn tại");
     }
 
     return db.bankPaymentBatch.update({
       where: { id },
       data: {
-        status: 'PAID',
+        status: "PAID",
         processedAt: new Date(),
         processedBy: userId,
         bankReference,
         successCount: batch.totalRecords,
         failedCount: 0,
       },
-    })
+    });
   },
 
   /**
@@ -452,16 +456,16 @@ export const bankPaymentService = {
     tenantId: string,
     id: string,
     data: {
-      bankReference?: string
-      successCount?: number
-      failedCount?: number
-      bankResponseFile?: string
-    }
+      bankReference?: string;
+      successCount?: number;
+      failedCount?: number;
+      bankResponseFile?: string;
+    },
   ) {
     return db.bankPaymentBatch.update({
       where: { id },
       data,
-    })
+    });
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -473,14 +477,14 @@ export const bankPaymentService = {
    */
   getBankFormat(bankCode: string): BankFileFormat {
     switch (bankCode) {
-      case 'VCB':
-        return 'VCB'
-      case 'TCB':
-        return 'TCB'
-      case 'BIDV':
-        return 'BIDV'
+      case "VCB":
+        return "VCB";
+      case "TCB":
+        return "TCB";
+      case "BIDV":
+        return "BIDV";
       default:
-        return 'GENERIC'
+        return "GENERIC";
     }
   },
 
@@ -490,14 +494,14 @@ export const bankPaymentService = {
   async getPeriodSummary(tenantId: string, periodId: string) {
     const batches = await db.bankPaymentBatch.findMany({
       where: { tenantId, periodId },
-    })
+    });
 
     return {
       totalBatches: batches.length,
       totalRecords: batches.reduce((sum, b) => sum + b.totalRecords, 0),
       totalAmount: batches.reduce((sum, b) => sum + Number(b.totalAmount), 0),
-      processed: batches.filter(b => b.status === 'PAID').length,
-      pending: batches.filter(b => b.status !== 'PAID').length,
-    }
+      processed: batches.filter((b) => b.status === "PAID").length,
+      pending: batches.filter((b) => b.status !== "PAID").length,
+    };
   },
-}
+};

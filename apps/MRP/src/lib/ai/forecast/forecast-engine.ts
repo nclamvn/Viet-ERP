@@ -3,20 +3,20 @@
 // Statistical forecasting models for demand prediction
 // =============================================================================
 
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import {
   getDataExtractorService,
   PreparedForecastData,
   TimeSeriesData,
-} from './data-extractor';
+} from "./data-extractor";
 import {
   getMonthlyHolidayFactor,
   getWeeklyHolidayFactor,
   formatPeriod,
   parsePeriod,
   getUpcomingHolidays,
-} from './vn-calendar';
+} from "./vn-calendar";
 
 // =============================================================================
 // TYPES
@@ -24,7 +24,7 @@ import {
 
 export interface ForecastPoint {
   period: string;
-  periodType: 'weekly' | 'monthly';
+  periodType: "weekly" | "monthly";
   date: Date;
   forecast: number;
   lowerBound: number;
@@ -47,21 +47,21 @@ export interface ForecastResult {
   productSku: string;
   productName: string;
   generatedAt: Date;
-  periodType: 'weekly' | 'monthly';
+  periodType: "weekly" | "monthly";
   model: ForecastModel;
   forecasts: ForecastPoint[];
   metrics: ForecastMetrics;
   recommendations: ForecastRecommendations;
-  dataQuality: 'good' | 'fair' | 'poor';
+  dataQuality: "good" | "fair" | "poor";
 }
 
 export interface ForecastMetrics {
   historicalAvg: number;
   historicalStdDev: number;
-  trend: 'increasing' | 'decreasing' | 'stable';
+  trend: "increasing" | "decreasing" | "stable";
   trendSlope: number;
-  seasonality: 'strong' | 'moderate' | 'weak' | 'none';
-  volatility: 'high' | 'medium' | 'low';
+  seasonality: "strong" | "moderate" | "weak" | "none";
+  volatility: "high" | "medium" | "low";
 }
 
 export interface ForecastRecommendations {
@@ -83,14 +83,14 @@ export interface ForecastRecommendations {
 }
 
 export type ForecastModel =
-  | 'moving_average'
-  | 'exponential_smoothing'
-  | 'holt_winters'
-  | 'ensemble';
+  | "moving_average"
+  | "exponential_smoothing"
+  | "holt_winters"
+  | "ensemble";
 
 export interface ForecastConfig {
   model: ForecastModel;
-  periodType: 'weekly' | 'monthly';
+  periodType: "weekly" | "monthly";
   periodsAhead: number;
   confidenceLevel: number;
   useHolidayAdjustment: boolean;
@@ -101,8 +101,8 @@ export interface ForecastConfig {
 }
 
 export const DEFAULT_CONFIG: ForecastConfig = {
-  model: 'ensemble',
-  periodType: 'monthly',
+  model: "ensemble",
+  periodType: "monthly",
   periodsAhead: 12,
   confidenceLevel: 0.8,
   useHolidayAdjustment: true,
@@ -128,7 +128,7 @@ export class ForecastEngine {
    */
   async generateForecast(
     productId: string,
-    config: Partial<ForecastConfig> = {}
+    config: Partial<ForecastConfig> = {},
   ): Promise<ForecastResult | null> {
     const cfg = { ...DEFAULT_CONFIG, ...config };
 
@@ -136,7 +136,7 @@ export class ForecastEngine {
     const preparedData = await this.dataExtractor.prepareTimeSeriesData(
       productId,
       24,
-      cfg.periodType
+      cfg.periodType,
     );
 
     if (!preparedData || preparedData.timeSeries.length < 6) {
@@ -149,16 +149,16 @@ export class ForecastEngine {
     let forecasts: ForecastPoint[];
 
     switch (cfg.model) {
-      case 'moving_average':
+      case "moving_average":
         forecasts = this.movingAverageForecast(preparedData, cfg);
         break;
-      case 'exponential_smoothing':
+      case "exponential_smoothing":
         forecasts = this.exponentialSmoothingForecast(preparedData, cfg);
         break;
-      case 'holt_winters':
+      case "holt_winters":
         forecasts = this.holtWintersForecast(preparedData, cfg);
         break;
-      case 'ensemble':
+      case "ensemble":
       default:
         forecasts = this.ensembleForecast(preparedData, cfg);
         break;
@@ -171,7 +171,7 @@ export class ForecastEngine {
     const recommendations = await this.generateRecommendations(
       productId,
       forecasts,
-      metrics
+      metrics,
     );
 
     return {
@@ -197,7 +197,7 @@ export class ForecastEngine {
    */
   private movingAverageForecast(
     data: PreparedForecastData,
-    config: ForecastConfig
+    config: ForecastConfig,
   ): ForecastPoint[] {
     const values = data.timeSeries.map((p) => p.value);
     const windowSize = Math.min(6, Math.floor(values.length / 2));
@@ -220,7 +220,7 @@ export class ForecastEngine {
       const forecastDate = this.getNextPeriodDate(
         lastDate,
         i,
-        config.periodType
+        config.periodType,
       );
       const period = formatPeriod(forecastDate, config.periodType);
 
@@ -236,14 +236,14 @@ export class ForecastEngine {
       };
 
       // Seasonal adjustment
-      if (config.useSeasonalAdjustment && config.periodType === 'monthly') {
+      if (config.useSeasonalAdjustment && config.periodType === "monthly") {
         const month = forecastDate.getMonth() + 1;
         const seasonalIndex = data.seasonalIndices[month] || 1;
         forecastValue *= seasonalIndex;
         factors.seasonalIndex = seasonalIndex;
         if (seasonalIndex !== 1) {
           factors.adjustments.push(
-            `Seasonal: ${seasonalIndex > 1 ? '+' : ''}${Math.round((seasonalIndex - 1) * 100)}%`
+            `Seasonal: ${seasonalIndex > 1 ? "+" : ""}${Math.round((seasonalIndex - 1) * 100)}%`,
           );
         }
       }
@@ -251,14 +251,17 @@ export class ForecastEngine {
       // Holiday adjustment
       if (config.useHolidayAdjustment) {
         const holidayFactor =
-          config.periodType === 'monthly'
-            ? getMonthlyHolidayFactor(forecastDate.getFullYear(), forecastDate.getMonth() + 1)
+          config.periodType === "monthly"
+            ? getMonthlyHolidayFactor(
+                forecastDate.getFullYear(),
+                forecastDate.getMonth() + 1,
+              )
             : getWeeklyHolidayFactor(forecastDate);
         forecastValue *= holidayFactor;
         factors.holidayFactor = holidayFactor;
         if (holidayFactor !== 1) {
           factors.adjustments.push(
-            `Holiday: ${holidayFactor > 1 ? '+' : ''}${Math.round((holidayFactor - 1) * 100)}%`
+            `Holiday: ${holidayFactor > 1 ? "+" : ""}${Math.round((holidayFactor - 1) * 100)}%`,
           );
         }
       }
@@ -272,7 +275,9 @@ export class ForecastEngine {
         periodType: config.periodType,
         date: forecastDate,
         forecast: Math.round(Math.max(0, forecastValue)),
-        lowerBound: Math.round(Math.max(0, forecastValue - zScore * stdDev * horizonFactor)),
+        lowerBound: Math.round(
+          Math.max(0, forecastValue - zScore * stdDev * horizonFactor),
+        ),
         upperBound: Math.round(forecastValue + zScore * stdDev * horizonFactor),
         confidence: Math.max(0.5, 1 - (i - 1) * 0.05),
         factors,
@@ -287,7 +292,7 @@ export class ForecastEngine {
    */
   private exponentialSmoothingForecast(
     data: PreparedForecastData,
-    config: ForecastConfig
+    config: ForecastConfig,
   ): ForecastPoint[] {
     const values = data.timeSeries.map((p) => p.value);
     const alpha = config.smoothingAlpha || 0.3;
@@ -314,8 +319,10 @@ export class ForecastEngine {
       residuals.push(values[i] - predicted);
 
       const prevSmoothed = smoothedValue;
-      smoothedValue = alpha * values[i] + (1 - alpha) * (smoothedValue + smoothedTrend);
-      smoothedTrend = beta * (smoothedValue - prevSmoothed) + (1 - beta) * smoothedTrend;
+      smoothedValue =
+        alpha * values[i] + (1 - alpha) * (smoothedValue + smoothedTrend);
+      smoothedTrend =
+        beta * (smoothedValue - prevSmoothed) + (1 - beta) * smoothedTrend;
     }
 
     const residualStdDev = this.calculateStdDev(residuals);
@@ -325,7 +332,11 @@ export class ForecastEngine {
     const forecasts: ForecastPoint[] = [];
 
     for (let i = 1; i <= config.periodsAhead; i++) {
-      const forecastDate = this.getNextPeriodDate(lastDate, i, config.periodType);
+      const forecastDate = this.getNextPeriodDate(
+        lastDate,
+        i,
+        config.periodType,
+      );
       const period = formatPeriod(forecastDate, config.periodType);
 
       let forecastValue = level + i * trend;
@@ -335,11 +346,13 @@ export class ForecastEngine {
         seasonalIndex: 1,
         holidayFactor: 1,
         holidayNames: [],
-        adjustments: [`Trend: ${trend >= 0 ? '+' : ''}${Math.round(trend * i)}`],
+        adjustments: [
+          `Trend: ${trend >= 0 ? "+" : ""}${Math.round(trend * i)}`,
+        ],
       };
 
       // Seasonal adjustment
-      if (config.useSeasonalAdjustment && config.periodType === 'monthly') {
+      if (config.useSeasonalAdjustment && config.periodType === "monthly") {
         const month = forecastDate.getMonth() + 1;
         const seasonalIndex = data.seasonalIndices[month] || 1;
         forecastValue *= seasonalIndex;
@@ -349,8 +362,11 @@ export class ForecastEngine {
       // Holiday adjustment
       if (config.useHolidayAdjustment) {
         const holidayFactor =
-          config.periodType === 'monthly'
-            ? getMonthlyHolidayFactor(forecastDate.getFullYear(), forecastDate.getMonth() + 1)
+          config.periodType === "monthly"
+            ? getMonthlyHolidayFactor(
+                forecastDate.getFullYear(),
+                forecastDate.getMonth() + 1,
+              )
             : getWeeklyHolidayFactor(forecastDate);
         forecastValue *= holidayFactor;
         factors.holidayFactor = holidayFactor;
@@ -364,8 +380,12 @@ export class ForecastEngine {
         periodType: config.periodType,
         date: forecastDate,
         forecast: Math.round(Math.max(0, forecastValue)),
-        lowerBound: Math.round(Math.max(0, forecastValue - zScore * residualStdDev * horizonFactor)),
-        upperBound: Math.round(forecastValue + zScore * residualStdDev * horizonFactor),
+        lowerBound: Math.round(
+          Math.max(0, forecastValue - zScore * residualStdDev * horizonFactor),
+        ),
+        upperBound: Math.round(
+          forecastValue + zScore * residualStdDev * horizonFactor,
+        ),
         confidence: Math.max(0.5, 1 - (i - 1) * 0.04),
         factors,
       });
@@ -379,14 +399,14 @@ export class ForecastEngine {
    */
   private holtWintersForecast(
     data: PreparedForecastData,
-    config: ForecastConfig
+    config: ForecastConfig,
   ): ForecastPoint[] {
     const values = data.timeSeries.map((p) => p.value);
     const alpha = config.smoothingAlpha || 0.3;
     const beta = config.smoothingBeta || 0.1;
     const gamma = config.smoothingGamma || 0.1;
 
-    const seasonLength = config.periodType === 'monthly' ? 12 : 52;
+    const seasonLength = config.periodType === "monthly" ? 12 : 52;
 
     // Not enough data for seasonal model
     if (values.length < seasonLength * 2) {
@@ -395,7 +415,8 @@ export class ForecastEngine {
 
     // Initialize seasonal indices
     const seasonalIndices: number[] = new Array(seasonLength).fill(1);
-    const firstSeasonAvg = values.slice(0, seasonLength).reduce((a, b) => a + b, 0) / seasonLength;
+    const firstSeasonAvg =
+      values.slice(0, seasonLength).reduce((a, b) => a + b, 0) / seasonLength;
 
     for (let i = 0; i < seasonLength; i++) {
       seasonalIndices[i] = firstSeasonAvg > 0 ? values[i] / firstSeasonAvg : 1;
@@ -404,7 +425,8 @@ export class ForecastEngine {
     // Initialize level and trend
     let level = firstSeasonAvg;
     let trend =
-      (values.slice(seasonLength, 2 * seasonLength).reduce((a, b) => a + b, 0) / seasonLength -
+      (values.slice(seasonLength, 2 * seasonLength).reduce((a, b) => a + b, 0) /
+        seasonLength -
         firstSeasonAvg) /
       seasonLength;
 
@@ -416,7 +438,9 @@ export class ForecastEngine {
       const prevLevel = level;
 
       // Multiplicative seasonality
-      level = alpha * (values[i] / seasonalIndices[seasonIdx]) + (1 - alpha) * (level + trend);
+      level =
+        alpha * (values[i] / seasonalIndices[seasonIdx]) +
+        (1 - alpha) * (level + trend);
       trend = beta * (level - prevLevel) + (1 - beta) * trend;
       seasonalIndices[seasonIdx] =
         gamma * (values[i] / level) + (1 - gamma) * seasonalIndices[seasonIdx];
@@ -433,7 +457,11 @@ export class ForecastEngine {
     const forecasts: ForecastPoint[] = [];
 
     for (let i = 1; i <= config.periodsAhead; i++) {
-      const forecastDate = this.getNextPeriodDate(lastDate, i, config.periodType);
+      const forecastDate = this.getNextPeriodDate(
+        lastDate,
+        i,
+        config.periodType,
+      );
       const period = formatPeriod(forecastDate, config.periodType);
 
       const seasonIdx = (data.timeSeries.length + i - 1) % seasonLength;
@@ -451,8 +479,11 @@ export class ForecastEngine {
       // Holiday adjustment (on top of seasonal)
       if (config.useHolidayAdjustment) {
         const holidayFactor =
-          config.periodType === 'monthly'
-            ? getMonthlyHolidayFactor(forecastDate.getFullYear(), forecastDate.getMonth() + 1)
+          config.periodType === "monthly"
+            ? getMonthlyHolidayFactor(
+                forecastDate.getFullYear(),
+                forecastDate.getMonth() + 1,
+              )
             : getWeeklyHolidayFactor(forecastDate);
         forecastValue *= holidayFactor;
         factors.holidayFactor = holidayFactor;
@@ -466,8 +497,12 @@ export class ForecastEngine {
         periodType: config.periodType,
         date: forecastDate,
         forecast: Math.round(Math.max(0, forecastValue)),
-        lowerBound: Math.round(Math.max(0, forecastValue - zScore * residualStdDev * horizonFactor)),
-        upperBound: Math.round(forecastValue + zScore * residualStdDev * horizonFactor),
+        lowerBound: Math.round(
+          Math.max(0, forecastValue - zScore * residualStdDev * horizonFactor),
+        ),
+        upperBound: Math.round(
+          forecastValue + zScore * residualStdDev * horizonFactor,
+        ),
         confidence: Math.max(0.5, 1 - (i - 1) * 0.03),
         factors,
       });
@@ -481,7 +516,7 @@ export class ForecastEngine {
    */
   private ensembleForecast(
     data: PreparedForecastData,
-    config: ForecastConfig
+    config: ForecastConfig,
   ): ForecastPoint[] {
     // Generate forecasts from each model
     const maForecasts = this.movingAverageForecast(data, config);
@@ -499,20 +534,24 @@ export class ForecastEngine {
       const hw = hwForecasts[i];
 
       const forecast = Math.round(
-        ma.forecast * weights.ma + es.forecast * weights.es + hw.forecast * weights.hw
+        ma.forecast * weights.ma +
+          es.forecast * weights.es +
+          hw.forecast * weights.hw,
       );
       const lowerBound = Math.round(
         ma.lowerBound * weights.ma +
           es.lowerBound * weights.es +
-          hw.lowerBound * weights.hw
+          hw.lowerBound * weights.hw,
       );
       const upperBound = Math.round(
         ma.upperBound * weights.ma +
           es.upperBound * weights.es +
-          hw.upperBound * weights.hw
+          hw.upperBound * weights.hw,
       );
       const confidence =
-        ma.confidence * weights.ma + es.confidence * weights.es + hw.confidence * weights.hw;
+        ma.confidence * weights.ma +
+        es.confidence * weights.es +
+        hw.confidence * weights.hw;
 
       // Combine factors (use exponential smoothing factors as primary)
       const factors: ForecastFactors = {
@@ -544,7 +583,7 @@ export class ForecastEngine {
 
   private calculateMetrics(
     values: number[],
-    seasonalIndices: Record<number, number>
+    seasonalIndices: Record<number, number>,
   ): ForecastMetrics {
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     const variance =
@@ -555,28 +594,29 @@ export class ForecastEngine {
     const trendSlope = this.calculateLinearTrendSlope(values);
     const normalizedTrend = mean > 0 ? trendSlope / mean : 0;
 
-    let trend: 'increasing' | 'decreasing' | 'stable';
-    if (normalizedTrend > 0.02) trend = 'increasing';
-    else if (normalizedTrend < -0.02) trend = 'decreasing';
-    else trend = 'stable';
+    let trend: "increasing" | "decreasing" | "stable";
+    if (normalizedTrend > 0.02) trend = "increasing";
+    else if (normalizedTrend < -0.02) trend = "decreasing";
+    else trend = "stable";
 
     // Seasonality strength
     const seasonalValues = Object.values(seasonalIndices);
-    const seasonalRange = Math.max(...seasonalValues) - Math.min(...seasonalValues);
+    const seasonalRange =
+      Math.max(...seasonalValues) - Math.min(...seasonalValues);
 
-    let seasonality: 'strong' | 'moderate' | 'weak' | 'none';
-    if (seasonalRange > 0.5) seasonality = 'strong';
-    else if (seasonalRange > 0.25) seasonality = 'moderate';
-    else if (seasonalRange > 0.1) seasonality = 'weak';
-    else seasonality = 'none';
+    let seasonality: "strong" | "moderate" | "weak" | "none";
+    if (seasonalRange > 0.5) seasonality = "strong";
+    else if (seasonalRange > 0.25) seasonality = "moderate";
+    else if (seasonalRange > 0.1) seasonality = "weak";
+    else seasonality = "none";
 
     // Volatility (coefficient of variation)
     const cv = mean > 0 ? stdDev / mean : 0;
 
-    let volatility: 'high' | 'medium' | 'low';
-    if (cv > 0.5) volatility = 'high';
-    else if (cv > 0.25) volatility = 'medium';
-    else volatility = 'low';
+    let volatility: "high" | "medium" | "low";
+    if (cv > 0.5) volatility = "high";
+    else if (cv > 0.25) volatility = "medium";
+    else volatility = "low";
 
     return {
       historicalAvg: Math.round(mean),
@@ -591,7 +631,7 @@ export class ForecastEngine {
   private async generateRecommendations(
     productId: string,
     forecasts: ForecastPoint[],
-    metrics: ForecastMetrics
+    metrics: ForecastMetrics,
   ): Promise<ForecastRecommendations> {
     // Get current inventory settings
     const product = await prisma.product.findUnique({
@@ -611,9 +651,13 @@ export class ForecastEngine {
 
     // Safety stock calculation (based on service level and volatility)
     const safetyStockMultiplier =
-      metrics.volatility === 'high' ? 2.5 : metrics.volatility === 'medium' ? 1.5 : 1.0;
+      metrics.volatility === "high"
+        ? 2.5
+        : metrics.volatility === "medium"
+          ? 1.5
+          : 1.0;
     const recommendedSafetyStock = Math.round(
-      metrics.historicalStdDev * safetyStockMultiplier
+      metrics.historicalStdDev * safetyStockMultiplier,
     );
 
     // Reorder point (average demand during lead time + safety stock)
@@ -621,16 +665,16 @@ export class ForecastEngine {
     const weeksLeadTime = 2;
     const weeklyDemand = avgForecast / 4; // Approximate weekly from monthly
     const recommendedReorderPoint = Math.round(
-      weeklyDemand * weeksLeadTime + recommendedSafetyStock
+      weeklyDemand * weeksLeadTime + recommendedSafetyStock,
     );
 
     // Next purchase suggestion
-    let nextPurchase: ForecastRecommendations['nextPurchase'] = null;
+    let nextPurchase: ForecastRecommendations["nextPurchase"] = null;
 
     // Find upcoming high demand periods
     const upcomingHolidays = getUpcomingHolidays(3);
     const highDemandPeriod = forecasts.find(
-      (f) => f.forecast > avgForecast * 1.2
+      (f) => f.forecast > avgForecast * 1.2,
     );
 
     if (highDemandPeriod) {
@@ -641,7 +685,7 @@ export class ForecastEngine {
         quantity: Math.round(highDemandPeriod.upperBound - avgForecast),
         suggestedDate: orderDate,
         reason: `Prepare for high demand in ${highDemandPeriod.period}${
-          upcomingHolidays.length > 0 ? ` (${upcomingHolidays[0].nameVi})` : ''
+          upcomingHolidays.length > 0 ? ` (${upcomingHolidays[0].nameVi})` : ""
         }`,
       };
     }
@@ -651,11 +695,11 @@ export class ForecastEngine {
         current: 0, // Would need inventory data
         recommended: recommendedSafetyStock,
         reason:
-          metrics.volatility === 'high'
-            ? 'High demand volatility requires larger buffer'
-            : metrics.volatility === 'medium'
-            ? 'Moderate volatility, standard buffer'
-            : 'Low volatility, minimal buffer needed',
+          metrics.volatility === "high"
+            ? "High demand volatility requires larger buffer"
+            : metrics.volatility === "medium"
+              ? "Moderate volatility, standard buffer"
+              : "Low volatility, minimal buffer needed",
       },
       reorderPoint: {
         current: 0,
@@ -673,11 +717,11 @@ export class ForecastEngine {
   private getNextPeriodDate(
     lastDate: Date,
     periodsAhead: number,
-    periodType: 'weekly' | 'monthly'
+    periodType: "weekly" | "monthly",
   ): Date {
     const result = new Date(lastDate);
 
-    if (periodType === 'monthly') {
+    if (periodType === "monthly") {
       result.setMonth(result.getMonth() + periodsAhead);
       result.setDate(1);
     } else {
@@ -691,8 +735,8 @@ export class ForecastEngine {
     // Approximate z-scores for common confidence levels
     if (confidenceLevel >= 0.99) return 2.576;
     if (confidenceLevel >= 0.95) return 1.96;
-    if (confidenceLevel >= 0.90) return 1.645;
-    if (confidenceLevel >= 0.80) return 1.282;
+    if (confidenceLevel >= 0.9) return 1.645;
+    if (confidenceLevel >= 0.8) return 1.282;
     return 1.0;
   }
 
@@ -751,7 +795,7 @@ export class ForecastEngine {
     }
 
     // Adjust for data quality
-    if (dataQuality === 'poor') {
+    if (dataQuality === "poor") {
       // Poor quality - prefer simpler models
       maWeight += 0.1;
       hwWeight -= 0.1;
@@ -786,7 +830,8 @@ export class ForecastEngine {
           upperBound: forecast.upperBound,
           confidence: forecast.confidence,
           model: result.model,
-          factors: forecast.factors as unknown as import('@prisma/client').Prisma.InputJsonValue,
+          factors:
+            forecast.factors as unknown as import(".prisma/mrp-client").Prisma.InputJsonValue,
           updatedAt: new Date(),
         },
         create: {
@@ -798,7 +843,8 @@ export class ForecastEngine {
           upperBound: forecast.upperBound,
           confidence: forecast.confidence,
           model: result.model,
-          factors: forecast.factors as unknown as import('@prisma/client').Prisma.InputJsonValue,
+          factors:
+            forecast.factors as unknown as import(".prisma/mrp-client").Prisma.InputJsonValue,
         },
       });
     }
@@ -808,15 +854,13 @@ export class ForecastEngine {
   // BULK FORECAST GENERATION
   // ===========================================================================
 
-  async generateAllForecasts(
-    config: Partial<ForecastConfig> = {}
-  ): Promise<{
+  async generateAllForecasts(config: Partial<ForecastConfig> = {}): Promise<{
     success: number;
     failed: number;
     results: ForecastResult[];
   }> {
     const products = await prisma.product.findMany({
-      where: { status: 'active' },
+      where: { status: "active" },
       select: { id: true },
     });
 
@@ -835,7 +879,10 @@ export class ForecastEngine {
           failed++;
         }
       } catch (error) {
-        logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'forecast-engine', productId: product.id });
+        logger.logError(
+          error instanceof Error ? error : new Error(String(error)),
+          { context: "forecast-engine", productId: product.id },
+        );
         failed++;
       }
     }

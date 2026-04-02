@@ -1,45 +1,45 @@
 // src/lib/performance/services/feedback.service.ts
 // Feedback Service - 360 Feedback and Recognition
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   FeedbackType,
   FeedbackRequestStatus,
-  Prisma
-} from '@prisma/client'
+  Prisma,
+} from ".prisma/hrm-unified-client";
 
 // Types
 export interface RequestFeedbackInput {
-  reviewId?: string
-  subjectId: string
-  providerId: string
-  feedbackType: FeedbackType
-  dueDate?: Date
-  questions?: Record<string, string>[]
+  reviewId?: string;
+  subjectId: string;
+  providerId: string;
+  feedbackType: FeedbackType;
+  dueDate?: Date;
+  questions?: Record<string, string>[];
 }
 
 export interface SubmitFeedbackInput {
-  overallRating?: number
-  ratings?: Record<string, number>
-  strengths?: string
-  areasForImprovement?: string
-  comments?: string
-  isAnonymous?: boolean
+  overallRating?: number;
+  ratings?: Record<string, number>;
+  strengths?: string;
+  areasForImprovement?: string;
+  comments?: string;
+  isAnonymous?: boolean;
 }
 
 export interface GiveRecognitionInput {
-  subjectId: string
-  recognitionType: string
-  comments: string
-  isPublic?: boolean
+  subjectId: string;
+  recognitionType: string;
+  comments: string;
+  isPublic?: boolean;
 }
 
 export interface FeedbackFilters {
-  subjectId?: string
-  providerId?: string
-  feedbackType?: FeedbackType[]
-  status?: FeedbackRequestStatus[]
-  reviewId?: string
+  subjectId?: string;
+  providerId?: string;
+  feedbackType?: FeedbackType[];
+  status?: FeedbackRequestStatus[];
+  reviewId?: string;
 }
 
 export class FeedbackService {
@@ -54,19 +54,19 @@ export class FeedbackService {
     // Verify subject exists
     const subject = await db.employee.findFirst({
       where: { id: input.subjectId, tenantId: this.tenantId },
-    })
+    });
 
     if (!subject) {
-      throw new Error('Subject employee not found')
+      throw new Error("Subject employee not found");
     }
 
     // Verify provider exists
     const provider = await db.user.findUnique({
       where: { id: input.providerId },
-    })
+    });
 
     if (!provider) {
-      throw new Error('Feedback provider not found')
+      throw new Error("Feedback provider not found");
     }
 
     // Check for existing pending request
@@ -78,10 +78,12 @@ export class FeedbackService {
         reviewId: input.reviewId,
         status: FeedbackRequestStatus.REQUESTED,
       },
-    })
+    });
 
     if (existing) {
-      throw new Error('Pending feedback request already exists for this provider')
+      throw new Error(
+        "Pending feedback request already exists for this provider",
+      );
     }
 
     return db.feedbackRequest.create({
@@ -100,19 +102,24 @@ export class FeedbackService {
         provider: { select: { id: true, name: true, email: true } },
         subject: { select: { id: true, fullName: true } },
       },
-    })
+    });
   }
 
   /**
    * Request feedback from multiple people
    */
-  async requestBulkFeedback(requesterId: string, subjectId: string, providerIds: string[], input: {
-    reviewId?: string
-    feedbackType: FeedbackType
-    dueDate?: Date
-    questions?: Record<string, string>[]
-  }) {
-    const results = []
+  async requestBulkFeedback(
+    requesterId: string,
+    subjectId: string,
+    providerIds: string[],
+    input: {
+      reviewId?: string;
+      feedbackType: FeedbackType;
+      dueDate?: Date;
+      questions?: Record<string, string>[];
+    },
+  ) {
+    const results = [];
 
     for (const providerId of providerIds) {
       try {
@@ -120,23 +127,23 @@ export class FeedbackService {
           ...input,
           subjectId,
           providerId,
-        })
-        results.push({ providerId, success: true, request })
+        });
+        results.push({ providerId, success: true, request });
       } catch (error) {
         results.push({
           providerId,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        })
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
     }
 
     return {
       total: providerIds.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
+      successful: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
       results,
-    }
+    };
   }
 
   /**
@@ -155,49 +162,53 @@ export class FeedbackService {
         review: { select: { id: true, reviewCycleId: true } },
         response: true,
       },
-    })
+    });
 
     if (!request) {
-      throw new Error('Feedback request not found')
+      throw new Error("Feedback request not found");
     }
 
-    return request
+    return request;
   }
 
   /**
    * List feedback requests
    */
-  async listRequests(filters: FeedbackFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async listRequests(
+    filters: FeedbackFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.FeedbackRequestWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.subjectId) {
-      where.subjectId = filters.subjectId
+      where.subjectId = filters.subjectId;
     }
 
     if (filters.providerId) {
-      where.providerId = filters.providerId
+      where.providerId = filters.providerId;
     }
 
     if (filters.feedbackType?.length) {
-      where.feedbackType = { in: filters.feedbackType }
+      where.feedbackType = { in: filters.feedbackType };
     }
 
     if (filters.status?.length) {
-      where.status = { in: filters.status }
+      where.status = { in: filters.status };
     }
 
     if (filters.reviewId) {
-      where.reviewId = filters.reviewId
+      where.reviewId = filters.reviewId;
     }
 
     const [requests, total] = await Promise.all([
       db.feedbackRequest.findMany({
         where,
-        orderBy: { requestedAt: 'desc' },
+        orderBy: { requestedAt: "desc" },
         skip,
         take: pageSize,
         include: {
@@ -208,7 +219,7 @@ export class FeedbackService {
         },
       }),
       db.feedbackRequest.count({ where }),
-    ])
+    ]);
 
     return {
       data: requests,
@@ -216,7 +227,7 @@ export class FeedbackService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -229,12 +240,12 @@ export class FeedbackService {
         providerId,
         status: FeedbackRequestStatus.REQUESTED,
       },
-      orderBy: [{ dueDate: 'asc' }, { requestedAt: 'desc' }],
+      orderBy: [{ dueDate: "asc" }, { requestedAt: "desc" }],
       include: {
         subject: { select: { id: true, fullName: true } },
         requester: { select: { id: true, name: true } },
       },
-    })
+    });
   }
 
   /**
@@ -247,20 +258,20 @@ export class FeedbackService {
         tenantId: this.tenantId,
         providerId,
       },
-    })
+    });
 
     if (!request) {
-      throw new Error('Feedback request not found')
+      throw new Error("Feedback request not found");
     }
 
     if (request.status !== FeedbackRequestStatus.REQUESTED) {
-      throw new Error('Request is no longer pending')
+      throw new Error("Request is no longer pending");
     }
 
     return db.feedbackRequest.update({
       where: { id: requestId },
       data: { status: FeedbackRequestStatus.DECLINED },
-    })
+    });
   }
 
   /**
@@ -270,7 +281,7 @@ export class FeedbackService {
     return db.feedbackRequest.update({
       where: { id: requestId },
       data: { status: FeedbackRequestStatus.DECLINED },
-    })
+    });
   }
 
   // ===== FEEDBACK RESPONSES =====
@@ -278,21 +289,25 @@ export class FeedbackService {
   /**
    * Submit feedback response
    */
-  async submitFeedback(requestId: string, providerId: string, input: SubmitFeedbackInput) {
+  async submitFeedback(
+    requestId: string,
+    providerId: string,
+    input: SubmitFeedbackInput,
+  ) {
     const request = await db.feedbackRequest.findFirst({
       where: {
         id: requestId,
         tenantId: this.tenantId,
         providerId,
       },
-    })
+    });
 
     if (!request) {
-      throw new Error('Feedback request not found')
+      throw new Error("Feedback request not found");
     }
 
     if (request.status !== FeedbackRequestStatus.REQUESTED) {
-      throw new Error('Request is no longer pending')
+      throw new Error("Request is no longer pending");
     }
 
     // Create feedback response
@@ -313,7 +328,7 @@ export class FeedbackService {
       include: {
         subject: { select: { id: true, fullName: true } },
       },
-    })
+    });
 
     // Update request status
     await db.feedbackRequest.update({
@@ -322,9 +337,9 @@ export class FeedbackService {
         status: FeedbackRequestStatus.SUBMITTED,
         respondedAt: new Date(),
       },
-    })
+    });
 
-    return feedback
+    return feedback;
   }
 
   /**
@@ -334,10 +349,10 @@ export class FeedbackService {
     // Verify subject exists
     const subject = await db.employee.findFirst({
       where: { id: input.subjectId, tenantId: this.tenantId },
-    })
+    });
 
     if (!subject) {
-      throw new Error('Subject employee not found')
+      throw new Error("Subject employee not found");
     }
 
     return db.feedback.create({
@@ -355,47 +370,50 @@ export class FeedbackService {
         provider: { select: { id: true, name: true } },
         subject: { select: { id: true, fullName: true } },
       },
-    })
+    });
   }
 
   /**
    * Get feedback received by an employee
    */
-  async getFeedbackForEmployee(subjectId: string, options?: {
-    feedbackType?: FeedbackType[]
-    includeAnonymous?: boolean
-  }) {
+  async getFeedbackForEmployee(
+    subjectId: string,
+    options?: {
+      feedbackType?: FeedbackType[];
+      includeAnonymous?: boolean;
+    },
+  ) {
     const where: Prisma.FeedbackWhereInput = {
       tenantId: this.tenantId,
       subjectId,
-    }
+    };
 
     if (options?.feedbackType?.length) {
-      where.feedbackType = { in: options.feedbackType }
+      where.feedbackType = { in: options.feedbackType };
     }
 
     const feedbacks = await db.feedback.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         provider: { select: { id: true, name: true } },
         request: {
           select: { id: true, reviewId: true },
         },
       },
-    })
+    });
 
     // Filter anonymous if not allowed
-    return feedbacks.map(f => {
+    return feedbacks.map((f) => {
       if (f.isAnonymous && !options?.includeAnonymous) {
         return {
           ...f,
           providerId: null,
           provider: null,
-        }
+        };
       }
-      return f
-    })
+      return f;
+    });
   }
 
   /**
@@ -407,11 +425,11 @@ export class FeedbackService {
         tenantId: this.tenantId,
         providerId,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         subject: { select: { id: true, fullName: true } },
       },
-    })
+    });
   }
 
   /**
@@ -424,13 +442,13 @@ export class FeedbackService {
         isPublic: true,
         recognitionType: { not: null },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
       include: {
         provider: { select: { id: true, name: true } },
         subject: { select: { id: true, fullName: true } },
       },
-    })
+    });
   }
 
   // ===== 360 FEEDBACK SUMMARY =====
@@ -448,51 +466,63 @@ export class FeedbackService {
         response: true,
         provider: { select: { id: true, name: true } },
       },
-    })
+    });
 
-    const completed = requests.filter(r => r.response)
-    const pending = requests.filter(r => !r.response && r.status === FeedbackRequestStatus.REQUESTED)
-    const declined = requests.filter(r => r.status === FeedbackRequestStatus.DECLINED)
+    const completed = requests.filter((r) => r.response);
+    const pending = requests.filter(
+      (r) => !r.response && r.status === FeedbackRequestStatus.REQUESTED,
+    );
+    const declined = requests.filter(
+      (r) => r.status === FeedbackRequestStatus.DECLINED,
+    );
 
     // Calculate averages
-    let avgRating = 0
-    const ratingsByCategory: Record<string, number[]> = {}
+    let avgRating = 0;
+    const ratingsByCategory: Record<string, number[]> = {};
 
-    completed.forEach(r => {
+    completed.forEach((r) => {
       if (r.response?.overallRating) {
-        avgRating += r.response.overallRating
+        avgRating += r.response.overallRating;
       }
       if (r.response?.ratings) {
-        const ratings = r.response.ratings as Record<string, number>
+        const ratings = r.response.ratings as Record<string, number>;
         Object.entries(ratings).forEach(([key, value]) => {
           if (!ratingsByCategory[key]) {
-            ratingsByCategory[key] = []
+            ratingsByCategory[key] = [];
           }
-          ratingsByCategory[key].push(value)
-        })
+          ratingsByCategory[key].push(value);
+        });
       }
-    })
+    });
 
-    const categoryAverages = Object.entries(ratingsByCategory).reduce((acc, [key, values]) => {
-      acc[key] = values.length > 0
-        ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10
-        : 0
-      return acc
-    }, {} as Record<string, number>)
+    const categoryAverages = Object.entries(ratingsByCategory).reduce(
+      (acc, [key, values]) => {
+        acc[key] =
+          values.length > 0
+            ? Math.round(
+                (values.reduce((a, b) => a + b, 0) / values.length) * 10,
+              ) / 10
+            : 0;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       totalRequested: requests.length,
       completed: completed.length,
       pending: pending.length,
       declined: declined.length,
-      completionRate: requests.length > 0
-        ? Math.round((completed.length / requests.length) * 100)
-        : 0,
-      averageRating: completed.length > 0
-        ? Math.round((avgRating / completed.length) * 10) / 10
-        : null,
+      completionRate:
+        requests.length > 0
+          ? Math.round((completed.length / requests.length) * 100)
+          : 0,
+      averageRating:
+        completed.length > 0
+          ? Math.round((avgRating / completed.length) * 10) / 10
+          : null,
       categoryAverages,
-      feedbacks: completed.map(r => ({
+      feedbacks: completed.map((r) => ({
         feedbackType: r.feedbackType,
         overallRating: r.response?.overallRating,
         ratings: r.response?.ratings,
@@ -502,7 +532,7 @@ export class FeedbackService {
         isAnonymous: r.response?.isAnonymous,
         provider: r.response?.isAnonymous ? null : r.provider,
       })),
-    }
+    };
   }
 
   // ===== STATISTICS =====
@@ -513,57 +543,59 @@ export class FeedbackService {
   async getStats(dateRange?: { from: Date; to: Date }) {
     const where: Prisma.FeedbackWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (dateRange) {
       where.createdAt = {
         gte: dateRange.from,
         lte: dateRange.to,
-      }
+      };
     }
 
-    const [totalFeedback, byType, avgRating, topRecognized] = await Promise.all([
-      db.feedback.count({ where }),
+    const [totalFeedback, byType, avgRating, topRecognized] = await Promise.all(
+      [
+        db.feedback.count({ where }),
 
-      db.feedback.groupBy({
-        by: ['feedbackType'],
-        where,
-        _count: true,
-      }),
+        db.feedback.groupBy({
+          by: ["feedbackType"],
+          where,
+          _count: true,
+        }),
 
-      db.feedback.aggregate({
-        where: { ...where, overallRating: { not: null } },
-        _avg: { overallRating: true },
-      }),
+        db.feedback.aggregate({
+          where: { ...where, overallRating: { not: null } },
+          _avg: { overallRating: true },
+        }),
 
-      // Top recognized employees
-      db.feedback.groupBy({
-        by: ['subjectId'],
-        where: { ...where, recognitionType: { not: null } },
-        _count: true,
-        orderBy: { _count: { subjectId: 'desc' } },
-        take: 10,
-      }),
-    ])
+        // Top recognized employees
+        db.feedback.groupBy({
+          by: ["subjectId"],
+          where: { ...where, recognitionType: { not: null } },
+          _count: true,
+          orderBy: { _count: { subjectId: "desc" } },
+          take: 10,
+        }),
+      ],
+    );
 
     // Get employee names for top recognized
-    const employeeIds = topRecognized.map(r => r.subjectId)
+    const employeeIds = topRecognized.map((r) => r.subjectId);
     const employees = await db.employee.findMany({
       where: { id: { in: employeeIds } },
       select: { id: true, fullName: true },
-    })
-    const employeeMap = new Map(employees.map(e => [e.id, e.fullName]))
+    });
+    const employeeMap = new Map(employees.map((e) => [e.id, e.fullName]));
 
     return {
       totalFeedback,
-      byType: byType.map(t => ({ type: t.feedbackType, count: t._count })),
+      byType: byType.map((t) => ({ type: t.feedbackType, count: t._count })),
       averageRating: avgRating._avg.overallRating || 0,
-      topRecognized: topRecognized.map(r => ({
+      topRecognized: topRecognized.map((r) => ({
         employeeId: r.subjectId,
-        employeeName: employeeMap.get(r.subjectId) || 'Unknown',
+        employeeName: employeeMap.get(r.subjectId) || "Unknown",
         recognitionCount: r._count,
       })),
-    }
+    };
   }
 
   /**
@@ -576,7 +608,7 @@ export class FeedbackService {
       }),
 
       db.feedbackRequest.groupBy({
-        by: ['status'],
+        by: ["status"],
         where: { tenantId: this.tenantId },
         _count: true,
       }),
@@ -588,22 +620,27 @@ export class FeedbackService {
           dueDate: { lt: new Date() },
         },
       }),
-    ])
+    ]);
 
     return {
       total,
-      byStatus: byStatus.map(s => ({ status: s.status, count: s._count })),
+      byStatus: byStatus.map((s) => ({ status: s.status, count: s._count })),
       overdue,
-      completionRate: total > 0
-        ? Math.round(
-            ((byStatus.find(s => s.status === FeedbackRequestStatus.SUBMITTED)?._count || 0) / total) * 100
-          )
-        : 0,
-    }
+      completionRate:
+        total > 0
+          ? Math.round(
+              ((byStatus.find(
+                (s) => s.status === FeedbackRequestStatus.SUBMITTED,
+              )?._count || 0) /
+                total) *
+                100,
+            )
+          : 0,
+    };
   }
 }
 
 // Factory function
 export function createFeedbackService(tenantId: string): FeedbackService {
-  return new FeedbackService(tenantId)
+  return new FeedbackService(tenantId);
 }

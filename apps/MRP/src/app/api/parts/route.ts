@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma } from ".prisma/mrp-client";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api/with-auth";
 import {
@@ -16,28 +16,48 @@ import { logApi } from "@/lib/audit/audit-logger";
 import { auditCreate } from "@/lib/audit/route-audit";
 import { handleError } from "@/lib/error-handler";
 
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 // Allowed filters for parts
 const ALLOWED_FILTERS = ["category", "lifecycleStatus", "makeOrBuy"];
-const SEARCH_FIELDS = ["partNumber", "name", "description", "manufacturerPn", "manufacturer"];
+const SEARCH_FIELDS = [
+  "partNumber",
+  "name",
+  "description",
+  "manufacturerPn",
+  "manufacturer",
+];
 
 // GET - List all parts with pagination
 export const GET = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   const startTime = Date.now();
 
   try {
     // Validate query params
-    const queryResult = validateQuery(PartQuerySchema, request.nextUrl.searchParams);
+    const queryResult = validateQuery(
+      PartQuerySchema,
+      request.nextUrl.searchParams,
+    );
     if (!queryResult.success) {
       // Log validation error for Gate 5.3 evidence
-      logApi(request, 400, session.user?.id, 'Validation error');
+      logApi(request, 400, session.user?.id, "Validation error");
       return queryResult.response;
     }
-    const { category, lifecycleStatus, makeOrBuy, ndaaCompliant, includeRelations, search, supplierId } = queryResult.data;
+    const {
+      category,
+      lifecycleStatus,
+      makeOrBuy,
+      ndaaCompliant,
+      includeRelations,
+      search,
+      supplierId,
+    } = queryResult.data;
 
     // Parse pagination params
     const params = parsePaginationParams(request);
@@ -55,7 +75,7 @@ export const GET = withAuth(async (request, context, session) => {
       where.partSuppliers = { some: { supplierId } };
     }
     if (search) {
-      where.OR = SEARCH_FIELDS.map(field => ({
+      where.OR = SEARCH_FIELDS.map((field) => ({
         [field]: { contains: search, mode: "insensitive" as const },
       }));
     }
@@ -73,69 +93,74 @@ export const GET = withAuth(async (request, context, session) => {
           : { partNumber: "asc" },
         include: shouldIncludeRelations
           ? {
-            partSuppliers: {
-              include: { supplier: true },
-              orderBy: { isPreferred: "desc" },
-              take: 3, // Limit suppliers
-            },
-            partAlternates: {
-              include: { alternatePart: true },
-              where: { approved: true },
-              take: 3, // Limit alternates
-            },
-            partDocuments: {
-              take: 5, // Limit documents
-            },
-            partCertifications: {
-              where: {
-                OR: [
-                  { expiryDate: null },
-                  { expiryDate: { gte: new Date() } },
-                ],
+              partSuppliers: {
+                include: { supplier: true },
+                orderBy: { isPreferred: "desc" },
+                take: 3, // Limit suppliers
               },
-              take: 3, // Limit certifications
-            },
-            planning: true,
-            costs: true,
-            specs: true,
-            compliance: true,
-          }
+              partAlternates: {
+                include: { alternatePart: true },
+                where: { approved: true },
+                take: 3, // Limit alternates
+              },
+              partDocuments: {
+                take: 5, // Limit documents
+              },
+              partCertifications: {
+                where: {
+                  OR: [
+                    { expiryDate: null },
+                    { expiryDate: { gte: new Date() } },
+                  ],
+                },
+                take: 3, // Limit certifications
+              },
+              planning: true,
+              costs: true,
+              specs: true,
+              compliance: true,
+            }
           : {
-            partSuppliers: {
-              include: { supplier: true },
-              orderBy: { isPreferred: "desc" },
-              take: 1,
+              partSuppliers: {
+                include: { supplier: true },
+                orderBy: { isPreferred: "desc" },
+                take: 1,
+              },
+              planning: true,
+              costs: true,
             },
-            planning: true,
-            costs: true,
-          },
       }),
     ]);
 
     return paginatedSuccess(
-      buildPaginatedResponse(parts, totalCount, params, startTime)
+      buildPaginatedResponse(parts, totalCount, params, startTime),
     );
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'GET /api/parts' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "GET /api/parts",
+    });
     return paginatedError("Failed to fetch parts", 500);
   }
 });
 
 // POST - Create a new part
 export const POST = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
     // Validate request body
     const bodyResult = await validateBody(PartCreateSchema, request);
     if (!bodyResult.success) {
-      logger.error('[Part Create] Validation failed', { context: 'POST /api/parts', details: bodyResult.response });
+      logger.error("[Part Create] Validation failed", {
+        context: "POST /api/parts",
+        details: bodyResult.response,
+      });
       return bodyResult.response;
     }
     const data = bodyResult.data;
-    logger.debug('[Part Create] Validated data', { data });
+    logger.debug("[Part Create] Validated data", { data });
 
     // Generate ID if not provided
     const id = data.id || `PRT-${Date.now()}`;
@@ -202,7 +227,9 @@ export const POST = withAuth(async (request, context, session) => {
         inspectionPlan: data.inspectionPlan,
         aqlLevel: data.aqlLevel,
         certificateRequired: data.certificateRequired ?? false,
-        revisionDate: data.revisionDate ? new Date(data.revisionDate) : undefined,
+        revisionDate: data.revisionDate
+          ? new Date(data.revisionDate)
+          : undefined,
         isCritical: data.isCritical ?? false,
 
         status: "active",
@@ -231,7 +258,7 @@ export const POST = withAuth(async (request, context, session) => {
             priceBreakCost2: data.priceBreakCost2,
             priceBreakQty3: data.priceBreakQty3,
             priceBreakCost3: data.priceBreakCost3,
-          }
+          },
         },
 
         planning: {
@@ -247,7 +274,7 @@ export const POST = withAuth(async (request, context, session) => {
             moq: data.moq || 1,
             orderMultiple: data.orderMultiple || 1,
             standardPack: data.standardPack || 1,
-          }
+          },
         },
 
         specs: {
@@ -267,7 +294,7 @@ export const POST = withAuth(async (request, context, session) => {
             manufacturer: data.manufacturer,
             subCategory: data.subCategory,
             partType: data.partType,
-          }
+          },
         },
 
         compliance: {
@@ -285,7 +312,7 @@ export const POST = withAuth(async (request, context, session) => {
             certificateRequired: data.certificateRequired ?? false,
             rohsCompliant: data.rohsCompliant ?? true,
             reachCompliant: data.reachCompliant ?? true,
-          }
+          },
         },
       },
       include: {
@@ -328,21 +355,27 @@ export const POST = withAuth(async (request, context, session) => {
     }
 
     // Re-fetch with supplier included
-    const result = data.primarySupplierId || (data.secondarySupplierIds && data.secondarySupplierIds.length > 0)
-      ? await prisma.part.findUnique({
-          where: { id: part.id },
-          include: {
-            costs: true,
-            planning: true,
-            specs: true,
-            compliance: true,
-            partSuppliers: { include: { supplier: true } },
-          },
-        })
-      : part;
+    const result =
+      data.primarySupplierId ||
+      (data.secondarySupplierIds && data.secondarySupplierIds.length > 0)
+        ? await prisma.part.findUnique({
+            where: { id: part.id },
+            include: {
+              costs: true,
+              planning: true,
+              specs: true,
+              compliance: true,
+              partSuppliers: { include: { supplier: true } },
+            },
+          })
+        : part;
 
     // Audit trail: log creation
-    auditCreate(request, session.user, "Part", part.id, { partNumber: part.partNumber, name: part.name, category: part.category });
+    auditCreate(request, session.user, "Part", part.id, {
+      partNumber: part.partNumber,
+      name: part.name,
+      category: part.category,
+    });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error: unknown) {

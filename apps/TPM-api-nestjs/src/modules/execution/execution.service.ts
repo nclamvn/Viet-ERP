@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 import { TrackingQueryDto } from './dto/tracking-query.dto';
 import { CreateTrackingDto } from './dto/create-tracking.dto';
 import { SellInQueryDto } from './dto/sell-in-query.dto';

@@ -1,6 +1,6 @@
 // ATP/CTP Engine - Available to Promise / Capable to Promise
 import { prisma } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
+import { Decimal } from "decimal.js";
 
 export interface ATPResult {
   partId: string;
@@ -52,7 +52,7 @@ export async function calculateATP(
   requestedQty: number,
   requestedDate: Date,
   siteId?: string,
-  horizon: number = 90
+  horizon: number = 90,
 ): Promise<ATPResult> {
   const part = await prisma.part.findUnique({
     where: { id: partId },
@@ -66,7 +66,7 @@ export async function calculateATP(
   // Calculate on-hand (available = total - reserved)
   const onHand = part.inventory.reduce(
     (sum, inv) => sum + inv.quantity - inv.reservedQty,
-    0
+    0,
   );
 
   // Build ATP grid
@@ -101,7 +101,7 @@ export async function calculateATP(
       partId,
       requestedQty - atpQty,
       requestedDate,
-      siteId
+      siteId,
     );
     if (ctpDetails.canProduce) {
       ctpQty = ctpDetails.productionQty;
@@ -130,7 +130,7 @@ async function buildATPGrid(
   partId: string,
   siteId: string | undefined,
   horizon: number,
-  startingQty: number
+  startingQty: number,
 ): Promise<ATPBucket[]> {
   const grid: ATPBucket[] = [];
   const today = new Date();
@@ -189,7 +189,7 @@ async function buildATPGrid(
  */
 async function getSupplies(
   partId: string,
-  endDate: Date
+  endDate: Date,
 ): Promise<Array<{ date: Date; quantity: number; type: string }>> {
   const supplies: Array<{ date: Date; quantity: number; type: string }> = [];
 
@@ -243,7 +243,7 @@ async function getSupplies(
  */
 async function getDemands(
   partId: string,
-  endDate: Date
+  endDate: Date,
 ): Promise<Array<{ date: Date; quantity: number; type: string }>> {
   const demands: Array<{ date: Date; quantity: number; type: string }> = [];
 
@@ -320,7 +320,7 @@ async function calculateCTP(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   requestedDate: Date,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  siteId?: string
+  siteId?: string,
 ): Promise<CTPDetails> {
   // Get part with BOM
   const part = await prisma.part.findUnique({
@@ -366,7 +366,7 @@ async function calculateCTP(
     const required = quantity * Number(bomLine.quantity);
     const available = bomLine.part.inventory.reduce(
       (sum, inv) => sum + inv.quantity - inv.reservedQty,
-      0
+      0,
     );
     const shortage = Math.max(0, required - available);
 
@@ -391,7 +391,7 @@ async function calculateCTP(
   });
   const assemblyHours = product?.assemblyHours || 0;
   const testingHours = product?.testingHours || 0;
-  const estimatedHoursPerUnit = (assemblyHours + testingHours) || 1; // Fallback to 1hr if no data
+  const estimatedHoursPerUnit = assemblyHours + testingHours || 1; // Fallback to 1hr if no data
   const totalProductionHours = quantity * estimatedHoursPerUnit;
   const productionDays = Math.ceil(totalProductionHours / 8); // 8-hour days
 
@@ -418,7 +418,7 @@ async function calculateCTP(
  * Check ATP for multiple items (batch check)
  */
 export async function checkBatchATP(
-  items: Array<{ partId: string; quantity: number; requiredDate: Date }>
+  items: Array<{ partId: string; quantity: number; requiredDate: Date }>,
 ): Promise<
   Array<{
     partId: string;
@@ -430,7 +430,11 @@ export async function checkBatchATP(
   const results = [];
 
   for (const item of items) {
-    const atp = await calculateATP(item.partId, item.quantity, item.requiredDate);
+    const atp = await calculateATP(
+      item.partId,
+      item.quantity,
+      item.requiredDate,
+    );
 
     results.push({
       partId: item.partId,
@@ -449,7 +453,7 @@ export async function checkBatchATP(
 export async function updateATPRecords(
   partId: string,
   grid: ATPBucket[],
-  siteId?: string
+  siteId?: string,
 ): Promise<void> {
   // Delete existing records
   await prisma.aTPRecord.deleteMany({

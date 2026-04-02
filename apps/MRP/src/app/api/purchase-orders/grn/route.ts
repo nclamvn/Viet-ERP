@@ -4,28 +4,31 @@
 // POST /api/purchase-orders/grn — Create GRN
 // =============================================================================
 
-import { NextRequest } from 'next/server';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { NextRequest } from "next/server";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
 import {
   withPermission,
   successResponse,
   errorResponse,
   validationErrorResponse,
   AuthUser,
-} from '@/lib/api/with-permission';
+} from "@/lib/api/with-permission";
 import {
   parsePaginationParams,
   buildOffsetPaginationQuery,
   buildPaginatedResponse,
   paginatedSuccess,
   paginatedError,
-} from '@/lib/pagination';
-import { generateGRNNumber } from '@/lib/purchasing/grn-number';
-import { createGRNSchema } from '@/lib/validations/grn';
-import { auditCreate, auditStatusChange } from '@/lib/audit/route-audit';
-import { createMatchFromGRN } from '@/lib/purchasing/three-way-match';
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+} from "@/lib/pagination";
+import { generateGRNNumber } from "@/lib/purchasing/grn-number";
+import { createGRNSchema } from "@/lib/validations/grn";
+import { auditCreate, auditStatusChange } from "@/lib/audit/route-audit";
+import { createMatchFromGRN } from "@/lib/purchasing/three-way-match";
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 
 // =============================================================================
 // GET — List GRNs
@@ -33,7 +36,7 @@ import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limi
 
 async function getHandler(
   request: NextRequest,
-  { params, user }: { params?: Record<string, string>; user: AuthUser }
+  { params, user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   const rateLimitResult = await checkReadEndpointLimit(request);
   if (rateLimitResult) return rateLimitResult;
@@ -43,9 +46,9 @@ async function getHandler(
   try {
     const paginationParams = parsePaginationParams(request);
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
-    const purchaseOrderId = searchParams.get('purchaseOrderId');
-    const status = searchParams.get('status');
+    const search = searchParams.get("search");
+    const purchaseOrderId = searchParams.get("purchaseOrderId");
+    const status = searchParams.get("status");
 
     const where: Prisma.GoodsReceiptNoteWhereInput = {};
 
@@ -53,8 +56,12 @@ async function getHandler(
     if (status) where.status = status;
     if (search) {
       where.OR = [
-        { grnNumber: { contains: search, mode: 'insensitive' } },
-        { purchaseOrder: { poNumber: { contains: search, mode: 'insensitive' } } },
+        { grnNumber: { contains: search, mode: "insensitive" } },
+        {
+          purchaseOrder: {
+            poNumber: { contains: search, mode: "insensitive" },
+          },
+        },
       ];
     }
 
@@ -65,20 +72,27 @@ async function getHandler(
         ...buildOffsetPaginationQuery(paginationParams),
         orderBy: paginationParams.sortBy
           ? { [paginationParams.sortBy]: paginationParams.sortOrder }
-          : { receivedDate: 'desc' },
+          : { receivedDate: "desc" },
         include: {
-          purchaseOrder: { select: { id: true, poNumber: true, supplierId: true, supplier: { select: { id: true, name: true, code: true } } } },
+          purchaseOrder: {
+            select: {
+              id: true,
+              poNumber: true,
+              supplierId: true,
+              supplier: { select: { id: true, name: true, code: true } },
+            },
+          },
           _count: { select: { items: true } },
         },
       }),
     ]);
 
     return paginatedSuccess(
-      buildPaginatedResponse(grns, totalCount, paginationParams, startTime)
+      buildPaginatedResponse(grns, totalCount, paginationParams, startTime),
     );
   } catch (error) {
-    console.error('[GRN_LIST]', error);
-    return paginatedError('Không thể lấy danh sách phiếu nhận hàng', 500);
+    console.error("[GRN_LIST]", error);
+    return paginatedError("Không thể lấy danh sách phiếu nhận hàng", 500);
   }
 }
 
@@ -88,7 +102,7 @@ async function getHandler(
 
 async function postHandler(
   request: NextRequest,
-  { params, user }: { params?: Record<string, string>; user: AuthUser }
+  { params, user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   const rateLimitResult = await checkWriteEndpointLimit(request);
   if (rateLimitResult) return rateLimitResult;
@@ -97,14 +111,14 @@ async function postHandler(
   try {
     body = await request.json();
   } catch {
-    return errorResponse('Invalid JSON body', 400);
+    return errorResponse("Invalid JSON body", 400);
   }
 
   const validation = createGRNSchema.safeParse(body);
   if (!validation.success) {
     const errors: Record<string, string[]> = {};
     validation.error.issues.forEach((err) => {
-      const path = err.path.join('.');
+      const path = err.path.join(".");
       if (!errors[path]) errors[path] = [];
       errors[path].push(err.message);
     });
@@ -120,14 +134,19 @@ async function postHandler(
   });
 
   if (!po) {
-    return errorResponse('Đơn mua hàng không tồn tại', 404);
+    return errorResponse("Đơn mua hàng không tồn tại", 404);
   }
 
-  const receivableStatuses = ['approved', 'confirmed', 'in_progress', 'partially_received'];
+  const receivableStatuses = [
+    "approved",
+    "confirmed",
+    "in_progress",
+    "partially_received",
+  ];
   if (!receivableStatuses.includes(po.status)) {
     return errorResponse(
-      `Không thể nhận hàng cho PO ở trạng thái "${po.status}". PO phải ở trạng thái: ${receivableStatuses.join(', ')}.`,
-      400
+      `Không thể nhận hàng cho PO ở trạng thái "${po.status}". PO phải ở trạng thái: ${receivableStatuses.join(", ")}.`,
+      400,
     );
   }
 
@@ -135,7 +154,10 @@ async function postHandler(
   const poLineIds = new Set(po.lines.map((l) => l.id));
   for (const item of data.items) {
     if (!poLineIds.has(item.poLineId)) {
-      return errorResponse(`Dòng PO "${item.poLineId}" không thuộc đơn mua hàng này.`, 400);
+      return errorResponse(
+        `Dòng PO "${item.poLineId}" không thuộc đơn mua hàng này.`,
+        400,
+      );
     }
   }
 
@@ -146,7 +168,7 @@ async function postHandler(
     if (poLine && poLine.partId !== item.partId) {
       return errorResponse(
         `Linh kiện "${item.partId}" không khớp với dòng PO "${item.poLineId}" (expected: ${poLine.partId}).`,
-        400
+        400,
       );
     }
   }
@@ -156,12 +178,12 @@ async function postHandler(
 
   // Find receiving warehouse
   let receivingWarehouse = await prisma.warehouse.findFirst({
-    where: { type: 'RECEIVING' },
+    where: { type: "RECEIVING" },
   });
   if (!receivingWarehouse) {
     receivingWarehouse = await prisma.warehouse.findFirst({
-      where: { status: 'active' },
-      orderBy: { createdAt: 'asc' },
+      where: { status: "active" },
+      orderBy: { createdAt: "asc" },
     });
   }
 
@@ -173,7 +195,9 @@ async function postHandler(
         grnNumber,
         purchaseOrderId: data.purchaseOrderId,
         receivedById: user.id,
-        receivedDate: data.receivedDate ? new Date(data.receivedDate) : new Date(),
+        receivedDate: data.receivedDate
+          ? new Date(data.receivedDate)
+          : new Date(),
         notes: data.notes,
         items: {
           create: data.items.map((item) => ({
@@ -191,7 +215,11 @@ async function postHandler(
       },
       include: {
         purchaseOrder: { select: { id: true, poNumber: true } },
-        items: { include: { part: { select: { id: true, partNumber: true, name: true } } } },
+        items: {
+          include: {
+            part: { select: { id: true, partNumber: true, name: true } },
+          },
+        },
       },
     });
 
@@ -212,7 +240,7 @@ async function postHandler(
             where: {
               partId: item.partId,
               warehouseId: receivingWarehouse.id,
-              locationCode: 'RECEIVING',
+              locationCode: "RECEIVING",
             },
           });
 
@@ -228,7 +256,7 @@ async function postHandler(
                 warehouseId: receivingWarehouse.id,
                 quantity: item.quantityAccepted,
                 reservedQty: 0,
-                locationCode: 'RECEIVING',
+                locationCode: "RECEIVING",
                 lotNumber: item.lotNumber || null,
                 expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
               },
@@ -240,13 +268,14 @@ async function postHandler(
             data: {
               lotNumber: item.lotNumber || `GRN-${grnNumber}-${item.poLineId}`,
               partId: item.partId,
-              transactionType: 'RECEIVED',
+              transactionType: "RECEIVED",
               quantity: item.quantityAccepted,
               previousQty: existingInventory?.quantity ?? 0,
-              newQty: (existingInventory?.quantity ?? 0) + item.quantityAccepted,
+              newQty:
+                (existingInventory?.quantity ?? 0) + item.quantityAccepted,
               poId: data.purchaseOrderId,
               toWarehouseId: receivingWarehouse.id,
-              toLocation: 'RECEIVING',
+              toLocation: "RECEIVING",
               userId: user.id,
               notes: `Nhận hàng GRN: ${grnNumber}`,
             },
@@ -260,18 +289,20 @@ async function postHandler(
       where: { poId: data.purchaseOrderId },
     });
 
-    const allReceived = updatedPOLines.every((line) => line.receivedQty >= line.quantity);
+    const allReceived = updatedPOLines.every(
+      (line) => line.receivedQty >= line.quantity,
+    );
     const someReceived = updatedPOLines.some((line) => line.receivedQty > 0);
 
     if (allReceived) {
       await tx.purchaseOrder.update({
         where: { id: data.purchaseOrderId },
-        data: { status: 'received' },
+        data: { status: "received" },
       });
-    } else if (someReceived && po.status !== 'partially_received') {
+    } else if (someReceived && po.status !== "partially_received") {
       await tx.purchaseOrder.update({
         where: { id: data.purchaseOrderId },
-        data: { status: 'partially_received' },
+        data: { status: "partially_received" },
       });
     }
 
@@ -285,9 +316,13 @@ async function postHandler(
   auditCreate(
     request,
     { id: user.id, name: user.name, email: user.email },
-    'GoodsReceiptNote',
+    "GoodsReceiptNote",
     grn.id,
-    { grnNumber, purchaseOrderId: data.purchaseOrderId, itemCount: data.items.length }
+    {
+      grnNumber,
+      purchaseOrderId: data.purchaseOrderId,
+      itemCount: data.items.length,
+    },
   );
 
   // If PO status changed, audit that too
@@ -299,10 +334,10 @@ async function postHandler(
     auditStatusChange(
       request,
       { id: user.id, name: user.name, email: user.email },
-      'PurchaseOrder',
+      "PurchaseOrder",
       data.purchaseOrderId,
       po.status,
-      updatedPO.status
+      updatedPO.status,
     );
   }
 
@@ -313,5 +348,7 @@ async function postHandler(
 // EXPORTS
 // =============================================================================
 
-export const GET = withPermission(getHandler, { read: 'purchasing:view' });
-export const POST = withPermission(postHandler, { create: 'purchasing:create' });
+export const GET = withPermission(getHandler, { read: "purchasing:view" });
+export const POST = withPermission(postHandler, {
+  create: "purchasing:create",
+});

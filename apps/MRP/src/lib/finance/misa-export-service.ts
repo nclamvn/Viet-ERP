@@ -2,7 +2,7 @@
 // R18: Export financial data to MISA accounting software format
 
 import { prisma } from "@/lib/prisma";
-import type { JournalStatus } from "@prisma/client";
+import type { JournalStatus } from ".prisma/mrp-client";
 
 // Standard Vietnamese accounting chart of accounts (Thông tư 200/2014/TT-BTC)
 const MISA_ACCOUNT_MAP: Record<string, { code: string; nameVi: string }> = {
@@ -63,7 +63,7 @@ export async function exportToMISA(
   options?: {
     includePosted?: boolean; // Only posted entries (default true)
     includeDraft?: boolean; // Include draft entries
-  }
+  },
 ): Promise<MISAExportResult> {
   const errors: string[] = [];
   const statusFilter: JournalStatus[] = [];
@@ -144,7 +144,7 @@ export async function exportToMISA(
  */
 export async function exportPurchaseInvoicesToMISA(
   fromDate: Date,
-  toDate: Date
+  toDate: Date,
 ): Promise<MISAJournalEntry[]> {
   const invoices = await prisma.purchaseInvoice.findMany({
     where: {
@@ -209,7 +209,7 @@ export async function exportPurchaseInvoicesToMISA(
  */
 export async function exportSalesInvoicesToMISA(
   fromDate: Date,
-  toDate: Date
+  toDate: Date,
 ): Promise<MISAJournalEntry[]> {
   const invoices = await prisma.salesInvoice.findMany({
     where: {
@@ -303,7 +303,7 @@ export function generateMISACSV(entries: MISAJournalEntry[]): string {
       `"${e.dvt}"`,
       e.soLuong || "",
       e.donGia || "",
-    ].join(",")
+    ].join(","),
   );
 
   return [header, ...rows].join("\n");

@@ -3,13 +3,13 @@
 // API endpoints for getting sales orders for MRP planning
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
-import { checkReadEndpointLimit } from '@/lib/rate-limit';
-import { withAuth } from '@/lib/api/with-auth';
+import { checkReadEndpointLimit } from "@/lib/rate-limit";
+import { withAuth } from "@/lib/api/with-auth";
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -26,24 +26,24 @@ interface MRPResponse {
 // =============================================================================
 
 export const GET = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const fromDate = searchParams.get('fromDate');
-    const toDate = searchParams.get('toDate');
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+    const fromDate = searchParams.get("fromDate");
+    const toDate = searchParams.get("toDate");
 
     // Build where clause dynamically
     const where: Prisma.SalesOrderWhereInput = {};
 
     // Filter by status - default to confirmed and in_production orders for MRP
     if (status) {
-      where.status = { in: status.split(',') };
+      where.status = { in: status.split(",") };
     } else {
-      where.status = { in: ['confirmed', 'in_production', 'pending'] };
+      where.status = { in: ["confirmed", "in_production", "pending"] };
     }
 
     // Filter by date range
@@ -79,12 +79,12 @@ const { searchParams } = new URL(request.url);
           },
         },
       },
-      orderBy: { requiredDate: 'asc' },
+      orderBy: { requiredDate: "asc" },
       take: 1000,
     });
 
     // Transform to match expected format
-    const formattedOrders = orders.map(order => ({
+    const formattedOrders = orders.map((order) => ({
       id: order.id,
       orderNumber: order.orderNumber,
       customer: {
@@ -92,14 +92,16 @@ const { searchParams } = new URL(request.url);
         name: order.customer.name,
         code: order.customer.code,
       },
-      orderDate: order.orderDate.toISOString().split('T')[0],
-      requiredDate: order.requiredDate.toISOString().split('T')[0],
-      promisedDate: order.promisedDate?.toISOString().split('T')[0],
+      orderDate: order.orderDate.toISOString().split("T")[0],
+      requiredDate: order.requiredDate.toISOString().split("T")[0],
+      promisedDate: order.promisedDate?.toISOString().split("T")[0],
       status: order.status.charAt(0).toUpperCase() + order.status.slice(1),
       priority: order.priority,
-      totalValue: order.totalAmount || order.lines.reduce((sum, line) => sum + (line.lineTotal || 0), 0),
+      totalValue:
+        order.totalAmount ||
+        order.lines.reduce((sum, line) => sum + (line.lineTotal || 0), 0),
       currency: order.currency,
-      items: order.lines.map(line => ({
+      items: order.lines.map((line) => ({
         id: line.id,
         productId: line.productId,
         partNumber: line.product.sku,
@@ -113,10 +115,12 @@ const { searchParams } = new URL(request.url);
 
     return NextResponse.json({ success: true, data: formattedOrders });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'GET /api/mrp/sales-orders' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "GET /api/mrp/sales-orders",
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch sales orders' },
-      { status: 500 }
+      { success: false, error: "Failed to fetch sales orders" },
+      { status: 500 },
     );
   }
 });

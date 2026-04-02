@@ -3,9 +3,9 @@
  * Import and call these functions from entity creation API routes
  */
 
-import { workflowEngine } from './workflow-engine';
-import { WorkflowEntityType } from '@prisma/client';
-import { logger } from '@/lib/logger';
+import { workflowEngine } from "./workflow-engine";
+import { WorkflowEntityType } from ".prisma/mrp-client";
+import { logger } from "@/lib/logger";
 
 interface TriggerResult {
   triggered: boolean;
@@ -25,12 +25,12 @@ export async function triggerPurchaseOrderWorkflow(
     supplierName?: string;
     lineCount?: number;
     priority?: string;
-  }
+  },
 ): Promise<TriggerResult> {
   try {
     const result = await workflowEngine.startWorkflow({
-      workflowCode: 'PO_APPROVAL',
-      entityType: 'PURCHASE_ORDER' as WorkflowEntityType,
+      workflowCode: "PO_APPROVAL",
+      entityType: "PURCHASE_ORDER" as WorkflowEntityType,
       entityId: poId,
       initiatedBy: userId,
       contextData: {
@@ -44,8 +44,11 @@ export async function triggerPurchaseOrderWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'PO' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "PO",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }
 
@@ -62,12 +65,12 @@ export async function triggerNCRWorkflow(
     workOrderId?: string;
     defectType?: string;
     quantity?: number;
-  }
+  },
 ): Promise<TriggerResult> {
   try {
     const result = await workflowEngine.startWorkflow({
-      workflowCode: 'NCR_REVIEW',
-      entityType: 'NCR' as WorkflowEntityType,
+      workflowCode: "NCR_REVIEW",
+      entityType: "NCR" as WorkflowEntityType,
       entityId: ncrId,
       initiatedBy: userId,
       contextData,
@@ -78,8 +81,11 @@ export async function triggerNCRWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'NCR' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "NCR",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }
 
@@ -90,16 +96,16 @@ export async function triggerCAPAWorkflow(
   capaId: string,
   userId: string,
   contextData: {
-    type: 'corrective' | 'preventive';
+    type: "corrective" | "preventive";
     priority: string;
     ncrId?: string;
     rootCause?: string;
-  }
+  },
 ): Promise<TriggerResult> {
   try {
     const result = await workflowEngine.startWorkflow({
-      workflowCode: 'CAPA_APPROVAL',
-      entityType: 'CAPA' as WorkflowEntityType,
+      workflowCode: "CAPA_APPROVAL",
+      entityType: "CAPA" as WorkflowEntityType,
       entityId: capaId,
       initiatedBy: userId,
       contextData,
@@ -110,8 +116,11 @@ export async function triggerCAPAWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'CAPA' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "CAPA",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }
 
@@ -127,12 +136,12 @@ export async function triggerWorkOrderWorkflow(
     quantity: number;
     priority?: string;
     plannedStart?: string;
-  }
+  },
 ): Promise<TriggerResult> {
   try {
     const result = await workflowEngine.startWorkflow({
-      workflowCode: 'WO_RELEASE',
-      entityType: 'WORK_ORDER' as WorkflowEntityType,
+      workflowCode: "WO_RELEASE",
+      entityType: "WORK_ORDER" as WorkflowEntityType,
       entityId: woId,
       initiatedBy: userId,
       contextData,
@@ -143,8 +152,11 @@ export async function triggerWorkOrderWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'WO' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "WO",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }
 
@@ -160,17 +172,20 @@ export async function triggerSalesOrderWorkflow(
     customerName?: string;
     discount?: number;
     creditLimit?: number;
-  }
+  },
 ): Promise<TriggerResult> {
   // Only trigger if there's a significant discount
   if (!contextData.discount || contextData.discount <= 10) {
-    return { triggered: false, error: 'No workflow required (discount <= 10%)' };
+    return {
+      triggered: false,
+      error: "No workflow required (discount <= 10%)",
+    };
   }
 
   try {
     const result = await workflowEngine.startWorkflow({
-      workflowCode: 'SO_APPROVAL',
-      entityType: 'SALES_ORDER' as WorkflowEntityType,
+      workflowCode: "SO_APPROVAL",
+      entityType: "SALES_ORDER" as WorkflowEntityType,
       entityId: soId,
       initiatedBy: userId,
       contextData: {
@@ -185,8 +200,11 @@ export async function triggerSalesOrderWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'SO' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "SO",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }
 
@@ -199,21 +217,21 @@ export async function triggerInventoryAdjustmentWorkflow(
   contextData: {
     partId: string;
     partNumber?: string;
-    adjustmentType: 'increase' | 'decrease' | 'correction';
+    adjustmentType: "increase" | "decrease" | "correction";
     quantity: number;
     value: number;
     reason?: string;
-  }
+  },
 ): Promise<TriggerResult> {
   // Only trigger for adjustments above threshold
   if (contextData.value < 1000) {
-    return { triggered: false, error: 'No workflow required (value < 1000)' };
+    return { triggered: false, error: "No workflow required (value < 1000)" };
   }
 
   try {
     const result = await workflowEngine.startWorkflow({
-      workflowCode: 'INV_ADJUSTMENT',
-      entityType: 'INVENTORY_ADJUSTMENT' as WorkflowEntityType,
+      workflowCode: "INV_ADJUSTMENT",
+      entityType: "INVENTORY_ADJUSTMENT" as WorkflowEntityType,
       entityId: adjustmentId,
       initiatedBy: userId,
       contextData,
@@ -224,8 +242,11 @@ export async function triggerInventoryAdjustmentWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'Inventory' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "Inventory",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }
 
@@ -241,12 +262,12 @@ export async function triggerEngineeringChangeWorkflow(
     affectedBoms?: string[];
     reason: string;
     priority?: string;
-  }
+  },
 ): Promise<TriggerResult> {
   try {
     const result = await workflowEngine.startWorkflow({
-      workflowCode: 'ECO_APPROVAL',
-      entityType: 'ENGINEERING_CHANGE' as WorkflowEntityType,
+      workflowCode: "ECO_APPROVAL",
+      entityType: "ENGINEERING_CHANGE" as WorkflowEntityType,
       entityId: ecoId,
       initiatedBy: userId,
       contextData,
@@ -257,8 +278,11 @@ export async function triggerEngineeringChangeWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'ECO' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "ECO",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }
 
@@ -270,7 +294,7 @@ export async function triggerWorkflow(
   entityType: WorkflowEntityType,
   entityId: string,
   userId: string,
-  contextData?: Record<string, unknown>
+  contextData?: Record<string, unknown>,
 ): Promise<TriggerResult> {
   try {
     const result = await workflowEngine.startWorkflow({
@@ -286,7 +310,10 @@ export async function triggerWorkflow(
     }
     return { triggered: false, error: result.error };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'workflow-triggers', trigger: 'Generic' });
-    return { triggered: false, error: 'Failed to trigger workflow' };
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "workflow-triggers",
+      trigger: "Generic",
+    });
+    return { triggered: false, error: "Failed to trigger workflow" };
   }
 }

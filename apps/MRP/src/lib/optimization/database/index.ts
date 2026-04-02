@@ -3,11 +3,11 @@
 // Production-ready database utilities for high-volume data
 // =============================================================================
 
-import { PrismaClient, Prisma } from '@prisma/client';
-import { logger } from '@/lib/logger';
+import { PrismaClient, Prisma } from ".prisma/mrp-client";
+import { logger } from "@/lib/logger";
 
 // Re-export the existing Prisma instance from the project
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 export { prisma };
 
 // =============================================================================
@@ -16,17 +16,25 @@ export { prisma };
 
 /** Represents a Prisma model delegate with createMany capability */
 interface PrismaCreateManyDelegate {
-  createMany(args: { data: Record<string, unknown>[]; skipDuplicates?: boolean }): Prisma.PrismaPromise<{ count: number }>;
+  createMany(args: {
+    data: Record<string, unknown>[];
+    skipDuplicates?: boolean;
+  }): Prisma.PrismaPromise<{ count: number }>;
 }
 
 /** Represents a Prisma model delegate with update capability */
 interface PrismaUpdateDelegate {
-  update(args: { where: { id: string }; data: Record<string, unknown> }): Prisma.PrismaPromise<unknown>;
+  update(args: {
+    where: { id: string };
+    data: Record<string, unknown>;
+  }): Prisma.PrismaPromise<unknown>;
 }
 
 /** Represents a Prisma model delegate with deleteMany capability */
 interface PrismaDeleteManyDelegate {
-  deleteMany(args: { where: { id: { in: string[] } } }): Prisma.PrismaPromise<{ count: number }>;
+  deleteMany(args: {
+    where: { id: { in: string[] } };
+  }): Prisma.PrismaPromise<{ count: number }>;
 }
 
 /** Represents a Prisma model delegate with findMany capability */
@@ -57,7 +65,7 @@ export interface BatchOptions {
 export async function batchProcess<T, R>(
   items: T[],
   processor: (batch: T[]) => Promise<R[]>,
-  options: BatchOptions = {}
+  options: BatchOptions = {},
 ): Promise<{ results: R[]; errors: Array<{ item: T; error: Error }> }> {
   const {
     batchSize = 100,
@@ -72,13 +80,13 @@ export async function batchProcess<T, R>(
 
   for (let i = 0; i < items.length; i += batchSize) {
     const batch = items.slice(i, i + batchSize);
-    
+
     try {
       const batchResults = await processor(batch);
       results.push(...batchResults);
     } catch (error) {
       if (continueOnError) {
-        batch.forEach(item => {
+        batch.forEach((item) => {
           errors.push({ item, error: error as Error });
           onError?.(error as Error, item);
         });
@@ -99,17 +107,17 @@ export async function batchProcess<T, R>(
 export async function batchCreate<T extends Record<string, unknown>>(
   model: PrismaCreateManyDelegate,
   data: T[],
-  options: BatchOptions & { skipDuplicates?: boolean } = {}
+  options: BatchOptions & { skipDuplicates?: boolean } = {},
 ): Promise<{ created: number; skipped: number; errors: number }> {
   const { batchSize = 100, skipDuplicates = true } = options;
-  
+
   let created = 0;
   let skipped = 0;
   let errors = 0;
 
   for (let i = 0; i < data.length; i += batchSize) {
     const batch = data.slice(i, i + batchSize);
-    
+
     try {
       const result = await model.createMany({
         data: batch,
@@ -119,7 +127,14 @@ export async function batchCreate<T extends Record<string, unknown>>(
       skipped += batch.length - result.count;
     } catch (error) {
       errors += batch.length;
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'database-optimization', operation: 'batchCreate', index: i });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          context: "database-optimization",
+          operation: "batchCreate",
+          index: i,
+        },
+      );
     }
 
     options.onProgress?.(Math.min(i + batchSize, data.length), data.length);
@@ -131,33 +146,45 @@ export async function batchCreate<T extends Record<string, unknown>>(
 /**
  * Batch update with transactions
  */
-export async function batchUpdate<T extends { id: string; [key: string]: unknown }>(
+export async function batchUpdate<
+  T extends { id: string; [key: string]: unknown },
+>(
   model: PrismaUpdateDelegate,
   updates: T[],
-  options: BatchOptions = {}
+  options: BatchOptions = {},
 ): Promise<{ updated: number; errors: number }> {
   const { batchSize = 50 } = options;
-  
+
   let updated = 0;
   let errors = 0;
 
   for (let i = 0; i < updates.length; i += batchSize) {
     const batch = updates.slice(i, i + batchSize);
-    
+
     try {
       await prisma.$transaction(
-        batch.map(item => {
+        batch.map((item) => {
           const { id, ...data } = item;
           return model.update({ where: { id }, data });
-        })
+        }),
       );
       updated += batch.length;
     } catch (error) {
       errors += batch.length;
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'database-optimization', operation: 'batchUpdate', index: i });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          context: "database-optimization",
+          operation: "batchUpdate",
+          index: i,
+        },
+      );
     }
 
-    options.onProgress?.(Math.min(i + batchSize, updates.length), updates.length);
+    options.onProgress?.(
+      Math.min(i + batchSize, updates.length),
+      updates.length,
+    );
   }
 
   return { updated, errors };
@@ -169,16 +196,16 @@ export async function batchUpdate<T extends { id: string; [key: string]: unknown
 export async function batchDelete(
   model: PrismaDeleteManyDelegate,
   ids: string[],
-  options: BatchOptions = {}
+  options: BatchOptions = {},
 ): Promise<{ deleted: number; errors: number }> {
   const { batchSize = 100 } = options;
-  
+
   let deleted = 0;
   let errors = 0;
 
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
-    
+
     try {
       const result = await model.deleteMany({
         where: { id: { in: batch } },
@@ -186,7 +213,14 @@ export async function batchDelete(
       deleted += result.count;
     } catch (error) {
       errors += batch.length;
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'database-optimization', operation: 'batchDelete', index: i });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          context: "database-optimization",
+          operation: "batchDelete",
+          index: i,
+        },
+      );
     }
 
     options.onProgress?.(Math.min(i + batchSize, ids.length), ids.length);
@@ -202,7 +236,7 @@ export async function batchDelete(
 export interface CursorPaginationOptions {
   cursor?: string;
   take?: number;
-  orderBy?: Record<string, 'asc' | 'desc'>;
+  orderBy?: Record<string, "asc" | "desc">;
 }
 
 export interface CursorPaginationResult<T> {
@@ -218,9 +252,9 @@ export interface CursorPaginationResult<T> {
 export async function cursorPaginate<T extends { id: string }>(
   model: PrismaFindManyDelegate,
   where: Record<string, unknown> = {},
-  options: CursorPaginationOptions = {}
+  options: CursorPaginationOptions = {},
 ): Promise<CursorPaginationResult<T>> {
-  const { cursor, take = 20, orderBy = { createdAt: 'desc' } } = options;
+  const { cursor, take = 20, orderBy = { createdAt: "desc" } } = options;
 
   const queryOptions: Record<string, unknown> = {
     where,
@@ -248,7 +282,7 @@ export async function cursorPaginate<T extends { id: string }>(
 export interface StreamOptions {
   batchSize?: number;
   where?: Record<string, unknown>;
-  orderBy?: Record<string, 'asc' | 'desc'>;
+  orderBy?: Record<string, "asc" | "desc">;
   select?: Record<string, boolean>;
 }
 
@@ -257,9 +291,14 @@ export interface StreamOptions {
  */
 export async function* streamRecords<T extends { id: string }>(
   model: PrismaFindManyDelegate,
-  options: StreamOptions = {}
+  options: StreamOptions = {},
 ): AsyncGenerator<T[], void, unknown> {
-  const { batchSize = 1000, where = {}, orderBy = { id: 'asc' }, select } = options;
+  const {
+    batchSize = 1000,
+    where = {},
+    orderBy = { id: "asc" },
+    select,
+  } = options;
   let cursor: string | undefined;
 
   while (true) {
@@ -293,14 +332,16 @@ export async function* streamRecords<T extends { id: string }>(
 export async function exportToStream(
   model: PrismaFindManyDelegate,
   writeStream: NodeJS.WritableStream,
-  options: StreamOptions & { transform?: (item: Record<string, unknown>) => string } = {}
+  options: StreamOptions & {
+    transform?: (item: Record<string, unknown>) => string;
+  } = {},
 ): Promise<{ count: number }> {
   const { transform = JSON.stringify } = options;
   let count = 0;
 
   for await (const batch of streamRecords(model, options)) {
     for (const item of batch) {
-      writeStream.write(transform(item) + '\n');
+      writeStream.write(transform(item) + "\n");
       count++;
     }
   }
@@ -317,10 +358,13 @@ export async function exportToStream(
  * Build optimized select clause - only fetch needed fields
  */
 export function buildSelect(fields: string[]): Record<string, boolean> {
-  return fields.reduce((acc, field) => {
-    acc[field] = true;
-    return acc;
-  }, {} as Record<string, boolean>);
+  return fields.reduce(
+    (acc, field) => {
+      acc[field] = true;
+      return acc;
+    },
+    {} as Record<string, boolean>,
+  );
 }
 
 /**
@@ -328,19 +372,19 @@ export function buildSelect(fields: string[]): Record<string, boolean> {
  */
 export function buildSearchConditions(
   search: string,
-  fields: string[]
+  fields: string[],
 ): Record<string, unknown> {
   if (!search || search.length < 2) return {};
 
   const searchTerm = search.trim();
-  
+
   // Use startsWith for short searches (better index usage)
   // Use contains for longer searches (more relevant results)
-  const mode = searchTerm.length <= 3 ? 'startsWith' : 'contains';
+  const mode = searchTerm.length <= 3 ? "startsWith" : "contains";
 
   return {
-    OR: fields.map(field => ({
-      [field]: { [mode]: searchTerm, mode: 'insensitive' },
+    OR: fields.map((field) => ({
+      [field]: { [mode]: searchTerm, mode: "insensitive" },
     })),
   };
 }
@@ -351,7 +395,7 @@ export function buildSearchConditions(
 export function buildDateRange(
   field: string,
   from?: Date | string,
-  to?: Date | string
+  to?: Date | string,
 ): Record<string, unknown> {
   const conditions: Record<string, Date> = {};
 
@@ -374,10 +418,10 @@ export async function findManyWithCount<T>(
     where?: Record<string, unknown>;
     select?: Record<string, boolean>;
     include?: Record<string, unknown>;
-    orderBy?: Record<string, 'asc' | 'desc'>;
+    orderBy?: Record<string, "asc" | "desc">;
     skip?: number;
     take?: number;
-  }
+  },
 ): Promise<{ data: T[]; total: number }> {
   const { where = {}, ...rest } = options;
 
@@ -402,7 +446,7 @@ export async function checkDatabaseHealth(): Promise<{
   error?: string;
 }> {
   const start = performance.now();
-  
+
   try {
     await prisma.$queryRaw`SELECT 1`;
     return {
@@ -434,7 +478,10 @@ export async function reconnectDatabase(): Promise<boolean> {
     await prisma.$connect();
     return true;
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'database-optimization', operation: 'reconnectDatabase' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "database-optimization",
+      operation: "reconnectDatabase",
+    });
     return false;
   }
 }
@@ -445,7 +492,7 @@ export async function reconnectDatabase(): Promise<boolean> {
 
 export type TransactionClient = Omit<
   PrismaClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
 >;
 
 /**
@@ -453,12 +500,12 @@ export type TransactionClient = Omit<
  */
 export async function executeWithRetry<T>(
   operation: () => Promise<T>,
-  options: { maxRetries?: number; delay?: number } = {}
+  options: { maxRetries?: number; delay?: number } = {},
 ): Promise<T> {
   const { maxRetries = 3, delay = 100 } = options;
-  
+
   let lastError: Error | undefined;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
@@ -468,19 +515,19 @@ export async function executeWithRetry<T>(
       // Check for deadlock or serialization failure
       const prismaErr = error as { code?: string; message?: string };
       const isRetryable =
-        prismaErr.code === 'P2034' || // Transaction failed due to serialization failure
-        prismaErr.code === '40001' || // Serialization failure (PostgreSQL)
-        prismaErr.message?.includes('deadlock');
-      
+        prismaErr.code === "P2034" || // Transaction failed due to serialization failure
+        prismaErr.code === "40001" || // Serialization failure (PostgreSQL)
+        prismaErr.message?.includes("deadlock");
+
       if (!isRetryable || attempt === maxRetries) {
         throw error;
       }
-      
+
       // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+      await new Promise((resolve) => setTimeout(resolve, delay * attempt));
     }
   }
-  
+
   throw lastError;
 }
 
@@ -489,10 +536,10 @@ export async function executeWithRetry<T>(
  */
 export async function safeTransaction<T>(
   operations: (tx: TransactionClient) => Promise<T>,
-  options: { timeout?: number; maxWait?: number } = {}
+  options: { timeout?: number; maxWait?: number } = {},
 ): Promise<T> {
   const { timeout = 10000, maxWait = 5000 } = options;
-  
+
   return prisma.$transaction(operations, {
     timeout,
     maxWait,
@@ -511,7 +558,7 @@ export async function bulkUpsert<T extends Record<string, unknown>>(
   tableName: string,
   data: T[],
   uniqueFields: string[],
-  updateFields: string[]
+  updateFields: string[],
 ): Promise<{ affected: number }> {
   if (data.length === 0) return { affected: 0 };
 
@@ -530,21 +577,23 @@ export async function bulkUpsert<T extends Record<string, unknown>>(
 
   // Build parameterized values
   const params: unknown[] = [];
-  const valuePlaceholders = data.map(item => {
-    const placeholders = fields.map(f => {
-      params.push(item[f] ?? null);
-      return `$${params.length}`;
-    });
-    return `(${placeholders.join(', ')})`;
-  }).join(',\n');
+  const valuePlaceholders = data
+    .map((item) => {
+      const placeholders = fields.map((f) => {
+        params.push(item[f] ?? null);
+        return `$${params.length}`;
+      });
+      return `(${placeholders.join(", ")})`;
+    })
+    .join(",\n");
 
-  const conflictFields = uniqueFields.map(f => `"${f}"`).join(', ');
+  const conflictFields = uniqueFields.map((f) => `"${f}"`).join(", ");
   const updateClause = updateFields
-    .map(f => `"${f}" = EXCLUDED."${f}"`)
-    .join(', ');
+    .map((f) => `"${f}" = EXCLUDED."${f}"`)
+    .join(", ");
 
   const sql = `
-    INSERT INTO "${tableName}" (${fields.map(f => `"${f}"`).join(', ')})
+    INSERT INTO "${tableName}" (${fields.map((f) => `"${f}"`).join(", ")})
     VALUES ${valuePlaceholders}
     ON CONFLICT (${conflictFields}) DO UPDATE SET
     ${updateClause},

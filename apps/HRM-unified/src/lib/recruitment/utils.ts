@@ -1,30 +1,33 @@
-import { db } from '@/lib/db'
-import type { AuditAction } from '@prisma/client'
-import type { AuditContext } from '@/types/audit'
+import { db } from "@/lib/db";
+import type { AuditAction } from ".prisma/hrm-unified-client";
+import type { AuditContext } from "@/types/audit";
 
 export function slugify(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
-export async function generateUniqueSlug(tenantId: string, title: string): Promise<string> {
-  const baseSlug = slugify(title)
-  let slug = baseSlug
-  let counter = 1
+export async function generateUniqueSlug(
+  tenantId: string,
+  title: string,
+): Promise<string> {
+  const baseSlug = slugify(title);
+  let slug = baseSlug;
+  let counter = 1;
 
   while (true) {
     const existing = await db.jobPosting.findUnique({
       where: { tenantId_slug: { tenantId, slug } },
-    })
-    if (!existing) return slug
-    slug = `${baseSlug}-${counter}`
-    counter++
+    });
+    if (!existing) return slug;
+    slug = `${baseSlug}-${counter}`;
+    counter++;
   }
 }
 
@@ -34,7 +37,7 @@ export async function createAuditLog(
   entityType: string,
   entityId: string,
   entityName?: string,
-  changes?: Record<string, unknown>
+  changes?: Record<string, unknown>,
 ) {
   await db.auditLog.create({
     data: {
@@ -49,20 +52,48 @@ export async function createAuditLog(
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
     },
-  })
+  });
 }
 
 export const audit = {
-  async create(ctx: AuditContext, entityType: string, entityId: string, entityName?: string) {
-    await createAuditLog(ctx, 'CREATE', entityType, entityId, entityName)
+  async create(
+    ctx: AuditContext,
+    entityType: string,
+    entityId: string,
+    entityName?: string,
+  ) {
+    await createAuditLog(ctx, "CREATE", entityType, entityId, entityName);
   },
-  async update(ctx: AuditContext, entityType: string, entityId: string, changes?: Record<string, unknown>, entityName?: string) {
-    await createAuditLog(ctx, 'UPDATE', entityType, entityId, entityName, changes)
+  async update(
+    ctx: AuditContext,
+    entityType: string,
+    entityId: string,
+    changes?: Record<string, unknown>,
+    entityName?: string,
+  ) {
+    await createAuditLog(
+      ctx,
+      "UPDATE",
+      entityType,
+      entityId,
+      entityName,
+      changes,
+    );
   },
-  async approve(ctx: AuditContext, entityType: string, entityId: string, entityName?: string) {
-    await createAuditLog(ctx, 'APPROVE', entityType, entityId, entityName)
+  async approve(
+    ctx: AuditContext,
+    entityType: string,
+    entityId: string,
+    entityName?: string,
+  ) {
+    await createAuditLog(ctx, "APPROVE", entityType, entityId, entityName);
   },
-  async reject(ctx: AuditContext, entityType: string, entityId: string, entityName?: string) {
-    await createAuditLog(ctx, 'REJECT', entityType, entityId, entityName)
+  async reject(
+    ctx: AuditContext,
+    entityType: string,
+    entityId: string,
+    entityName?: string,
+  ) {
+    await createAuditLog(ctx, "REJECT", entityType, entityId, entityName);
   },
-}
+};

@@ -1,24 +1,24 @@
-import { db } from '@/lib/db'
-import type { InterviewType, InterviewResult } from '@prisma/client'
+import { db } from "@/lib/db";
+import type { InterviewType, InterviewResult } from ".prisma/hrm-ai-client";
 
 export async function createInterview(
   tenantId: string,
   data: {
-    applicationId: string
-    interviewType: string
-    round?: number
-    scheduledAt: Date
-    duration?: number
-    location?: string
-    interviewerIds: string[]
+    applicationId: string;
+    interviewType: string;
+    round?: number;
+    scheduledAt: Date;
+    duration?: number;
+    location?: string;
+    interviewerIds: string[];
   },
-  userId: string
+  userId: string,
 ) {
   const existingInterviews = await db.interview.count({
     where: { applicationId: data.applicationId },
-  })
+  });
 
-  const round = data.round || existingInterviews + 1
+  const round = data.round || existingInterviews + 1;
 
   const interview = await db.interview.create({
     data: {
@@ -30,42 +30,42 @@ export async function createInterview(
       duration: data.duration || 60,
       location: data.location,
       interviewerIds: data.interviewerIds,
-      result: 'PENDING',
+      result: "PENDING",
     },
-  })
+  });
 
   await db.applicationActivity.create({
     data: {
       applicationId: data.applicationId,
-      action: 'interview_scheduled',
+      action: "interview_scheduled",
       description: `Đã lên lịch phỏng vấn vòng ${round}`,
       performedById: userId,
     },
-  })
+  });
 
-  return interview
+  return interview;
 }
 
 export async function getInterviews(
   tenantId: string,
   filters?: {
-    applicationId?: string
-    interviewerId?: string
-    startDate?: Date
-    endDate?: Date
-    result?: string
-  }
+    applicationId?: string;
+    interviewerId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    result?: string;
+  },
 ) {
-  const where: Record<string, unknown> = { tenantId }
+  const where: Record<string, unknown> = { tenantId };
 
-  if (filters?.applicationId) where.applicationId = filters.applicationId
-  if (filters?.result) where.result = filters.result
+  if (filters?.applicationId) where.applicationId = filters.applicationId;
+  if (filters?.result) where.result = filters.result;
 
   if (filters?.startDate || filters?.endDate) {
-    const scheduledAt: { gte?: Date; lte?: Date } = {}
-    if (filters.startDate) scheduledAt.gte = filters.startDate
-    if (filters.endDate) scheduledAt.lte = filters.endDate
-    where.scheduledAt = scheduledAt
+    const scheduledAt: { gte?: Date; lte?: Date } = {};
+    if (filters.startDate) scheduledAt.gte = filters.startDate;
+    if (filters.endDate) scheduledAt.lte = filters.endDate;
+    where.scheduledAt = scheduledAt;
   }
 
   const interviews = await db.interview.findMany({
@@ -83,16 +83,16 @@ export async function getInterviews(
         },
       },
     },
-    orderBy: { scheduledAt: 'asc' },
-  })
+    orderBy: { scheduledAt: "asc" },
+  });
 
   if (filters?.interviewerId) {
-    return interviews.filter(i =>
-      (i.interviewerIds as string[]).includes(filters.interviewerId!)
-    )
+    return interviews.filter((i) =>
+      (i.interviewerIds as string[]).includes(filters.interviewerId!),
+    );
   }
 
-  return interviews
+  return interviews;
 }
 
 export async function getInterviewById(id: string, tenantId: string) {
@@ -111,7 +111,7 @@ export async function getInterviewById(id: string, tenantId: string) {
         },
       },
     },
-  })
+  });
 }
 
 export async function updateInterviewResult(
@@ -119,31 +119,31 @@ export async function updateInterviewResult(
   tenantId: string,
   result: string,
   notes?: string,
-  userId?: string
+  userId?: string,
 ) {
   const interview = await db.interview.findFirst({
     where: { id, tenantId },
-  })
+  });
 
-  if (!interview) return null
+  if (!interview) return null;
 
   const updated = await db.interview.update({
     where: { id },
     data: { result: result as InterviewResult, notes },
-  })
+  });
 
   if (userId) {
     await db.applicationActivity.create({
       data: {
         applicationId: interview.applicationId,
-        action: 'interview_result',
+        action: "interview_result",
         description: `Kết quả phỏng vấn vòng ${interview.round}: ${result}`,
         performedById: userId,
       },
-    })
+    });
   }
 
-  return updated
+  return updated;
 }
 
 export async function rescheduleInterview(
@@ -151,41 +151,41 @@ export async function rescheduleInterview(
   tenantId: string,
   newScheduledAt: Date,
   reason?: string,
-  userId?: string
+  userId?: string,
 ) {
   const interview = await db.interview.findFirst({
     where: { id, tenantId },
-  })
+  });
 
-  if (!interview) return null
+  if (!interview) return null;
 
   const updated = await db.interview.update({
     where: { id },
     data: {
       scheduledAt: newScheduledAt,
-      result: 'RESCHEDULED',
+      result: "RESCHEDULED",
     },
-  })
+  });
 
   if (userId) {
     await db.applicationActivity.create({
       data: {
         applicationId: interview.applicationId,
-        action: 'interview_rescheduled',
-        description: `Dời lịch phỏng vấn vòng ${interview.round}${reason ? `: ${reason}` : ''}`,
+        action: "interview_rescheduled",
+        description: `Dời lịch phỏng vấn vòng ${interview.round}${reason ? `: ${reason}` : ""}`,
         performedById: userId,
       },
-    })
+    });
   }
 
-  return updated
+  return updated;
 }
 
 export async function getCalendarEvents(
   tenantId: string,
   userId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ) {
   const interviews = await db.interview.findMany({
     where: {
@@ -200,11 +200,11 @@ export async function getCalendarEvents(
         },
       },
     },
-  })
+  });
 
   return interviews
-    .filter(i => (i.interviewerIds as string[]).includes(userId))
-    .map(i => ({
+    .filter((i) => (i.interviewerIds as string[]).includes(userId))
+    .map((i) => ({
       id: i.id,
       title: `PV: ${i.application.candidate.fullName} - ${i.application.requisition.title}`,
       start: i.scheduledAt,
@@ -214,5 +214,5 @@ export async function getCalendarEvents(
       location: i.location,
       candidate: i.application.candidate,
       result: i.result,
-    }))
+    }));
 }

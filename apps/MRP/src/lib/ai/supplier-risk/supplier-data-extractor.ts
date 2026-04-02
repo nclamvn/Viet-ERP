@@ -3,8 +3,8 @@
 // Extracts and prepares supplier data for risk analysis
 // =============================================================================
 
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { Prisma } from ".prisma/mrp-client";
 
 // =============================================================================
 // PRISMA RESULT TYPES
@@ -186,7 +186,7 @@ export interface PriceChangeEvent {
   oldPrice: number;
   newPrice: number;
   changePercent: number;
-  type: 'increase' | 'decrease';
+  type: "increase" | "decrease";
 }
 
 export interface OrderHistoryData {
@@ -352,7 +352,7 @@ export class SupplierDataExtractor {
    */
   async extractDeliveryPerformance(
     supplierId: string,
-    months: number = 12
+    months: number = 12,
   ): Promise<DeliveryPerformanceData | null> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
@@ -368,9 +368,9 @@ export class SupplierDataExtractor {
       where: {
         supplierId,
         orderDate: { gte: startDate },
-        status: { in: ['received', 'completed', 'partial'] },
+        status: { in: ["received", "completed", "partial"] },
       },
-      orderBy: { orderDate: 'desc' },
+      orderBy: { orderDate: "desc" },
     });
 
     // Calculate delivery metrics
@@ -382,14 +382,15 @@ export class SupplierDataExtractor {
     let lateCount = 0;
     let earlyCount = 0;
 
-    const worstPerformance: DeliveryPerformanceData['worstPerformance'] = [];
+    const worstPerformance: DeliveryPerformanceData["worstPerformance"] = [];
 
     for (const order of orders) {
       // Use updatedAt as proxy for received date if not explicitly tracked
       const receivedDate = order.updatedAt;
       const expectedDate = order.expectedDate;
       const daysDiff = Math.floor(
-        (receivedDate.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24)
+        (receivedDate.getTime() - expectedDate.getTime()) /
+          (1000 * 60 * 60 * 24),
       );
 
       if (daysDiff <= 0) {
@@ -420,7 +421,8 @@ export class SupplierDataExtractor {
     worstPerformance.sort((a, b) => b.daysLate - a.daysLate);
 
     const totalOrders = orders.length;
-    const onTimeRate = totalOrders > 0 ? (onTimeOrders / totalOrders) * 100 : 100;
+    const onTimeRate =
+      totalOrders > 0 ? (onTimeOrders / totalOrders) * 100 : 100;
     const avgDaysLate = lateCount > 0 ? totalDaysLate / lateCount : 0;
     const avgDaysEarly = earlyCount > 0 ? totalDaysEarly / earlyCount : 0;
 
@@ -428,11 +430,13 @@ export class SupplierDataExtractor {
     const perfectOrders = orders.filter((o) => {
       const receivedDate = o.updatedAt;
       const daysDiff = Math.floor(
-        (receivedDate.getTime() - o.expectedDate.getTime()) / (1000 * 60 * 60 * 24)
+        (receivedDate.getTime() - o.expectedDate.getTime()) /
+          (1000 * 60 * 60 * 24),
       );
-      return daysDiff <= 0 && o.status === 'completed';
+      return daysDiff <= 0 && o.status === "completed";
     }).length;
-    const perfectOrderRate = totalOrders > 0 ? (perfectOrders / totalOrders) * 100 : 100;
+    const perfectOrderRate =
+      totalOrders > 0 ? (perfectOrders / totalOrders) * 100 : 100;
 
     // Calculate trend by month
     const trend = this.calculateDeliveryTrend(orders, months);
@@ -463,7 +467,11 @@ export class SupplierDataExtractor {
         variance: Math.round((avgActualLeadTime - quotedLeadTime) * 10) / 10,
         variancePercent:
           quotedLeadTime > 0
-            ? Math.round(((avgActualLeadTime - quotedLeadTime) / quotedLeadTime) * 100 * 10) / 10
+            ? Math.round(
+                ((avgActualLeadTime - quotedLeadTime) / quotedLeadTime) *
+                  100 *
+                  10,
+              ) / 10
             : 0,
       },
     };
@@ -474,7 +482,7 @@ export class SupplierDataExtractor {
    */
   async extractQualityHistory(
     supplierId: string,
-    months: number = 12
+    months: number = 12,
   ): Promise<QualityHistoryData | null> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
@@ -500,14 +508,14 @@ export class SupplierDataExtractor {
     const inspections = await prisma.inspection.findMany({
       where: {
         partId: { in: partIds },
-        type: 'RECEIVING',
-        status: 'completed',
+        type: "RECEIVING",
+        status: "completed",
         createdAt: { gte: startDate },
       },
       include: {
         part: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     // Get NCRs for these parts
@@ -519,7 +527,7 @@ export class SupplierDataExtractor {
       include: {
         part: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     // Get CAPAs for these NCRs
@@ -527,31 +535,36 @@ export class SupplierDataExtractor {
     const capas = await prisma.cAPA.findMany({
       where: {
         sourceReference: { in: ncrIds },
-        source: 'NCR',
+        source: "NCR",
       },
     });
 
     // Calculate metrics
     const totalLotsReceived = inspections.length;
-    const acceptedLots = inspections.filter((i) => i.result === 'PASS').length;
-    const rejectedLots = inspections.filter((i) => i.result === 'FAIL').length;
-    const acceptanceRate = totalLotsReceived > 0 ? (acceptedLots / totalLotsReceived) * 100 : 100;
+    const acceptedLots = inspections.filter((i) => i.result === "PASS").length;
+    const rejectedLots = inspections.filter((i) => i.result === "FAIL").length;
+    const acceptanceRate =
+      totalLotsReceived > 0 ? (acceptedLots / totalLotsReceived) * 100 : 100;
 
     const totalNCRs = ncrs.length;
-    const openNCRs = ncrs.filter((n) => !['closed', 'voided'].includes(n.status)).length;
-    const closedNCRs = ncrs.filter((n) => n.status === 'closed').length;
+    const openNCRs = ncrs.filter(
+      (n) => !["closed", "voided"].includes(n.status),
+    ).length;
+    const closedNCRs = ncrs.filter((n) => n.status === "closed").length;
 
     const totalCAPAs = capas.length;
-    const openCAPAs = capas.filter((c) => !['closed', 'completed'].includes(c.status)).length;
+    const openCAPAs = capas.filter(
+      (c) => !["closed", "completed"].includes(c.status),
+    ).length;
 
     // Calculate PPM (Parts Per Million defective)
     const totalQuantityInspected = inspections.reduce(
       (sum, i) => sum + (i.quantityInspected || 0),
-      0
+      0,
     );
     const totalQuantityRejected = inspections.reduce(
       (sum, i) => sum + (i.quantityRejected || 0),
-      0
+      0,
     );
     const ppm =
       totalQuantityInspected > 0
@@ -559,12 +572,13 @@ export class SupplierDataExtractor {
         : 0;
 
     // Avg days to resolve NCR
-    const closedNCRsList = ncrs.filter((n) => n.status === 'closed');
+    const closedNCRsList = ncrs.filter((n) => n.status === "closed");
     const avgDaysToResolveNCR =
       closedNCRsList.length > 0
         ? closedNCRsList.reduce((sum, n) => {
             const days = Math.ceil(
-              (n.updatedAt.getTime() - n.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+              (n.updatedAt.getTime() - n.createdAt.getTime()) /
+                (1000 * 60 * 60 * 24),
             );
             return sum + days;
           }, 0) / closedNCRsList.length
@@ -586,19 +600,23 @@ export class SupplierDataExtractor {
       defectCategory: ncr.defectCategory,
       quantityAffected: ncr.quantityAffected,
       partSku: ncr.part?.partNumber || null,
-      daysOpen: Math.ceil((Date.now() - ncr.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+      daysOpen: Math.ceil(
+        (Date.now() - ncr.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      ),
       disposition: ncr.disposition,
     }));
 
     // Lot quality history
-    const lotQualityHistory: LotQualitySummary[] = inspections.slice(0, 20).map((insp) => ({
-      lotNumber: insp.lotNumber || 'N/A',
-      receivedDate: insp.createdAt,
-      partSku: insp.part?.partNumber || null,
-      quantity: insp.quantityInspected || 0,
-      inspectionResult: insp.result,
-      defectCount: ncrs.filter((n) => n.lotNumber === insp.lotNumber).length,
-    }));
+    const lotQualityHistory: LotQualitySummary[] = inspections
+      .slice(0, 20)
+      .map((insp) => ({
+        lotNumber: insp.lotNumber || "N/A",
+        receivedDate: insp.createdAt,
+        partSku: insp.part?.partNumber || null,
+        quantity: insp.quantityInspected || 0,
+        inspectionResult: insp.result,
+        defectCount: ncrs.filter((n) => n.lotNumber === insp.lotNumber).length,
+      }));
 
     return {
       supplierId,
@@ -629,7 +647,7 @@ export class SupplierDataExtractor {
    */
   async extractPricingTrends(
     supplierId: string,
-    months: number = 12
+    months: number = 12,
   ): Promise<PricingTrendData | null> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
@@ -653,7 +671,7 @@ export class SupplierDataExtractor {
           },
         },
       },
-      orderBy: { orderDate: 'desc' },
+      orderBy: { orderDate: "desc" },
     });
 
     // Get current part supplier pricing
@@ -665,7 +683,10 @@ export class SupplierDataExtractor {
     // Calculate pricing metrics
     const allLineItems = orders.flatMap((o) => o.lines);
     const unitPrices = allLineItems.map((l) => l.unitPrice);
-    const avgUnitPrice = unitPrices.length > 0 ? unitPrices.reduce((a, b) => a + b, 0) / unitPrices.length : 0;
+    const avgUnitPrice =
+      unitPrices.length > 0
+        ? unitPrices.reduce((a, b) => a + b, 0) / unitPrices.length
+        : 0;
     const minUnitPrice = unitPrices.length > 0 ? Math.min(...unitPrices) : 0;
     const maxUnitPrice = unitPrices.length > 0 ? Math.max(...unitPrices) : 0;
 
@@ -677,7 +698,10 @@ export class SupplierDataExtractor {
     const priceChangePercent = this.calculatePriceChangePercent(orders);
 
     // Competitiveness score (based on price stability and market positioning)
-    const competitivenessScore = this.calculateCompetitivenessScore(priceVariance, avgUnitPrice);
+    const competitivenessScore = this.calculateCompetitivenessScore(
+      priceVariance,
+      avgUnitPrice,
+    );
 
     // Price history by month
     const priceHistory = this.calculatePriceHistory(orders, months);
@@ -713,7 +737,7 @@ export class SupplierDataExtractor {
    */
   async extractOrderHistory(
     supplierId: string,
-    months: number = 12
+    months: number = 12,
   ): Promise<OrderHistoryData | null> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
@@ -737,7 +761,7 @@ export class SupplierDataExtractor {
           },
         },
       },
-      orderBy: { orderDate: 'desc' },
+      orderBy: { orderDate: "desc" },
     });
 
     // Calculate summary metrics
@@ -745,20 +769,23 @@ export class SupplierDataExtractor {
     const totalLineItems = orders.reduce((sum, o) => sum + o.lines.length, 0);
     const totalQuantityOrdered = orders.reduce(
       (sum, o) => sum + o.lines.reduce((s, l) => s + l.quantity, 0),
-      0
+      0,
     );
     const totalQuantityReceived = orders.reduce(
       (sum, o) => sum + o.lines.reduce((s, l) => s + l.receivedQty, 0),
-      0
+      0,
     );
     const fulfillmentRate =
-      totalQuantityOrdered > 0 ? (totalQuantityReceived / totalQuantityOrdered) * 100 : 0;
+      totalQuantityOrdered > 0
+        ? (totalQuantityReceived / totalQuantityOrdered) * 100
+        : 0;
 
     // Average order frequency
     const avgOrderFrequencyDays = this.calculateOrderFrequency(orders);
-    const avgOrderValue = totalOrders > 0
-      ? orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0) / totalOrders
-      : 0;
+    const avgOrderValue =
+      totalOrders > 0
+        ? orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0) / totalOrders
+        : 0;
     const totalSpend = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
     // Status breakdown
@@ -769,14 +796,15 @@ export class SupplierDataExtractor {
 
     // Order history summary
     const orderHistory: OrderSummary[] = orders.slice(0, 20).map((order) => {
-      const receivedDate = ['received', 'completed'].includes(order.status)
+      const receivedDate = ["received", "completed"].includes(order.status)
         ? order.updatedAt
         : null;
       const isLate =
         receivedDate && receivedDate.getTime() > order.expectedDate.getTime();
       const daysDeviation = receivedDate
         ? Math.floor(
-            (receivedDate.getTime() - order.expectedDate.getTime()) / (1000 * 60 * 60 * 24)
+            (receivedDate.getTime() - order.expectedDate.getTime()) /
+              (1000 * 60 * 60 * 24),
           )
         : null;
 
@@ -826,7 +854,7 @@ export class SupplierDataExtractor {
    */
   async extractLeadTimeHistory(
     supplierId: string,
-    months: number = 12
+    months: number = 12,
   ): Promise<LeadTimeHistoryData | null> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
@@ -847,14 +875,14 @@ export class SupplierDataExtractor {
       where: {
         supplierId,
         orderDate: { gte: startDate },
-        status: { in: ['received', 'completed'] },
+        status: { in: ["received", "completed"] },
       },
       include: {
         lines: {
           include: { part: true },
         },
       },
-      orderBy: { orderDate: 'asc' },
+      orderBy: { orderDate: "asc" },
     });
 
     const quotedLeadTimeDays = supplier.leadTimeDays;
@@ -867,10 +895,12 @@ export class SupplierDataExtractor {
     for (const order of orders) {
       const receivedDate = order.updatedAt;
       const actualDays = Math.ceil(
-        (receivedDate.getTime() - order.orderDate.getTime()) / (1000 * 60 * 60 * 24)
+        (receivedDate.getTime() - order.orderDate.getTime()) /
+          (1000 * 60 * 60 * 24),
       );
       const quotedDays = Math.ceil(
-        (order.expectedDate.getTime() - order.orderDate.getTime()) / (1000 * 60 * 60 * 24)
+        (order.expectedDate.getTime() - order.orderDate.getTime()) /
+          (1000 * 60 * 60 * 24),
       );
       const variance = actualDays - quotedDays;
 
@@ -886,12 +916,13 @@ export class SupplierDataExtractor {
       });
 
       // Track outliers (>50% deviation)
-      const deviationPercent = quotedDays > 0 ? (variance / quotedDays) * 100 : 0;
+      const deviationPercent =
+        quotedDays > 0 ? (variance / quotedDays) * 100 : 0;
       if (Math.abs(deviationPercent) > 50) {
         const mainPart = order.lines[0]?.part;
         outliers.push({
           poNumber: order.poNumber,
-          partSku: mainPart?.partNumber || 'Unknown',
+          partSku: mainPart?.partNumber || "Unknown",
           quotedDays,
           actualDays,
           deviationDays: variance,
@@ -902,24 +933,31 @@ export class SupplierDataExtractor {
 
     // Calculate statistics
     const avgActualLeadTime =
-      leadTimes.length > 0 ? leadTimes.reduce((a, b) => a + b, 0) / leadTimes.length : 0;
+      leadTimes.length > 0
+        ? leadTimes.reduce((a, b) => a + b, 0) / leadTimes.length
+        : 0;
     const minActualLeadTime = leadTimes.length > 0 ? Math.min(...leadTimes) : 0;
     const maxActualLeadTime = leadTimes.length > 0 ? Math.max(...leadTimes) : 0;
     const leadTimeVariance = avgActualLeadTime - quotedLeadTimeDays;
     const leadTimeVariancePercent =
-      quotedLeadTimeDays > 0 ? (leadTimeVariance / quotedLeadTimeDays) * 100 : 0;
+      quotedLeadTimeDays > 0
+        ? (leadTimeVariance / quotedLeadTimeDays) * 100
+        : 0;
 
     // Reliability score (higher is better, based on variance)
     const reliabilityScore = Math.max(
       0,
-      100 - Math.abs(leadTimeVariancePercent) - this.calculateStdDev(leadTimes)
+      100 - Math.abs(leadTimeVariancePercent) - this.calculateStdDev(leadTimes),
     );
 
     // Check if trend is improving
     const improvingTrend = this.isLeadTimeImproving(leadTimeHistory);
 
     // Part-level lead times
-    const partLeadTimes = this.calculatePartLeadTimes(supplier.partSuppliers, orders);
+    const partLeadTimes = this.calculatePartLeadTimes(
+      supplier.partSuppliers,
+      orders,
+    );
 
     return {
       supplierId,
@@ -946,7 +984,7 @@ export class SupplierDataExtractor {
    */
   async extractResponseMetrics(
     supplierId: string,
-    months: number = 12
+    months: number = 12,
   ): Promise<ResponseMetricsData | null> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
@@ -968,10 +1006,10 @@ export class SupplierDataExtractor {
     const ncrs = await prisma.nCR.findMany({
       where: {
         partId: { in: partIds },
-        source: 'RECEIVING',
+        source: "RECEIVING",
         createdAt: { gte: startDate },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     // Get CAPAs related to these NCRs
@@ -979,25 +1017,32 @@ export class SupplierDataExtractor {
     const capas = await prisma.cAPA.findMany({
       where: {
         sourceReference: { in: ncrIds },
-        source: 'NCR',
+        source: "NCR",
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     // Calculate NCR resolution metrics
-    const closedNCRs = ncrs.filter((n) => n.status === 'closed');
+    const closedNCRs = ncrs.filter((n) => n.status === "closed");
     const ncrResolutionDays: number[] = closedNCRs.map((n) =>
-      Math.ceil((n.updatedAt.getTime() - n.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+      Math.ceil(
+        (n.updatedAt.getTime() - n.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      ),
     );
     const avgNCRResolutionDays =
       ncrResolutionDays.length > 0
-        ? ncrResolutionDays.reduce((a, b) => a + b, 0) / ncrResolutionDays.length
+        ? ncrResolutionDays.reduce((a, b) => a + b, 0) /
+          ncrResolutionDays.length
         : 0;
 
     // Calculate CAPA closure metrics
-    const closedCAPAs = capas.filter((c) => ['closed', 'completed'].includes(c.status));
+    const closedCAPAs = capas.filter((c) =>
+      ["closed", "completed"].includes(c.status),
+    );
     const capaClosureDays: number[] = closedCAPAs.map((c) =>
-      Math.ceil((c.updatedAt.getTime() - c.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+      Math.ceil(
+        (c.updatedAt.getTime() - c.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      ),
     );
     const avgCAPAClosureDays =
       capaClosureDays.length > 0
@@ -1005,12 +1050,14 @@ export class SupplierDataExtractor {
         : 0;
 
     // Response time analysis
-    const avgResponseTimeDays = (avgNCRResolutionDays + avgCAPAClosureDays) / 2 || 0;
+    const avgResponseTimeDays =
+      (avgNCRResolutionDays + avgCAPAClosureDays) / 2 || 0;
     const fastResponseRate =
       closedNCRs.length > 0
         ? (closedNCRs.filter((n) => {
             const days = Math.ceil(
-              (n.updatedAt.getTime() - n.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+              (n.updatedAt.getTime() - n.createdAt.getTime()) /
+                (1000 * 60 * 60 * 24),
             );
             return days <= 7;
           }).length /
@@ -1022,7 +1069,8 @@ export class SupplierDataExtractor {
       closedNCRs.length > 0
         ? (closedNCRs.filter((n) => {
             const days = Math.ceil(
-              (n.updatedAt.getTime() - n.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+              (n.updatedAt.getTime() - n.createdAt.getTime()) /
+                (1000 * 60 * 60 * 24),
             );
             return days > 30;
           }).length /
@@ -1034,31 +1082,37 @@ export class SupplierDataExtractor {
     const communicationScore = this.calculateCommunicationScore(
       avgNCRResolutionDays,
       avgCAPAClosureDays,
-      fastResponseRate
+      fastResponseRate,
     );
 
     // Resolution history
-    const ncrResolutionHistory: ResolutionHistoryPoint[] = closedNCRs.slice(0, 20).map((n) => ({
-      id: n.id,
-      referenceNumber: n.ncrNumber,
-      openedDate: n.createdAt,
-      closedDate: n.updatedAt,
-      daysToResolve: Math.ceil(
-        (n.updatedAt.getTime() - n.createdAt.getTime()) / (1000 * 60 * 60 * 24)
-      ),
-      priority: n.priority,
-    }));
+    const ncrResolutionHistory: ResolutionHistoryPoint[] = closedNCRs
+      .slice(0, 20)
+      .map((n) => ({
+        id: n.id,
+        referenceNumber: n.ncrNumber,
+        openedDate: n.createdAt,
+        closedDate: n.updatedAt,
+        daysToResolve: Math.ceil(
+          (n.updatedAt.getTime() - n.createdAt.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
+        priority: n.priority,
+      }));
 
-    const capaClosureHistory: ResolutionHistoryPoint[] = closedCAPAs.slice(0, 20).map((c) => ({
-      id: c.id,
-      referenceNumber: c.capaNumber,
-      openedDate: c.createdAt,
-      closedDate: c.updatedAt,
-      daysToResolve: Math.ceil(
-        (c.updatedAt.getTime() - c.createdAt.getTime()) / (1000 * 60 * 60 * 24)
-      ),
-      priority: c.priority,
-    }));
+    const capaClosureHistory: ResolutionHistoryPoint[] = closedCAPAs
+      .slice(0, 20)
+      .map((c) => ({
+        id: c.id,
+        referenceNumber: c.capaNumber,
+        openedDate: c.createdAt,
+        closedDate: c.updatedAt,
+        daysToResolve: Math.ceil(
+          (c.updatedAt.getTime() - c.createdAt.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
+        priority: c.priority,
+      }));
 
     return {
       supplierId,
@@ -1082,7 +1136,7 @@ export class SupplierDataExtractor {
    */
   async extractComprehensiveData(
     supplierId: string,
-    months: number = 12
+    months: number = 12,
   ): Promise<ComprehensiveSupplierData | null> {
     const supplier = await prisma.supplier.findUnique({
       where: { id: supplierId },
@@ -1091,7 +1145,7 @@ export class SupplierDataExtractor {
           include: { part: true },
         },
         purchaseOrders: {
-          orderBy: { orderDate: 'desc' },
+          orderBy: { orderDate: "desc" },
           take: 1,
         },
       },
@@ -1100,14 +1154,15 @@ export class SupplierDataExtractor {
     if (!supplier) return null;
 
     // Extract all data categories in parallel
-    const [delivery, quality, pricing, orders, leadTime, response] = await Promise.all([
-      this.extractDeliveryPerformance(supplierId, months),
-      this.extractQualityHistory(supplierId, months),
-      this.extractPricingTrends(supplierId, months),
-      this.extractOrderHistory(supplierId, months),
-      this.extractLeadTimeHistory(supplierId, months),
-      this.extractResponseMetrics(supplierId, months),
-    ]);
+    const [delivery, quality, pricing, orders, leadTime, response] =
+      await Promise.all([
+        this.extractDeliveryPerformance(supplierId, months),
+        this.extractQualityHistory(supplierId, months),
+        this.extractPricingTrends(supplierId, months),
+        this.extractOrderHistory(supplierId, months),
+        this.extractLeadTimeHistory(supplierId, months),
+        this.extractResponseMetrics(supplierId, months),
+      ]);
 
     // Parts supplied
     const partsSupplied = supplier.partSuppliers.map((ps) => ({
@@ -1128,7 +1183,7 @@ export class SupplierDataExtractor {
       pricing,
       orders,
       leadTime,
-      response
+      response,
     );
 
     return {
@@ -1160,14 +1215,17 @@ export class SupplierDataExtractor {
   // HELPER METHODS
   // =============================================================================
 
-  private calculateDeliveryTrend(orders: PurchaseOrderBase[], months: number): DeliveryTrendPoint[] {
+  private calculateDeliveryTrend(
+    orders: PurchaseOrderBase[],
+    months: number,
+  ): DeliveryTrendPoint[] {
     const trend: DeliveryTrendPoint[] = [];
     const now = new Date();
 
     for (let i = months - 1; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
+      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}`;
 
       const monthOrders = orders.filter((o) => {
         const date = new Date(o.orderDate);
@@ -1181,7 +1239,8 @@ export class SupplierDataExtractor {
       monthOrders.forEach((order) => {
         const receivedDate = order.updatedAt;
         const daysDiff = Math.floor(
-          (receivedDate.getTime() - order.expectedDate.getTime()) / (1000 * 60 * 60 * 24)
+          (receivedDate.getTime() - order.expectedDate.getTime()) /
+            (1000 * 60 * 60 * 24),
         );
         totalDeviation += daysDiff;
 
@@ -1193,8 +1252,10 @@ export class SupplierDataExtractor {
       });
 
       const totalOrders = monthOrders.length;
-      const onTimeRate = totalOrders > 0 ? (onTimeOrders / totalOrders) * 100 : 100;
-      const avgDaysDeviation = totalOrders > 0 ? totalDeviation / totalOrders : 0;
+      const onTimeRate =
+        totalOrders > 0 ? (onTimeOrders / totalOrders) * 100 : 100;
+      const avgDaysDeviation =
+        totalOrders > 0 ? totalDeviation / totalOrders : 0;
 
       trend.push({
         period,
@@ -1213,7 +1274,9 @@ export class SupplierDataExtractor {
     if (orders.length === 0) return 0;
 
     const leadTimes = orders.map((o) =>
-      Math.ceil((o.updatedAt.getTime() - o.orderDate.getTime()) / (1000 * 60 * 60 * 24))
+      Math.ceil(
+        (o.updatedAt.getTime() - o.orderDate.getTime()) / (1000 * 60 * 60 * 24),
+      ),
     );
 
     return leadTimes.reduce((a, b) => a + b, 0) / leadTimes.length;
@@ -1222,7 +1285,7 @@ export class SupplierDataExtractor {
   private createEmptyQualityHistory(
     supplierId: string,
     supplierName: string,
-    months: number
+    months: number,
   ): QualityHistoryData {
     return {
       supplierId,
@@ -1252,7 +1315,7 @@ export class SupplierDataExtractor {
     const categoryMap = new Map<string, { count: number; totalQty: number }>();
 
     ncrs.forEach((ncr) => {
-      const category = ncr.defectCategory || 'Unknown';
+      const category = ncr.defectCategory || "Unknown";
       const existing = categoryMap.get(category) || { count: 0, totalQty: 0 };
       categoryMap.set(category, {
         count: existing.count + 1,
@@ -1265,7 +1328,8 @@ export class SupplierDataExtractor {
       .map(([category, data]) => ({
         category,
         count: data.count,
-        percentage: total > 0 ? Math.round((data.count / total) * 100 * 10) / 10 : 0,
+        percentage:
+          total > 0 ? Math.round((data.count / total) * 100 * 10) / 10 : 0,
         avgQuantityAffected: Math.round((data.totalQty / data.count) * 10) / 10,
       }))
       .sort((a, b) => b.count - a.count);
@@ -1274,7 +1338,7 @@ export class SupplierDataExtractor {
   private calculateQualityTrend(
     inspections: InspectionWithPart[],
     ncrs: NCRWithPart[],
-    months: number
+    months: number,
   ): QualityTrendPoint[] {
     const trend: QualityTrendPoint[] = [];
     const now = new Date();
@@ -1282,7 +1346,7 @@ export class SupplierDataExtractor {
     for (let i = months - 1; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
+      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}`;
 
       const monthInspections = inspections.filter((insp) => {
         const date = new Date(insp.createdAt);
@@ -1295,16 +1359,19 @@ export class SupplierDataExtractor {
       });
 
       const lotsReceived = monthInspections.length;
-      const acceptedLots = monthInspections.filter((i) => i.result === 'PASS').length;
-      const acceptanceRate = lotsReceived > 0 ? (acceptedLots / lotsReceived) * 100 : 100;
+      const acceptedLots = monthInspections.filter(
+        (i) => i.result === "PASS",
+      ).length;
+      const acceptanceRate =
+        lotsReceived > 0 ? (acceptedLots / lotsReceived) * 100 : 100;
 
       const totalQtyInspected = monthInspections.reduce(
         (sum, i) => sum + (i.quantityInspected || 0),
-        0
+        0,
       );
       const totalQtyRejected = monthInspections.reduce(
         (sum, i) => sum + (i.quantityRejected || 0),
-        0
+        0,
       );
       const ppm =
         totalQtyInspected > 0
@@ -1331,12 +1398,15 @@ export class SupplierDataExtractor {
     return Math.sqrt(variance);
   }
 
-  private calculatePriceChangePercent(orders: PurchaseOrderWithLines[]): number {
+  private calculatePriceChangePercent(
+    orders: PurchaseOrderWithLines[],
+  ): number {
     if (orders.length < 2) return 0;
 
     // Compare first 3 months vs last 3 months average
     const sortedOrders = [...orders].sort(
-      (a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime()
+      (a, b) =>
+        new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime(),
     );
 
     const totalOrders = sortedOrders.length;
@@ -1355,23 +1425,31 @@ export class SupplierDataExtractor {
   private calculateAvgOrderPrice(orders: PurchaseOrderWithLines[]): number {
     const allLines = orders.flatMap((o) => o.lines || []);
     if (allLines.length === 0) return 0;
-    return allLines.reduce((sum, l) => sum + (l.unitPrice || 0), 0) / allLines.length;
+    return (
+      allLines.reduce((sum, l) => sum + (l.unitPrice || 0), 0) / allLines.length
+    );
   }
 
-  private calculateCompetitivenessScore(priceVariance: number, avgPrice: number): number {
+  private calculateCompetitivenessScore(
+    priceVariance: number,
+    avgPrice: number,
+  ): number {
     // Lower variance = more stable pricing = higher score
     const stabilityScore = Math.max(0, 100 - priceVariance * 10);
     return Math.min(100, stabilityScore);
   }
 
-  private calculatePriceHistory(orders: PurchaseOrderWithLines[], months: number): PriceHistoryPoint[] {
+  private calculatePriceHistory(
+    orders: PurchaseOrderWithLines[],
+    months: number,
+  ): PriceHistoryPoint[] {
     const history: PriceHistoryPoint[] = [];
     const now = new Date();
 
     for (let i = months - 1; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
+      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}`;
 
       const monthOrders = orders.filter((o) => {
         const date = new Date(o.orderDate);
@@ -1381,9 +1459,13 @@ export class SupplierDataExtractor {
       const allLines = monthOrders.flatMap((o) => o.lines || []);
       const avgUnitPrice =
         allLines.length > 0
-          ? allLines.reduce((sum, l) => sum + (l.unitPrice || 0), 0) / allLines.length
+          ? allLines.reduce((sum, l) => sum + (l.unitPrice || 0), 0) /
+            allLines.length
           : 0;
-      const totalSpend = monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+      const totalSpend = monthOrders.reduce(
+        (sum, o) => sum + (o.totalAmount || 0),
+        0,
+      );
 
       history.push({
         period,
@@ -1396,14 +1478,24 @@ export class SupplierDataExtractor {
     return history;
   }
 
-  private calculatePartPricing(partSuppliers: PartSupplierWithPart[], orders: PurchaseOrderWithLines[]): PartPricingData[] {
+  private calculatePartPricing(
+    partSuppliers: PartSupplierWithPart[],
+    orders: PurchaseOrderWithLines[],
+  ): PartPricingData[] {
     return partSuppliers.map((ps) => {
       const partLines = orders.flatMap((o) =>
-        (o.lines || []).filter((l: PurchaseOrderLineWithPart) => l.partId === ps.partId)
+        (o.lines || []).filter(
+          (l: PurchaseOrderLineWithPart) => l.partId === ps.partId,
+        ),
       );
 
-      const prices = partLines.map((l: PurchaseOrderLineWithPart) => l.unitPrice);
-      const avgPrice = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
+      const prices = partLines.map(
+        (l: PurchaseOrderLineWithPart) => l.unitPrice,
+      );
+      const avgPrice =
+        prices.length > 0
+          ? prices.reduce((a, b) => a + b, 0) / prices.length
+          : 0;
       const priceStability = 100 - this.calculateStdDev(prices) * 10;
 
       // Find price changes
@@ -1411,7 +1503,8 @@ export class SupplierDataExtractor {
       let changePercent: number | null = null;
       if (partLines.length >= 2) {
         const sortedLines = [...partLines].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
         const latestPrice = sortedLines[0].unitPrice;
         const previousPrice = sortedLines[1].unitPrice;
@@ -1428,14 +1521,21 @@ export class SupplierDataExtractor {
         avgPrice: Math.round(avgPrice * 100) / 100,
         priceStability: Math.max(0, Math.round(priceStability)),
         lastPriceChange,
-        changePercent: changePercent ? Math.round(changePercent * 10) / 10 : null,
+        changePercent: changePercent
+          ? Math.round(changePercent * 10) / 10
+          : null,
       };
     });
   }
 
-  private detectPriceChanges(orders: PurchaseOrderWithLines[]): PriceChangeEvent[] {
+  private detectPriceChanges(
+    orders: PurchaseOrderWithLines[],
+  ): PriceChangeEvent[] {
     const changes: PriceChangeEvent[] = [];
-    const partPriceHistory = new Map<string, { date: Date; price: number; partSku: string }[]>();
+    const partPriceHistory = new Map<
+      string,
+      { date: Date; price: number; partSku: string }[]
+    >();
 
     // Build price history per part
     orders.forEach((order) => {
@@ -1444,7 +1544,7 @@ export class SupplierDataExtractor {
         history.push({
           date: new Date(order.orderDate),
           price: line.unitPrice,
-          partSku: line.part?.partNumber || 'Unknown',
+          partSku: line.part?.partNumber || "Unknown",
         });
         partPriceHistory.set(line.partId, history);
       });
@@ -1454,7 +1554,9 @@ export class SupplierDataExtractor {
     partPriceHistory.forEach((history) => {
       if (history.length < 2) return;
 
-      const sorted = history.sort((a, b) => a.date.getTime() - b.date.getTime());
+      const sorted = history.sort(
+        (a, b) => a.date.getTime() - b.date.getTime(),
+      );
       for (let i = 1; i < sorted.length; i++) {
         const prev = sorted[i - 1];
         const curr = sorted[i];
@@ -1466,7 +1568,7 @@ export class SupplierDataExtractor {
             oldPrice: prev.price,
             newPrice: curr.price,
             changePercent: Math.round(changePercent * 10) / 10,
-            type: changePercent > 0 ? 'increase' : 'decrease',
+            type: changePercent > 0 ? "increase" : "decrease",
           });
         }
       }
@@ -1479,7 +1581,8 @@ export class SupplierDataExtractor {
     if (orders.length < 2) return 0;
 
     const sortedOrders = [...orders].sort(
-      (a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime()
+      (a, b) =>
+        new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime(),
     );
 
     let totalDays = 0;
@@ -1487,7 +1590,7 @@ export class SupplierDataExtractor {
       const days = Math.ceil(
         (new Date(sortedOrders[i].orderDate).getTime() -
           new Date(sortedOrders[i - 1].orderDate).getTime()) /
-          (1000 * 60 * 60 * 24)
+          (1000 * 60 * 60 * 24),
       );
       totalDays += days;
     }
@@ -1495,7 +1598,9 @@ export class SupplierDataExtractor {
     return totalDays / (sortedOrders.length - 1);
   }
 
-  private calculatePartOrderDistribution(orders: PurchaseOrderWithLines[]): PartOrderData[] {
+  private calculatePartOrderDistribution(
+    orders: PurchaseOrderWithLines[],
+  ): PartOrderData[] {
     const partData = new Map<
       string,
       {
@@ -1510,7 +1615,7 @@ export class SupplierDataExtractor {
     orders.forEach((order) => {
       (order.lines || []).forEach((line: PurchaseOrderLineWithPart) => {
         const existing = partData.get(line.partId) || {
-          partSku: line.part?.partNumber || 'Unknown',
+          partSku: line.part?.partNumber || "Unknown",
           orderCount: 0,
           totalQuantity: 0,
           totalSpend: 0,
@@ -1541,36 +1646,54 @@ export class SupplierDataExtractor {
       .sort((a, b) => b.orderCount - a.orderCount);
   }
 
-  private calculateOrderTrend(orders: PurchaseOrderWithLines[], months: number): OrderTrendPoint[] {
+  private calculateOrderTrend(
+    orders: PurchaseOrderWithLines[],
+    months: number,
+  ): OrderTrendPoint[] {
     const trend: OrderTrendPoint[] = [];
     const now = new Date();
 
     for (let i = months - 1; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
+      const period = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}`;
 
       const monthOrders = orders.filter((o) => {
         const date = new Date(o.orderDate);
         return date >= monthStart && date <= monthEnd;
       });
 
-      const totalSpend = monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-      const avgOrderValue = monthOrders.length > 0 ? totalSpend / monthOrders.length : 0;
+      const totalSpend = monthOrders.reduce(
+        (sum, o) => sum + (o.totalAmount || 0),
+        0,
+      );
+      const avgOrderValue =
+        monthOrders.length > 0 ? totalSpend / monthOrders.length : 0;
 
       // Calculate fulfillment for completed orders
       const completedOrders = monthOrders.filter((o) =>
-        ['received', 'completed'].includes(o.status)
+        ["received", "completed"].includes(o.status),
       );
       const totalOrdered = completedOrders.reduce(
-        (sum, o) => sum + (o.lines || []).reduce((s: number, l: PurchaseOrderLineWithPart) => s + l.quantity, 0),
-        0
+        (sum, o) =>
+          sum +
+          (o.lines || []).reduce(
+            (s: number, l: PurchaseOrderLineWithPart) => s + l.quantity,
+            0,
+          ),
+        0,
       );
       const totalReceived = completedOrders.reduce(
-        (sum, o) => sum + (o.lines || []).reduce((s: number, l: PurchaseOrderLineWithPart) => s + l.receivedQty, 0),
-        0
+        (sum, o) =>
+          sum +
+          (o.lines || []).reduce(
+            (s: number, l: PurchaseOrderLineWithPart) => s + l.receivedQty,
+            0,
+          ),
+        0,
       );
-      const fulfillmentRate = totalOrdered > 0 ? (totalReceived / totalOrdered) * 100 : 100;
+      const fulfillmentRate =
+        totalOrdered > 0 ? (totalReceived / totalOrdered) * 100 : 100;
 
       trend.push({
         period,
@@ -1593,21 +1716,31 @@ export class SupplierDataExtractor {
     const secondHalf = history.slice(midpoint);
 
     const firstHalfVariance =
-      firstHalf.reduce((sum, h) => sum + Math.abs(h.variance || 0), 0) / firstHalf.length;
+      firstHalf.reduce((sum, h) => sum + Math.abs(h.variance || 0), 0) /
+      firstHalf.length;
     const secondHalfVariance =
-      secondHalf.reduce((sum, h) => sum + Math.abs(h.variance || 0), 0) / secondHalf.length;
+      secondHalf.reduce((sum, h) => sum + Math.abs(h.variance || 0), 0) /
+      secondHalf.length;
 
     return secondHalfVariance < firstHalfVariance;
   }
 
-  private calculatePartLeadTimes(partSuppliers: PartSupplierWithPart[], orders: PurchaseOrderWithLines[]): PartLeadTimeData[] {
+  private calculatePartLeadTimes(
+    partSuppliers: PartSupplierWithPart[],
+    orders: PurchaseOrderWithLines[],
+  ): PartLeadTimeData[] {
     return partSuppliers.map((ps) => {
       const partOrders = orders.filter((o) =>
-        (o.lines || []).some((l: PurchaseOrderLineWithPart) => l.partId === ps.partId)
+        (o.lines || []).some(
+          (l: PurchaseOrderLineWithPart) => l.partId === ps.partId,
+        ),
       );
 
       const actualLeadTimes = partOrders.map((o) =>
-        Math.ceil((o.updatedAt.getTime() - o.orderDate.getTime()) / (1000 * 60 * 60 * 24))
+        Math.ceil(
+          (o.updatedAt.getTime() - o.orderDate.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
       );
 
       const avgActualLeadTime =
@@ -1629,7 +1762,7 @@ export class SupplierDataExtractor {
   private calculateCommunicationScore(
     avgNCRDays: number,
     avgCAPADays: number,
-    fastResponseRate: number
+    fastResponseRate: number,
   ): number {
     // Base score from fast response rate
     let score = fastResponseRate;
@@ -1653,7 +1786,7 @@ export class SupplierDataExtractor {
     pricing: PricingTrendData | null,
     orders: OrderHistoryData | null,
     leadTime: LeadTimeHistoryData | null,
-    response: ResponseMetricsData | null
+    response: ResponseMetricsData | null,
   ): number {
     let score = 0;
     let maxScore = 0;

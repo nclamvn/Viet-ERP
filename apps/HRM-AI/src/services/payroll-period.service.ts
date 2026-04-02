@@ -1,47 +1,47 @@
 // src/services/payroll-period.service.ts
 // Payroll Period Service
 
-import { db } from '@/lib/db'
-import type { Prisma, PayrollStatus } from '@prisma/client'
-import type { PaginatedResponse } from '@/types'
-import { startOfMonth, endOfMonth, format } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { db } from "@/lib/db";
+import type { Prisma, PayrollStatus } from ".prisma/hrm-ai-client";
+import type { PaginatedResponse } from "@/types";
+import { startOfMonth, endOfMonth, format } from "date-fns";
+import { vi } from "date-fns/locale";
 
 export interface PayrollPeriodFilters {
-  year?: number
-  month?: number
-  status?: PayrollStatus
-  page?: number
-  pageSize?: number
+  year?: number;
+  month?: number;
+  status?: PayrollStatus;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface PayrollPeriodWithRelations {
-  id: string
-  tenantId: string
-  name: string
-  year: number
-  month: number
-  periodStart: Date
-  periodEnd: Date
-  status: PayrollStatus
-  calculatedAt: Date | null
-  approvedAt: Date | null
-  approvedBy: string | null
-  paidAt: Date | null
-  totalEmployees: number
-  totalGross: Prisma.Decimal
-  totalDeductions: Prisma.Decimal
-  totalNet: Prisma.Decimal
-  totalEmployerCost: Prisma.Decimal
-  isLocked: boolean
-  lockedAt: Date | null
-  notes: string | null
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  tenantId: string;
+  name: string;
+  year: number;
+  month: number;
+  periodStart: Date;
+  periodEnd: Date;
+  status: PayrollStatus;
+  calculatedAt: Date | null;
+  approvedAt: Date | null;
+  approvedBy: string | null;
+  paidAt: Date | null;
+  totalEmployees: number;
+  totalGross: Prisma.Decimal;
+  totalDeductions: Prisma.Decimal;
+  totalNet: Prisma.Decimal;
+  totalEmployerCost: Prisma.Decimal;
+  isLocked: boolean;
+  lockedAt: Date | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   _count: {
-    payrolls: number
-    bankPayments: number
-  }
+    payrolls: number;
+    bankPayments: number;
+  };
 }
 
 export const payrollPeriodService = {
@@ -54,16 +54,16 @@ export const payrollPeriodService = {
    */
   async findAll(
     tenantId: string,
-    filters: PayrollPeriodFilters = {}
+    filters: PayrollPeriodFilters = {},
   ): Promise<PaginatedResponse<PayrollPeriodWithRelations>> {
-    const { year, month, status, page = 1, pageSize = 12 } = filters
+    const { year, month, status, page = 1, pageSize = 12 } = filters;
 
     const where: Prisma.PayrollPeriodWhereInput = {
       tenantId,
       ...(year && { year }),
       ...(month && { month }),
       ...(status && { status }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.payrollPeriod.findMany({
@@ -76,12 +76,12 @@ export const payrollPeriodService = {
             },
           },
         },
-        orderBy: [{ year: 'desc' }, { month: 'desc' }],
+        orderBy: [{ year: "desc" }, { month: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       db.payrollPeriod.count({ where }),
-    ])
+    ]);
 
     return {
       data: data as unknown as PayrollPeriodWithRelations[],
@@ -91,7 +91,7 @@ export const payrollPeriodService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
 
   /**
@@ -111,7 +111,7 @@ export const payrollPeriodService = {
           },
         },
       },
-    })
+    });
   },
 
   /**
@@ -128,36 +128,35 @@ export const payrollPeriodService = {
           },
         },
       },
-    })
+    });
   },
 
   /**
    * Get current period
    */
   async getCurrentPeriod(tenantId: string) {
-    const now = new Date()
-    return this.findByYearMonth(tenantId, now.getFullYear(), now.getMonth() + 1)
+    const now = new Date();
+    return this.findByYearMonth(
+      tenantId,
+      now.getFullYear(),
+      now.getMonth() + 1,
+    );
   },
 
   /**
    * Create new period
    */
-  async create(
-    tenantId: string,
-    year: number,
-    month: number,
-    notes?: string
-  ) {
+  async create(tenantId: string, year: number, month: number, notes?: string) {
     // Check for existing period
-    const existing = await this.findByYearMonth(tenantId, year, month)
+    const existing = await this.findByYearMonth(tenantId, year, month);
     if (existing) {
-      throw new Error(`Kỳ lương tháng ${month}/${year} đã tồn tại`)
+      throw new Error(`Kỳ lương tháng ${month}/${year} đã tồn tại`);
     }
 
-    const periodDate = new Date(year, month - 1, 1)
-    const periodStart = startOfMonth(periodDate)
-    const periodEnd = endOfMonth(periodDate)
-    const name = format(periodDate, "'Tháng' MM/yyyy", { locale: vi })
+    const periodDate = new Date(year, month - 1, 1);
+    const periodStart = startOfMonth(periodDate);
+    const periodEnd = endOfMonth(periodDate);
+    const name = format(periodDate, "'Tháng' MM/yyyy", { locale: vi });
 
     return db.payrollPeriod.create({
       data: {
@@ -167,10 +166,10 @@ export const payrollPeriodService = {
         month,
         periodStart,
         periodEnd,
-        status: 'DRAFT',
+        status: "DRAFT",
         notes,
       },
-    })
+    });
   },
 
   /**
@@ -179,24 +178,24 @@ export const payrollPeriodService = {
   async update(
     tenantId: string,
     id: string,
-    data: Prisma.PayrollPeriodUpdateInput
+    data: Prisma.PayrollPeriodUpdateInput,
   ) {
     const period = await db.payrollPeriod.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
     if (period.isLocked) {
-      throw new Error('Kỳ lương đã khóa, không thể chỉnh sửa')
+      throw new Error("Kỳ lương đã khóa, không thể chỉnh sửa");
     }
 
     return db.payrollPeriod.update({
       where: { id },
       data,
-    })
+    });
   },
 
   /**
@@ -213,23 +212,23 @@ export const payrollPeriodService = {
           },
         },
       },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
     if (period.isLocked) {
-      throw new Error('Kỳ lương đã khóa, không thể xóa')
+      throw new Error("Kỳ lương đã khóa, không thể xóa");
     }
 
     if (period._count.payrolls > 0) {
-      throw new Error('Không thể xóa kỳ lương đã có dữ liệu')
+      throw new Error("Không thể xóa kỳ lương đã có dữ liệu");
     }
 
     return db.payrollPeriod.delete({
       where: { id },
-    })
+    });
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -243,47 +242,47 @@ export const payrollPeriodService = {
     tenantId: string,
     id: string,
     status: PayrollStatus,
-    userId?: string
+    userId?: string,
   ) {
     const period = await db.payrollPeriod.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
-    const now = new Date()
-    const updateData: Prisma.PayrollPeriodUpdateInput = { status }
+    const now = new Date();
+    const updateData: Prisma.PayrollPeriodUpdateInput = { status };
 
     // Set timestamps based on status
     switch (status) {
-      case 'CALCULATING':
-        break
-      case 'SIMULATED':
-        updateData.calculatedAt = now
-        break
-      case 'PENDING_APPROVAL':
-        break
-      case 'APPROVED':
-        updateData.approvedAt = now
+      case "CALCULATING":
+        break;
+      case "SIMULATED":
+        updateData.calculatedAt = now;
+        break;
+      case "PENDING_APPROVAL":
+        break;
+      case "APPROVED":
+        updateData.approvedAt = now;
         if (userId) {
-          updateData.approver = { connect: { id: userId } }
+          updateData.approver = { connect: { id: userId } };
         }
-        break
-      case 'PAID':
-        updateData.paidAt = now
-        updateData.isLocked = true
-        updateData.lockedAt = now
-        break
-      case 'CANCELLED':
-        break
+        break;
+      case "PAID":
+        updateData.paidAt = now;
+        updateData.isLocked = true;
+        updateData.lockedAt = now;
+        break;
+      case "CANCELLED":
+        break;
     }
 
     return db.payrollPeriod.update({
       where: { id },
       data: updateData,
-    })
+    });
   },
 
   /**
@@ -292,10 +291,10 @@ export const payrollPeriodService = {
   async lock(tenantId: string, id: string) {
     const period = await db.payrollPeriod.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
     return db.payrollPeriod.update({
@@ -304,7 +303,7 @@ export const payrollPeriodService = {
         isLocked: true,
         lockedAt: new Date(),
       },
-    })
+    });
   },
 
   /**
@@ -313,10 +312,10 @@ export const payrollPeriodService = {
   async unlock(tenantId: string, id: string) {
     const period = await db.payrollPeriod.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!period) {
-      throw new Error('Kỳ lương không tồn tại')
+      throw new Error("Kỳ lương không tồn tại");
     }
 
     return db.payrollPeriod.update({
@@ -325,7 +324,7 @@ export const payrollPeriodService = {
         isLocked: false,
         lockedAt: null,
       },
-    })
+    });
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -338,12 +337,12 @@ export const payrollPeriodService = {
   async updateTotals(
     id: string,
     totals: {
-      totalEmployees: number
-      totalGross: number
-      totalDeductions: number
-      totalNet: number
-      totalEmployerCost: number
-    }
+      totalEmployees: number;
+      totalGross: number;
+      totalDeductions: number;
+      totalNet: number;
+      totalEmployerCost: number;
+    },
   ) {
     return db.payrollPeriod.update({
       where: { id },
@@ -354,7 +353,7 @@ export const payrollPeriodService = {
         totalNet: totals.totalNet,
         totalEmployerCost: totals.totalEmployerCost,
       },
-    })
+    });
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -368,10 +367,10 @@ export const payrollPeriodService = {
     const result = await db.payrollPeriod.findMany({
       where: { tenantId },
       select: { year: true },
-      distinct: ['year'],
-      orderBy: { year: 'desc' },
-    })
-    return result.map((r) => r.year)
+      distinct: ["year"],
+      orderBy: { year: "desc" },
+    });
+    return result.map((r) => r.year);
   },
 
   /**
@@ -385,22 +384,18 @@ export const payrollPeriodService = {
           select: { payrolls: true },
         },
       },
-      orderBy: { month: 'asc' },
-    })
+      orderBy: { month: "asc" },
+    });
   },
 
   /**
    * Create period if not exists
    */
-  async getOrCreate(
-    tenantId: string,
-    year: number,
-    month: number
-  ) {
-    const existing = await this.findByYearMonth(tenantId, year, month)
+  async getOrCreate(tenantId: string, year: number, month: number) {
+    const existing = await this.findByYearMonth(tenantId, year, month);
     if (existing) {
-      return existing
+      return existing;
     }
-    return this.create(tenantId, year, month)
+    return this.create(tenantId, year, month);
   },
-}
+};

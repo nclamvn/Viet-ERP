@@ -1,36 +1,36 @@
 // src/lib/learning/services/enrollment.service.ts
 // Enrollment Service - Manage course and session enrollments
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   EnrollmentStatus,
   CourseStatus,
   SessionStatus,
-  Prisma
-} from '@prisma/client'
+  Prisma,
+} from ".prisma/hrm-unified-client";
 
 // Types
 export interface EnrollInput {
-  employeeId: string
-  courseId: string
-  sessionId?: string
-  requestId?: string
+  employeeId: string;
+  courseId: string;
+  sessionId?: string;
+  requestId?: string;
 }
 
 export interface EnrollmentFilters {
-  employeeId?: string
-  courseId?: string
-  sessionId?: string
-  status?: EnrollmentStatus[]
-  fromDate?: Date
-  toDate?: Date
+  employeeId?: string;
+  courseId?: string;
+  sessionId?: string;
+  status?: EnrollmentStatus[];
+  fromDate?: Date;
+  toDate?: Date;
 }
 
 export interface UpdateProgressInput {
-  progress?: number
-  score?: number
-  passed?: boolean
-  completedAt?: Date
+  progress?: number;
+  score?: number;
+  passed?: boolean;
+  completedAt?: Date;
 }
 
 export class EnrollmentService {
@@ -47,10 +47,10 @@ export class EnrollmentService {
         tenantId: this.tenantId,
         status: CourseStatus.PUBLISHED,
       },
-    })
+    });
 
     if (!course) {
-      throw new Error('Course not found or not available')
+      throw new Error("Course not found or not available");
     }
 
     // Check for existing enrollment
@@ -59,13 +59,13 @@ export class EnrollmentService {
         employeeId_courseId_sessionId: {
           employeeId: input.employeeId,
           courseId: input.courseId,
-          sessionId: input.sessionId || '',
+          sessionId: input.sessionId || "",
         },
       },
-    })
+    });
 
     if (existing) {
-      throw new Error('Employee already enrolled in this course')
+      throw new Error("Employee already enrolled in this course");
     }
 
     // If session specified, verify it
@@ -79,22 +79,22 @@ export class EnrollmentService {
         include: {
           _count: { select: { enrollments: true } },
         },
-      })
+      });
 
       if (!session) {
-        throw new Error('Session not found or not available')
+        throw new Error("Session not found or not available");
       }
 
       // Check capacity
       if (session._count.enrollments >= session.maxParticipants) {
-        throw new Error('Session is full')
+        throw new Error("Session is full");
       }
     }
 
     // Determine initial status
     const initialStatus = approvedById
       ? EnrollmentStatus.ENROLLED
-      : EnrollmentStatus.PENDING
+      : EnrollmentStatus.PENDING;
 
     const enrollment = await db.enrollment.create({
       data: {
@@ -118,9 +118,9 @@ export class EnrollmentService {
           select: { id: true, sessionCode: true, startDate: true },
         },
       },
-    })
+    });
 
-    return enrollment
+    return enrollment;
   }
 
   /**
@@ -143,7 +143,7 @@ export class EnrollmentService {
         },
         course: {
           include: {
-            modules: { orderBy: { order: 'asc' } },
+            modules: { orderBy: { order: "asc" } },
           },
         },
         session: {
@@ -167,56 +167,63 @@ export class EnrollmentService {
           },
         },
         assessmentAttempts: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
-    return enrollment
+    return enrollment;
   }
 
   /**
    * List enrollments with filters
    */
-  async list(filters: EnrollmentFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: EnrollmentFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.EnrollmentWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.employeeId) {
-      where.employeeId = filters.employeeId
+      where.employeeId = filters.employeeId;
     }
 
     if (filters.courseId) {
-      where.courseId = filters.courseId
+      where.courseId = filters.courseId;
     }
 
     if (filters.sessionId) {
-      where.sessionId = filters.sessionId
+      where.sessionId = filters.sessionId;
     }
 
     if (filters.status?.length) {
-      where.status = { in: filters.status }
+      where.status = { in: filters.status };
     }
 
     if (filters.fromDate) {
-      where.createdAt = { gte: filters.fromDate }
+      where.createdAt = { gte: filters.fromDate };
     }
 
     if (filters.toDate) {
-      where.createdAt = { ...(where.createdAt as object || {}), lte: filters.toDate }
+      where.createdAt = {
+        ...((where.createdAt as object) || {}),
+        lte: filters.toDate,
+      };
     }
 
     const [enrollments, total] = await Promise.all([
       db.enrollment.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
         include: {
@@ -236,7 +243,7 @@ export class EnrollmentService {
         },
       }),
       db.enrollment.count({ where }),
-    ])
+    ]);
 
     return {
       data: enrollments,
@@ -244,7 +251,7 @@ export class EnrollmentService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -254,17 +261,17 @@ export class EnrollmentService {
     const where: Prisma.EnrollmentWhereInput = {
       tenantId: this.tenantId,
       employeeId,
-    }
+    };
 
     if (activeOnly) {
       where.status = {
         in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS],
-      }
+      };
     }
 
     return db.enrollment.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         course: {
           select: {
@@ -283,7 +290,7 @@ export class EnrollmentService {
           },
         },
       },
-    })
+    });
   }
 
   /**
@@ -292,14 +299,14 @@ export class EnrollmentService {
   async approve(id: string, approvedById: string) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     if (enrollment.status !== EnrollmentStatus.PENDING) {
-      throw new Error('Enrollment is not pending approval')
+      throw new Error("Enrollment is not pending approval");
     }
 
     return db.enrollment.update({
@@ -309,7 +316,7 @@ export class EnrollmentService {
         approvedById,
         approvedAt: new Date(),
       },
-    })
+    });
   }
 
   /**
@@ -318,14 +325,14 @@ export class EnrollmentService {
   async reject(id: string, rejectedById: string, reason: string) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     if (enrollment.status !== EnrollmentStatus.PENDING) {
-      throw new Error('Enrollment is not pending')
+      throw new Error("Enrollment is not pending");
     }
 
     return db.enrollment.update({
@@ -336,7 +343,7 @@ export class EnrollmentService {
         approvedAt: new Date(),
         rejectionReason: reason,
       },
-    })
+    });
   }
 
   /**
@@ -345,14 +352,14 @@ export class EnrollmentService {
   async startLearning(id: string) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     if (enrollment.status !== EnrollmentStatus.ENROLLED) {
-      throw new Error('Enrollment is not in enrolled status')
+      throw new Error("Enrollment is not in enrolled status");
     }
 
     return db.enrollment.update({
@@ -361,13 +368,17 @@ export class EnrollmentService {
         status: EnrollmentStatus.IN_PROGRESS,
         startedAt: new Date(),
       },
-    })
+    });
   }
 
   /**
    * Complete a module
    */
-  async completeModule(enrollmentId: string, moduleId: string, timeSpentMinutes?: number) {
+  async completeModule(
+    enrollmentId: string,
+    moduleId: string,
+    timeSpentMinutes?: number,
+  ) {
     const enrollment = await db.enrollment.findFirst({
       where: { id: enrollmentId, tenantId: this.tenantId },
       include: {
@@ -376,10 +387,10 @@ export class EnrollmentService {
         },
         moduleCompletions: true,
       },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     // Create module completion
@@ -399,26 +410,27 @@ export class EnrollmentService {
         completedAt: new Date(),
         timeSpentMinutes,
       },
-    })
+    });
 
     // Calculate new progress
-    const totalModules = enrollment.course.modules.length
-    const completedModules = enrollment.moduleCompletions.length + 1
-    const progress = totalModules > 0
-      ? Math.round((completedModules / totalModules) * 100)
-      : 0
+    const totalModules = enrollment.course.modules.length;
+    const completedModules = enrollment.moduleCompletions.length + 1;
+    const progress =
+      totalModules > 0
+        ? Math.round((completedModules / totalModules) * 100)
+        : 0;
 
     // Update enrollment progress
     await db.enrollment.update({
       where: { id: enrollmentId },
       data: { progress },
-    })
+    });
 
     return {
       progress,
       completedModules,
       totalModules,
-    }
+    };
   }
 
   /**
@@ -427,36 +439,36 @@ export class EnrollmentService {
   async updateProgress(id: string, input: UpdateProgressInput) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
-    const updateData: Prisma.EnrollmentUpdateInput = {}
+    const updateData: Prisma.EnrollmentUpdateInput = {};
 
     if (input.progress !== undefined) {
-      updateData.progress = input.progress
+      updateData.progress = input.progress;
     }
 
     if (input.score !== undefined) {
-      updateData.score = input.score
+      updateData.score = input.score;
     }
 
     if (input.passed !== undefined) {
-      updateData.passed = input.passed
+      updateData.passed = input.passed;
     }
 
     if (input.completedAt) {
-      updateData.completedAt = input.completedAt
-      updateData.status = EnrollmentStatus.COMPLETED
-      updateData.progress = 100
+      updateData.completedAt = input.completedAt;
+      updateData.status = EnrollmentStatus.COMPLETED;
+      updateData.progress = 100;
     }
 
     return db.enrollment.update({
       where: { id },
       data: updateData,
-    })
+    });
   }
 
   /**
@@ -465,10 +477,10 @@ export class EnrollmentService {
   async complete(id: string, score?: number, passed?: boolean) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     return db.enrollment.update({
@@ -480,7 +492,7 @@ export class EnrollmentService {
         score,
         passed,
       },
-    })
+    });
   }
 
   /**
@@ -489,14 +501,14 @@ export class EnrollmentService {
   async cancel(id: string, reason?: string) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     if (enrollment.status === EnrollmentStatus.COMPLETED) {
-      throw new Error('Cannot cancel completed enrollment')
+      throw new Error("Cannot cancel completed enrollment");
     }
 
     return db.enrollment.update({
@@ -505,7 +517,7 @@ export class EnrollmentService {
         status: EnrollmentStatus.CANCELLED,
         rejectionReason: reason ? `Cancelled: ${reason}` : null,
       },
-    })
+    });
   }
 
   /**
@@ -514,14 +526,14 @@ export class EnrollmentService {
   async submitFeedback(id: string, rating: number, feedback?: string) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     if (enrollment.status !== EnrollmentStatus.COMPLETED) {
-      throw new Error('Can only submit feedback for completed courses')
+      throw new Error("Can only submit feedback for completed courses");
     }
 
     return db.enrollment.update({
@@ -530,7 +542,7 @@ export class EnrollmentService {
         rating,
         feedback,
       },
-    })
+    });
   }
 
   /**
@@ -539,14 +551,17 @@ export class EnrollmentService {
   async issueCertificate(id: string, certificateUrl: string) {
     const enrollment = await db.enrollment.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
-    if (enrollment.status !== EnrollmentStatus.COMPLETED || !enrollment.passed) {
-      throw new Error('Certificate can only be issued for passed courses')
+    if (
+      enrollment.status !== EnrollmentStatus.COMPLETED ||
+      !enrollment.passed
+    ) {
+      throw new Error("Certificate can only be issued for passed courses");
     }
 
     return db.enrollment.update({
@@ -555,7 +570,7 @@ export class EnrollmentService {
         certificateIssued: true,
         certificateUrl,
       },
-    })
+    });
   }
 
   /**
@@ -564,20 +579,20 @@ export class EnrollmentService {
   async getStats(dateRange?: { from: Date; to: Date }) {
     const where: Prisma.EnrollmentWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (dateRange) {
       where.createdAt = {
         gte: dateRange.from,
         lte: dateRange.to,
-      }
+      };
     }
 
     const [total, byStatus, completionRate, avgRating] = await Promise.all([
       db.enrollment.count({ where }),
 
       db.enrollment.groupBy({
-        by: ['status'],
+        by: ["status"],
         where,
         _count: true,
       }),
@@ -591,7 +606,11 @@ export class EnrollmentService {
           where: {
             ...where,
             status: {
-              in: [EnrollmentStatus.COMPLETED, EnrollmentStatus.IN_PROGRESS, EnrollmentStatus.ENROLLED],
+              in: [
+                EnrollmentStatus.COMPLETED,
+                EnrollmentStatus.IN_PROGRESS,
+                EnrollmentStatus.ENROLLED,
+              ],
             },
           },
         }),
@@ -605,17 +624,17 @@ export class EnrollmentService {
         },
         _avg: { rating: true },
       }),
-    ])
+    ]);
 
-    const [completed, active] = completionRate
-    const rate = active > 0 ? Math.round((completed / active) * 100) : 0
+    const [completed, active] = completionRate;
+    const rate = active > 0 ? Math.round((completed / active) * 100) : 0;
 
     return {
       total,
-      byStatus: byStatus.map(s => ({ status: s.status, count: s._count })),
+      byStatus: byStatus.map((s) => ({ status: s.status, count: s._count })),
       completionRate: rate,
       avgRating: avgRating._avg.rating || 0,
-    }
+    };
   }
 
   /**
@@ -625,17 +644,17 @@ export class EnrollmentService {
     const where: Prisma.EnrollmentWhereInput = {
       tenantId: this.tenantId,
       status: EnrollmentStatus.PENDING,
-    }
+    };
 
     if (managerId) {
       where.employee = {
         directManagerId: managerId,
-      }
+      };
     }
 
     return db.enrollment.findMany({
       where,
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
       include: {
         employee: {
           select: {
@@ -653,11 +672,11 @@ export class EnrollmentService {
           },
         },
       },
-    })
+    });
   }
 }
 
 // Factory function
 export function createEnrollmentService(tenantId: string): EnrollmentService {
-  return new EnrollmentService(tenantId)
+  return new EnrollmentService(tenantId);
 }

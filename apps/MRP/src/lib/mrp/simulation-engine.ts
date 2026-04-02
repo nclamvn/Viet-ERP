@@ -1,7 +1,7 @@
 // Simulation Engine - What-If Scenario Planning
 import { prisma } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
-import { Prisma } from "@prisma/client";
+import { Decimal } from "decimal.js";
+import { Prisma } from ".prisma/mrp-client";
 
 export interface SimulationParams {
   name: string;
@@ -85,7 +85,7 @@ export interface CapacityIssue {
  */
 export async function createSimulation(
   params: SimulationParams,
-  userId: string
+  userId: string,
 ): Promise<string> {
   const simulation = await prisma.simulation.create({
     data: {
@@ -105,7 +105,7 @@ export async function createSimulation(
  * Run a what-if simulation
  */
 export async function runSimulation(
-  simulationId: string
+  simulationId: string,
 ): Promise<SimulationResults> {
   const simulation = await prisma.simulation.findUnique({
     where: { id: simulationId },
@@ -286,7 +286,7 @@ async function createVirtualState(dateRange: {
  */
 function applyDemandChanges(
   state: VirtualState,
-  changes: DemandChange[]
+  changes: DemandChange[],
 ): void {
   for (const change of changes) {
     for (const demand of state.demands) {
@@ -307,7 +307,7 @@ function applyDemandChanges(
  */
 function applySupplyChanges(
   state: VirtualState,
-  changes: SupplyChange[]
+  changes: SupplyChange[],
 ): void {
   for (const change of changes) {
     for (const supply of state.supplies) {
@@ -337,7 +337,7 @@ function applySupplyChanges(
 function runVirtualMRP(
   state: VirtualState,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  dateRange: { start: Date; end: Date }
+  dateRange: { start: Date; end: Date },
 ): SimulationResults {
   const plannedOrders: PlannedOrderResult[] = [];
   const shortages: ShortageResult[] = [];
@@ -379,7 +379,10 @@ function runVirtualMRP(
 
     for (const demand of demands) {
       // Add supplies that arrive before this demand
-      while (supplyIdx < supplies.length && supplies[supplyIdx].date <= demand.date) {
+      while (
+        supplyIdx < supplies.length &&
+        supplies[supplyIdx].date <= demand.date
+      ) {
         available += supplies[supplyIdx].quantity;
         supplyIdx++;
       }
@@ -437,7 +440,7 @@ function runVirtualMRP(
  */
 async function saveSimulationResults(
   simulationId: string,
-  results: SimulationResults
+  results: SimulationResults,
 ): Promise<void> {
   // Delete existing results
   await prisma.simulationResult.deleteMany({
@@ -478,9 +481,7 @@ async function saveSimulationResults(
 /**
  * Compare two simulations
  */
-export async function compareSimulations(
-  simulationIds: string[]
-): Promise<{
+export async function compareSimulations(simulationIds: string[]): Promise<{
   simulations: Array<{
     id: string;
     name: string;
@@ -505,7 +506,7 @@ export async function compareSimulations(
   // Calculate variances
   const variances = {
     plannedOrders: summaries.map(
-      (s) => (s.summary.totalPlannedOrders as number) || 0
+      (s) => (s.summary.totalPlannedOrders as number) || 0,
     ),
     totalSpend: summaries.map((s) => (s.summary.totalSpend as number) || 0),
     shortages: summaries.map((s) => (s.summary.shortageCount as number) || 0),

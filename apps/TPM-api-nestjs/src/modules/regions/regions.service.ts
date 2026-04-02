@@ -10,7 +10,7 @@ import { CreateGeographicUnitDto, GeographicLevelEnum } from './dto/create-geogr
 import { UpdateGeographicUnitDto } from './dto/update-geographic-unit.dto';
 import { GeographicUnitQueryDto } from './dto/geographic-unit-query.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 // Level hierarchy order for validation (lower index = higher in hierarchy)
 const LEVEL_ORDER: GeographicLevelEnum[] = [

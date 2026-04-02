@@ -3,56 +3,75 @@
 //              Work order operations for shop floor - Production
 // ═══════════════════════════════════════════════════════════════════
 
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { withAuth } from '@/lib/api/with-auth';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { withAuth } from "@/lib/api/with-auth";
 
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbWorkOrderResult = Record<string, any>;
 
 // Helper: Transform work order from database
 function transformWorkOrder(wo: DbWorkOrderResult) {
-  const operations = wo.operations?.map((op: DbWorkOrderResult) => ({
-    id: op.id,
-    sequence: op.operationNumber,
-    name: op.name || `Operation ${op.operationNumber}`,
-    status: op.status === 'completed' ? 'Completed' :
-            op.status === 'in_progress' ? 'In Progress' : 'Pending',
-    plannedHours: op.plannedRunTime || 0,
-    actualHours: op.actualRunTime || 0,
-  })) || [];
+  const operations =
+    wo.operations?.map((op: DbWorkOrderResult) => ({
+      id: op.id,
+      sequence: op.operationNumber,
+      name: op.name || `Operation ${op.operationNumber}`,
+      status:
+        op.status === "completed"
+          ? "Completed"
+          : op.status === "in_progress"
+            ? "In Progress"
+            : "Pending",
+      plannedHours: op.plannedRunTime || 0,
+      actualHours: op.actualRunTime || 0,
+    })) || [];
 
   // Find current operation (first in-progress or first pending)
-  const currentOp = operations.find((op: DbWorkOrderResult) => op.status === 'In Progress') ||
-                    operations.find((op: DbWorkOrderResult) => op.status === 'Pending');
+  const currentOp =
+    operations.find((op: DbWorkOrderResult) => op.status === "In Progress") ||
+    operations.find((op: DbWorkOrderResult) => op.status === "Pending");
 
   return {
     id: wo.id,
     woNumber: wo.woNumber,
-    partNumber: wo.product?.sku || '',
-    partDescription: wo.product?.name || '',
+    partNumber: wo.product?.sku || "",
+    partDescription: wo.product?.name || "",
     qty: wo.quantity,
     qtyCompleted: wo.completedQty || 0,
     scrapQty: wo.scrapQty || 0,
-    status: wo.status === 'completed' ? 'Completed' :
-            wo.status === 'in_progress' ? 'In Progress' :
-            wo.status === 'released' ? 'Released' : 'Draft',
-    priority: wo.priority?.charAt(0).toUpperCase() + wo.priority?.slice(1) || 'Normal',
-    startDate: wo.plannedStart?.toISOString().split('T')[0] || wo.actualStart?.toISOString().split('T')[0],
-    dueDate: wo.plannedEnd?.toISOString().split('T')[0],
-    workCenter: wo.workCenterRef?.name || wo.workCenter || '',
-    currentOperation: currentOp ? {
-      id: currentOp.id,
-      name: currentOp.name,
-      sequence: currentOp.sequence,
-      status: currentOp.status,
-      plannedHours: currentOp.plannedHours,
-      actualHours: currentOp.actualHours,
-    } : null,
+    status:
+      wo.status === "completed"
+        ? "Completed"
+        : wo.status === "in_progress"
+          ? "In Progress"
+          : wo.status === "released"
+            ? "Released"
+            : "Draft",
+    priority:
+      wo.priority?.charAt(0).toUpperCase() + wo.priority?.slice(1) || "Normal",
+    startDate:
+      wo.plannedStart?.toISOString().split("T")[0] ||
+      wo.actualStart?.toISOString().split("T")[0],
+    dueDate: wo.plannedEnd?.toISOString().split("T")[0],
+    workCenter: wo.workCenterRef?.name || wo.workCenter || "",
+    currentOperation: currentOp
+      ? {
+          id: currentOp.id,
+          name: currentOp.name,
+          sequence: currentOp.sequence,
+          status: currentOp.status,
+          plannedHours: currentOp.plannedHours,
+          actualHours: currentOp.actualHours,
+        }
+      : null,
     operations,
     salesOrderNumber: wo.salesOrder?.orderNumber,
     notes: wo.notes,
@@ -64,15 +83,15 @@ function transformWorkOrder(wo: DbWorkOrderResult) {
  * Get work orders
  */
 export const GET = withAuth(async (req, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(req);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(req);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const { searchParams } = new URL(req.url);
-    const woId = searchParams.get('woId');
-    const status = searchParams.get('status') || 'released,in_progress';
-    const workCenter = searchParams.get('workCenter');
+    const { searchParams } = new URL(req.url);
+    const woId = searchParams.get("woId");
+    const status = searchParams.get("status") || "released,in_progress";
+    const workCenter = searchParams.get("workCenter");
 
     // Build where clause
     const where: Prisma.WorkOrderWhereInput = {};
@@ -82,7 +101,10 @@ const { searchParams } = new URL(req.url);
     }
 
     // Map status filter
-    const statusList = status.toLowerCase().split(',').map(s => s.trim().replace(' ', '_'));
+    const statusList = status
+      .toLowerCase()
+      .split(",")
+      .map((s) => s.trim().replace(" ", "_"));
     if (statusList.length > 0) {
       where.status = { in: statusList };
     }
@@ -105,13 +127,13 @@ const { searchParams } = new URL(req.url);
           select: { name: true, code: true },
         },
         operations: {
-          orderBy: { operationNumber: 'asc' },
+          orderBy: { operationNumber: "asc" },
         },
       },
       orderBy: [
-        { priority: 'desc' },
-        { plannedEnd: 'asc' },
-        { createdAt: 'desc' },
+        { priority: "desc" },
+        { plannedEnd: "asc" },
+        { createdAt: "desc" },
       ],
       take: 50,
     });
@@ -120,10 +142,11 @@ const { searchParams } = new URL(req.url);
     const results = workOrders.map(transformWorkOrder);
 
     // Sort by priority
-    const priorityOrder = { 'Rush': 0, 'High': 1, 'Normal': 2, 'Low': 3 };
+    const priorityOrder = { Rush: 0, High: 1, Normal: 2, Low: 3 };
     results.sort((a: DbWorkOrderResult, b: DbWorkOrderResult) => {
-      const priorityDiff = (priorityOrder[a.priority as keyof typeof priorityOrder] || 99) -
-                           (priorityOrder[b.priority as keyof typeof priorityOrder] || 99);
+      const priorityDiff =
+        (priorityOrder[a.priority as keyof typeof priorityOrder] || 99) -
+        (priorityOrder[b.priority as keyof typeof priorityOrder] || 99);
       if (priorityDiff !== 0) return priorityDiff;
       if (!a.dueDate || !b.dueDate) return 0;
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
@@ -132,11 +155,22 @@ const { searchParams } = new URL(req.url);
     // Calculate summary
     const summary = {
       total: results.length,
-      inProgress: results.filter((wo: DbWorkOrderResult) => wo.status === 'In Progress').length,
-      released: results.filter((wo: DbWorkOrderResult) => wo.status === 'Released').length,
-      rushOrders: results.filter((wo: DbWorkOrderResult) => wo.priority === 'Rush').length,
-      behindSchedule: results.filter((wo: DbWorkOrderResult) => wo.dueDate && new Date(wo.dueDate) < new Date()).length,
-      completed: results.filter((wo: DbWorkOrderResult) => wo.status === 'Completed').length,
+      inProgress: results.filter(
+        (wo: DbWorkOrderResult) => wo.status === "In Progress",
+      ).length,
+      released: results.filter(
+        (wo: DbWorkOrderResult) => wo.status === "Released",
+      ).length,
+      rushOrders: results.filter(
+        (wo: DbWorkOrderResult) => wo.priority === "Rush",
+      ).length,
+      behindSchedule: results.filter(
+        (wo: DbWorkOrderResult) =>
+          wo.dueDate && new Date(wo.dueDate) < new Date(),
+      ).length,
+      completed: results.filter(
+        (wo: DbWorkOrderResult) => wo.status === "Completed",
+      ).length,
     };
 
     return NextResponse.json({
@@ -145,10 +179,12 @@ const { searchParams } = new URL(req.url);
       summary,
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: '/api/mobile/workorder' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "/api/mobile/workorder",
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch work orders' },
-      { status: 500 }
+      { success: false, error: "Failed to fetch work orders" },
+      { status: 500 },
     );
   }
 });
@@ -158,12 +194,12 @@ const { searchParams } = new URL(req.url);
  * Work order operations
  */
 export const POST = withAuth(async (req, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(req);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(req);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const bodySchema = z.object({
+    const bodySchema = z.object({
       action: z.string(),
       woId: z.string(),
       operationId: z.string().optional(),
@@ -175,8 +211,12 @@ const bodySchema = z.object({
     const parseResult = bodySchema.safeParse(rawBody);
     if (!parseResult.success) {
       return NextResponse.json(
-        { success: false, error: 'Invalid input', details: parseResult.error.flatten().fieldErrors },
-        { status: 400 }
+        {
+          success: false,
+          error: "Invalid input",
+          details: parseResult.error.flatten().fieldErrors,
+        },
+        { status: 400 },
       );
     }
     const body = parseResult.data;
@@ -184,8 +224,8 @@ const bodySchema = z.object({
 
     if (!woId || !action) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: woId, action' },
-        { status: 400 }
+        { success: false, error: "Missing required fields: woId, action" },
+        { status: 400 },
       );
     }
 
@@ -193,31 +233,31 @@ const bodySchema = z.object({
       where: { id: woId },
       include: {
         product: { select: { sku: true, name: true } },
-        operations: { orderBy: { operationNumber: 'asc' } },
+        operations: { orderBy: { operationNumber: "asc" } },
       },
     });
 
     if (!wo) {
       return NextResponse.json(
-        { success: false, error: 'Work order not found' },
-        { status: 404 }
+        { success: false, error: "Work order not found" },
+        { status: 404 },
       );
     }
 
     switch (action) {
-      case 'start_operation': {
+      case "start_operation": {
         if (!operationId) {
           return NextResponse.json(
-            { success: false, error: 'Operation ID required' },
-            { status: 400 }
+            { success: false, error: "Operation ID required" },
+            { status: 400 },
           );
         }
 
-        const operation = wo.operations.find(op => op.id === operationId);
+        const operation = wo.operations.find((op) => op.id === operationId);
         if (!operation) {
           return NextResponse.json(
-            { success: false, error: 'Operation not found' },
-            { status: 404 }
+            { success: false, error: "Operation not found" },
+            { status: 404 },
           );
         }
 
@@ -225,17 +265,17 @@ const bodySchema = z.object({
         await prisma.workOrderOperation.update({
           where: { id: operationId },
           data: {
-            status: 'in_progress',
+            status: "in_progress",
             actualStartDate: new Date(),
           },
         });
 
         // Update work order status if needed
-        if (wo.status === 'released') {
+        if (wo.status === "released") {
           await prisma.workOrder.update({
             where: { id: woId },
             data: {
-              status: 'in_progress',
+              status: "in_progress",
               actualStart: wo.actualStart || new Date(),
             },
           });
@@ -252,19 +292,19 @@ const bodySchema = z.object({
         });
       }
 
-      case 'complete_operation': {
+      case "complete_operation": {
         if (!operationId) {
           return NextResponse.json(
-            { success: false, error: 'Operation ID required' },
-            { status: 400 }
+            { success: false, error: "Operation ID required" },
+            { status: 400 },
           );
         }
 
-        const operation = wo.operations.find(op => op.id === operationId);
+        const operation = wo.operations.find((op) => op.id === operationId);
         if (!operation) {
           return NextResponse.json(
-            { success: false, error: 'Operation not found' },
-            { status: 404 }
+            { success: false, error: "Operation not found" },
+            { status: 404 },
           );
         }
 
@@ -273,7 +313,7 @@ const bodySchema = z.object({
         await prisma.workOrderOperation.update({
           where: { id: operationId },
           data: {
-            status: 'completed',
+            status: "completed",
             actualEndDate: new Date(),
             actualRunTime: actualHours || operation.actualRunTime,
             notes: notes,
@@ -294,13 +334,13 @@ const bodySchema = z.object({
         });
       }
 
-      case 'record_production': {
+      case "record_production": {
         const { qtyGood, qtyScrap, notes } = data || {};
 
         if (qtyGood === undefined) {
           return NextResponse.json(
-            { success: false, error: 'Quantity required' },
-            { status: 400 }
+            { success: false, error: "Quantity required" },
+            { status: 400 },
           );
         }
 
@@ -309,8 +349,11 @@ const bodySchema = z.object({
 
         if (newCompleted + newScrap > wo.quantity) {
           return NextResponse.json(
-            { success: false, error: `Total would exceed WO quantity (${wo.quantity})` },
-            { status: 400 }
+            {
+              success: false,
+              error: `Total would exceed WO quantity (${wo.quantity})`,
+            },
+            { status: 400 },
           );
         }
 
@@ -321,9 +364,13 @@ const bodySchema = z.object({
           data: {
             completedQty: newCompleted,
             scrapQty: newScrap,
-            status: isComplete ? 'completed' : 'in_progress',
+            status: isComplete ? "completed" : "in_progress",
             actualEnd: isComplete ? new Date() : undefined,
-            notes: notes ? (wo.notes ? `${wo.notes}\n${notes}` : notes) : wo.notes,
+            notes: notes
+              ? wo.notes
+                ? `${wo.notes}\n${notes}`
+                : notes
+              : wo.notes,
           },
         });
 
@@ -342,31 +389,31 @@ const bodySchema = z.object({
         });
       }
 
-      case 'report_issue': {
+      case "report_issue": {
         const { issueType, description, severity } = data || {};
 
         if (!issueType || !description) {
           return NextResponse.json(
-            { success: false, error: 'Issue type and description required' },
-            { status: 400 }
+            { success: false, error: "Issue type and description required" },
+            { status: 400 },
           );
         }
 
         // Create NCR if this is a quality issue
         let ncrId = null;
-        if (issueType === 'quality') {
+        if (issueType === "quality") {
           const ncr = await prisma.nCR.create({
             data: {
-              ncrNumber: `NCR-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`,
+              ncrNumber: `NCR-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`,
               workOrderId: woId,
               productId: wo.productId,
               title: `Quality Issue - ${wo.woNumber}`,
               description,
-              priority: severity?.toLowerCase() || 'medium',
-              source: 'IN_PROCESS',
+              priority: severity?.toLowerCase() || "medium",
+              source: "IN_PROCESS",
               quantityAffected: 1,
-              status: 'open',
-              createdBy: data?.userId || 'system',
+              status: "open",
+              createdBy: data?.userId || "system",
             },
           });
           ncrId = ncr.id;
@@ -377,37 +424,37 @@ const bodySchema = z.object({
           where: { id: woId },
           data: {
             notes: wo.notes
-              ? `${wo.notes}\n[${severity || 'Medium'}] ${issueType}: ${description}`
-              : `[${severity || 'Medium'}] ${issueType}: ${description}`,
+              ? `${wo.notes}\n[${severity || "Medium"}] ${issueType}: ${description}`
+              : `[${severity || "Medium"}] ${issueType}: ${description}`,
           },
         });
 
         return NextResponse.json({
           success: true,
           ncrId,
-          message: 'Issue reported successfully',
+          message: "Issue reported successfully",
           data: {
             woNumber: wo.woNumber,
             issueType,
-            severity: severity || 'Medium',
+            severity: severity || "Medium",
             description,
             reportedAt: new Date().toISOString(),
           },
         });
       }
 
-      case 'clock_in': {
+      case "clock_in": {
         const { userId, operationId: opId } = data || {};
 
         // Get the first operation if no operation specified
         const targetOp = opId
-          ? wo.operations.find(op => op.id === opId)
+          ? wo.operations.find((op) => op.id === opId)
           : wo.operations[0];
 
         if (!targetOp) {
           return NextResponse.json(
-            { success: false, error: 'No operation found for work order' },
-            { status: 400 }
+            { success: false, error: "No operation found for work order" },
+            { status: 400 },
           );
         }
 
@@ -415,9 +462,9 @@ const bodySchema = z.object({
         await prisma.laborEntry.create({
           data: {
             workOrderOperationId: targetOp.id,
-            userId: userId || 'system',
+            userId: userId || "system",
             startTime: new Date(),
-            type: 'DIRECT',
+            type: "DIRECT",
           },
         });
 
@@ -431,24 +478,25 @@ const bodySchema = z.object({
         });
       }
 
-      case 'clock_out': {
+      case "clock_out": {
         const { userId, hoursWorked } = data || {};
 
         // Find and update the latest open labor entry for any operation in this WO
-        const operationIds = wo.operations.map(op => op.id);
+        const operationIds = wo.operations.map((op) => op.id);
         const laborEntry = await prisma.laborEntry.findFirst({
           where: {
             workOrderOperationId: { in: operationIds },
-            userId: userId || 'system',
+            userId: userId || "system",
             endTime: null,
           },
-          orderBy: { startTime: 'desc' },
+          orderBy: { startTime: "desc" },
         });
 
         if (laborEntry) {
           const startTime = new Date(laborEntry.startTime);
           const endTime = new Date();
-          const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+          const durationMinutes =
+            (endTime.getTime() - startTime.getTime()) / (1000 * 60);
 
           await prisma.laborEntry.update({
             where: { id: laborEntry.id },
@@ -473,15 +521,16 @@ const bodySchema = z.object({
       default:
         return NextResponse.json(
           { success: false, error: `Invalid action: ${action}` },
-          { status: 400 }
+          { status: 400 },
         );
     }
-
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: '/api/mobile/workorder' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "/api/mobile/workorder",
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to process work order operation' },
-      { status: 500 }
+      { success: false, error: "Failed to process work order operation" },
+      { status: 500 },
     );
   }
 });

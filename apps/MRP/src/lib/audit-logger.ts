@@ -2,7 +2,7 @@
 import { prisma } from "./prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { Prisma } from "@prisma/client";
+import { Prisma } from ".prisma/mrp-client";
 
 type AuditAction =
   | "CREATE"
@@ -56,7 +56,7 @@ export async function logAudit(params: AuditLogParams) {
 // Helper for tracking changes
 export function getChangedFields(
   oldObj: Record<string, unknown>,
-  newObj: Record<string, unknown>
+  newObj: Record<string, unknown>,
 ): { oldValues: Record<string, unknown>; newValues: Record<string, unknown> } {
   const oldValues: Record<string, unknown> = {};
   const newValues: Record<string, unknown> = {};
@@ -150,7 +150,11 @@ export async function getAuditTrail(entityType: string, entityId: string) {
 
 // Pre-built activity loggers
 export const ActivityLoggers = {
-  orderCreated: async (orderNumber: string, customerName: string, total: number) => {
+  orderCreated: async (
+    orderNumber: string,
+    customerName: string,
+    total: number,
+  ) => {
     return logActivity({
       type: "order_created",
       title: `Sales Order ${orderNumber} created`,
@@ -161,7 +165,12 @@ export const ActivityLoggers = {
     });
   },
 
-  stockAlert: async (partNumber: string, partName: string, currentStock: number, reorderPoint: number) => {
+  stockAlert: async (
+    partNumber: string,
+    partName: string,
+    currentStock: number,
+    reorderPoint: number,
+  ) => {
     return logActivity({
       type: "stock_alert",
       title: `Stock Alert: ${partNumber}`,
@@ -172,7 +181,11 @@ export const ActivityLoggers = {
     });
   },
 
-  poReceived: async (poNumber: string, supplierName: string, itemsReceived: number) => {
+  poReceived: async (
+    poNumber: string,
+    supplierName: string,
+    itemsReceived: number,
+  ) => {
     return logActivity({
       type: "po_received",
       title: `PO ${poNumber} received`,
@@ -183,7 +196,11 @@ export const ActivityLoggers = {
     });
   },
 
-  mrpCompleted: async (runNumber: string, totalParts: number, suggestions: number) => {
+  mrpCompleted: async (
+    runNumber: string,
+    totalParts: number,
+    suggestions: number,
+  ) => {
     return logActivity({
       type: "mrp_complete",
       title: `MRP Run ${runNumber} completed`,
@@ -194,7 +211,11 @@ export const ActivityLoggers = {
     });
   },
 
-  workOrderCompleted: async (woNumber: string, productName: string, quantity: number) => {
+  workOrderCompleted: async (
+    woNumber: string,
+    productName: string,
+    quantity: number,
+  ) => {
     return logActivity({
       type: "wo_complete",
       title: `Work Order ${woNumber} completed`,

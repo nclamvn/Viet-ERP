@@ -1,42 +1,42 @@
 // src/lib/performance/services/competency.service.ts
 // Competency Service - Manage competency frameworks and assessments
 
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { db } from "@/lib/db";
+import { Prisma } from ".prisma/hrm-ai-client";
 
 // Types
 export interface CreateFrameworkInput {
-  name: string
-  description?: string
+  name: string;
+  description?: string;
 }
 
 export interface CreateCompetencyInput {
-  name: string
-  description?: string
-  category?: string
-  levels: CompetencyLevel[]
-  isCore?: boolean
-  order?: number
+  name: string;
+  description?: string;
+  category?: string;
+  levels: CompetencyLevel[];
+  isCore?: boolean;
+  order?: number;
 }
 
 export interface CompetencyLevel {
-  level: number
-  name: string
-  description: string
-  behaviors: string[]
+  level: number;
+  name: string;
+  description: string;
+  behaviors: string[];
 }
 
 export interface PositionCompetencyInput {
-  competencyId: string
-  position: string
-  requiredLevel: number
+  competencyId: string;
+  position: string;
+  requiredLevel: number;
 }
 
 export interface CompetencyFilters {
-  frameworkId?: string
-  category?: string
-  isCore?: boolean
-  search?: string
+  frameworkId?: string;
+  category?: string;
+  isCore?: boolean;
+  search?: string;
 }
 
 export class CompetencyService {
@@ -55,7 +55,7 @@ export class CompetencyService {
         description: input.description,
         isActive: true,
       },
-    })
+    });
   }
 
   /**
@@ -69,16 +69,16 @@ export class CompetencyService {
       },
       include: {
         competencies: {
-          orderBy: [{ category: 'asc' }, { order: 'asc' }],
+          orderBy: [{ category: "asc" }, { order: "asc" }],
         },
       },
-    })
+    });
 
     if (!framework) {
-      throw new Error('Competency framework not found')
+      throw new Error("Competency framework not found");
     }
 
-    return framework
+    return framework;
   }
 
   /**
@@ -87,11 +87,11 @@ export class CompetencyService {
   async listFrameworks() {
     return db.competencyFramework.findMany({
       where: { tenantId: this.tenantId },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
       include: {
         _count: { select: { competencies: true } },
       },
-    })
+    });
   }
 
   /**
@@ -104,7 +104,7 @@ export class CompetencyService {
         name: input.name,
         description: input.description,
       },
-    })
+    });
   }
 
   /**
@@ -114,7 +114,7 @@ export class CompetencyService {
     return db.competencyFramework.update({
       where: { id },
       data: { isActive },
-    })
+    });
   }
 
   /**
@@ -124,18 +124,18 @@ export class CompetencyService {
     const framework = await db.competencyFramework.findFirst({
       where: { id, tenantId: this.tenantId },
       include: { _count: { select: { competencies: true } } },
-    })
+    });
 
     if (!framework) {
-      throw new Error('Framework not found')
+      throw new Error("Framework not found");
     }
 
     if (framework._count.competencies > 0) {
-      throw new Error('Cannot delete framework with competencies')
+      throw new Error("Cannot delete framework with competencies");
     }
 
-    await db.competencyFramework.delete({ where: { id } })
-    return { success: true }
+    await db.competencyFramework.delete({ where: { id } });
+    return { success: true };
   }
 
   // ===== COMPETENCIES =====
@@ -146,19 +146,20 @@ export class CompetencyService {
   async createCompetency(frameworkId: string, input: CreateCompetencyInput) {
     const framework = await db.competencyFramework.findFirst({
       where: { id: frameworkId, tenantId: this.tenantId },
-    })
+    });
 
     if (!framework) {
-      throw new Error('Framework not found')
+      throw new Error("Framework not found");
     }
 
     // Get max order in category
     const lastCompetency = await db.competency.findFirst({
       where: { frameworkId, category: input.category },
-      orderBy: { order: 'desc' },
-    })
+      orderBy: { order: "desc" },
+    });
 
-    const order = input.order ?? (lastCompetency ? lastCompetency.order + 1 : 0)
+    const order =
+      input.order ?? (lastCompetency ? lastCompetency.order + 1 : 0);
 
     return db.competency.create({
       data: {
@@ -170,7 +171,7 @@ export class CompetencyService {
         isCore: input.isCore ?? false,
         order,
       },
-    })
+    });
   }
 
   /**
@@ -183,58 +184,62 @@ export class CompetencyService {
         framework: { select: { id: true, name: true, tenantId: true } },
         positionCompetencies: true,
       },
-    })
+    });
 
     if (!competency) {
-      throw new Error('Competency not found')
+      throw new Error("Competency not found");
     }
 
     // Verify tenant access
     if (competency.framework.tenantId !== this.tenantId) {
-      throw new Error('Competency not found')
+      throw new Error("Competency not found");
     }
 
-    return competency
+    return competency;
   }
 
   /**
    * List competencies
    */
-  async listCompetencies(filters: CompetencyFilters = {}, page: number = 1, pageSize: number = 50) {
-    const skip = (page - 1) * pageSize
+  async listCompetencies(
+    filters: CompetencyFilters = {},
+    page: number = 1,
+    pageSize: number = 50,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     // Build framework filter
     const frameworkWhere: Prisma.CompetencyFrameworkWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.frameworkId) {
-      frameworkWhere.id = filters.frameworkId
+      frameworkWhere.id = filters.frameworkId;
     }
 
     const where: Prisma.CompetencyWhereInput = {
       framework: frameworkWhere,
-    }
+    };
 
     if (filters.category) {
-      where.category = filters.category
+      where.category = filters.category;
     }
 
     if (filters.isCore !== undefined) {
-      where.isCore = filters.isCore
+      where.isCore = filters.isCore;
     }
 
     if (filters.search) {
       where.OR = [
-        { name: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ]
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { description: { contains: filters.search, mode: "insensitive" } },
+      ];
     }
 
     const [competencies, total] = await Promise.all([
       db.competency.findMany({
         where,
-        orderBy: [{ category: 'asc' }, { order: 'asc' }],
+        orderBy: [{ category: "asc" }, { order: "asc" }],
         skip,
         take: pageSize,
         include: {
@@ -242,7 +247,7 @@ export class CompetencyService {
         },
       }),
       db.competency.count({ where }),
-    ])
+    ]);
 
     return {
       data: competencies,
@@ -250,7 +255,7 @@ export class CompetencyService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -262,20 +267,20 @@ export class CompetencyService {
         frameworkId,
         framework: { tenantId: this.tenantId },
       },
-      orderBy: [{ category: 'asc' }, { order: 'asc' }],
-    })
+      orderBy: [{ category: "asc" }, { order: "asc" }],
+    });
 
     // Group by category
-    const byCategory: Record<string, typeof competencies> = {}
-    competencies.forEach(c => {
-      const category = c.category || 'Uncategorized'
+    const byCategory: Record<string, typeof competencies> = {};
+    competencies.forEach((c) => {
+      const category = c.category || "Uncategorized";
       if (!byCategory[category]) {
-        byCategory[category] = []
+        byCategory[category] = [];
       }
-      byCategory[category].push(c)
-    })
+      byCategory[category].push(c);
+    });
 
-    return byCategory
+    return byCategory;
   }
 
   /**
@@ -285,16 +290,16 @@ export class CompetencyService {
     const where: Prisma.CompetencyWhereInput = {
       isCore: true,
       framework: { tenantId: this.tenantId },
-    }
+    };
 
     if (frameworkId) {
-      where.frameworkId = frameworkId
+      where.frameworkId = frameworkId;
     }
 
     return db.competency.findMany({
       where,
-      orderBy: { order: 'asc' },
-    })
+      orderBy: { order: "asc" },
+    });
   }
 
   /**
@@ -311,7 +316,7 @@ export class CompetencyService {
         isCore: input.isCore,
         order: input.order,
       },
-    })
+    });
   }
 
   /**
@@ -324,18 +329,18 @@ export class CompetencyService {
         framework: { select: { tenantId: true } },
         _count: { select: { reviewCompetencies: true } },
       },
-    })
+    });
 
     if (!competency || competency.framework.tenantId !== this.tenantId) {
-      throw new Error('Competency not found')
+      throw new Error("Competency not found");
     }
 
     if (competency._count.reviewCompetencies > 0) {
-      throw new Error('Cannot delete competency used in reviews')
+      throw new Error("Cannot delete competency used in reviews");
     }
 
-    await db.competency.delete({ where: { id } })
-    return { success: true }
+    await db.competency.delete({ where: { id } });
+    return { success: true };
   }
 
   // ===== POSITION COMPETENCIES =====
@@ -343,28 +348,31 @@ export class CompetencyService {
   /**
    * Set required competencies for a position
    */
-  async setPositionCompetencies(position: string, competencies: PositionCompetencyInput[]) {
+  async setPositionCompetencies(
+    position: string,
+    competencies: PositionCompetencyInput[],
+  ) {
     // Delete existing
     await db.positionCompetency.deleteMany({
       where: {
         tenantId: this.tenantId,
         position,
       },
-    })
+    });
 
     // Create new
     if (competencies.length > 0) {
       await db.positionCompetency.createMany({
-        data: competencies.map(c => ({
+        data: competencies.map((c) => ({
           tenantId: this.tenantId,
           competencyId: c.competencyId,
           position,
           requiredLevel: c.requiredLevel,
         })),
-      })
+      });
     }
 
-    return { success: true }
+    return { success: true };
   }
 
   /**
@@ -379,8 +387,8 @@ export class CompetencyService {
       include: {
         competency: true,
       },
-      orderBy: { competency: { order: 'asc' } },
-    })
+      orderBy: { competency: { order: "asc" } },
+    });
   }
 
   /**
@@ -397,7 +405,7 @@ export class CompetencyService {
       include: {
         competency: true,
       },
-    })
+    });
   }
 
   /**
@@ -409,15 +417,15 @@ export class CompetencyService {
       data: {
         requiredLevel,
       },
-    })
+    });
   }
 
   /**
    * Remove competency from position
    */
   async removePositionCompetency(id: string) {
-    await db.positionCompetency.delete({ where: { id } })
-    return { success: true }
+    await db.positionCompetency.delete({ where: { id } });
+    return { success: true };
   }
 
   // ===== COMPETENCY GAPS =====
@@ -425,14 +433,18 @@ export class CompetencyService {
   /**
    * Assess competency gap for an employee
    */
-  async assessGap(employeeId: string, competencyId: string, currentLevel: number) {
+  async assessGap(
+    employeeId: string,
+    competencyId: string,
+    currentLevel: number,
+  ) {
     const employee = await db.employee.findFirst({
       where: { id: employeeId, tenantId: this.tenantId },
       include: { position: true },
-    })
+    });
 
     if (!employee || !employee.position) {
-      throw new Error('Employee or position not found')
+      throw new Error("Employee or position not found");
     }
 
     const positionCompetency = await db.positionCompetency.findFirst({
@@ -442,34 +454,37 @@ export class CompetencyService {
         position: employee.position.name,
       },
       include: { competency: true },
-    })
+    });
 
     if (!positionCompetency) {
-      return null // Competency not required for position
+      return null; // Competency not required for position
     }
 
-    const gap = positionCompetency.requiredLevel - currentLevel
+    const gap = positionCompetency.requiredLevel - currentLevel;
 
     return {
       competency: positionCompetency.competency,
       requiredLevel: positionCompetency.requiredLevel,
       currentLevel,
       gap,
-      status: gap <= 0 ? 'MEETS' : gap === 1 ? 'DEVELOPING' : 'GAP',
-    }
+      status: gap <= 0 ? "MEETS" : gap === 1 ? "DEVELOPING" : "GAP",
+    };
   }
 
   /**
    * Get full competency gap analysis for employee
    */
-  async getEmployeeGapAnalysis(employeeId: string, currentLevels: Record<string, number>) {
+  async getEmployeeGapAnalysis(
+    employeeId: string,
+    currentLevels: Record<string, number>,
+  ) {
     const employee = await db.employee.findFirst({
       where: { id: employeeId, tenantId: this.tenantId },
       include: { position: true },
-    })
+    });
 
     if (!employee || !employee.position) {
-      throw new Error('Employee or position not found')
+      throw new Error("Employee or position not found");
     }
 
     const positionCompetencies = await db.positionCompetency.findMany({
@@ -478,29 +493,30 @@ export class CompetencyService {
         position: employee.position.name,
       },
       include: { competency: true },
-    })
+    });
 
-    const analysis = positionCompetencies.map(pc => {
-      const currentLevel = currentLevels[pc.competencyId] || 0
-      const gap = pc.requiredLevel - currentLevel
+    const analysis = positionCompetencies.map((pc) => {
+      const currentLevel = currentLevels[pc.competencyId] || 0;
+      const gap = pc.requiredLevel - currentLevel;
 
       return {
         competency: pc.competency,
         requiredLevel: pc.requiredLevel,
         currentLevel,
         gap,
-        status: gap <= 0 ? 'MEETS' : gap === 1 ? 'DEVELOPING' : 'GAP',
-      }
-    })
+        status: gap <= 0 ? "MEETS" : gap === 1 ? "DEVELOPING" : "GAP",
+      };
+    });
 
     // Calculate overall readiness (equal weight for all competencies)
     const totalScore = analysis.reduce((sum, a) => {
-      const score = Math.min(a.currentLevel / a.requiredLevel, 1)
-      return sum + score
-    }, 0)
-    const overallReadiness = analysis.length > 0
-      ? Math.round((totalScore / analysis.length) * 100)
-      : 0
+      const score = Math.min(a.currentLevel / a.requiredLevel, 1);
+      return sum + score;
+    }, 0);
+    const overallReadiness =
+      analysis.length > 0
+        ? Math.round((totalScore / analysis.length) * 100)
+        : 0;
 
     return {
       employee: {
@@ -511,12 +527,12 @@ export class CompetencyService {
       analysis,
       summary: {
         totalCompetencies: analysis.length,
-        meetsRequirements: analysis.filter(a => a.status === 'MEETS').length,
-        developing: analysis.filter(a => a.status === 'DEVELOPING').length,
-        gaps: analysis.filter(a => a.status === 'GAP').length,
+        meetsRequirements: analysis.filter((a) => a.status === "MEETS").length,
+        developing: analysis.filter((a) => a.status === "DEVELOPING").length,
+        gaps: analysis.filter((a) => a.status === "GAP").length,
         overallReadiness,
       },
-    }
+    };
   }
 
   // ===== STATISTICS =====
@@ -535,24 +551,24 @@ export class CompetencyService {
       }),
 
       db.competency.groupBy({
-        by: ['category'],
+        by: ["category"],
         where: { framework: { tenantId: this.tenantId } },
         _count: true,
       }),
-    ])
+    ]);
 
     return {
       totalFrameworks: frameworks,
       totalCompetencies: competencies,
-      byCategory: byCategory.map(c => ({
-        category: c.category || 'Uncategorized',
+      byCategory: byCategory.map((c) => ({
+        category: c.category || "Uncategorized",
         count: c._count,
       })),
-    }
+    };
   }
 }
 
 // Factory function
 export function createCompetencyService(tenantId: string): CompetencyService {
-  return new CompetencyService(tenantId)
+  return new CompetencyService(tenantId);
 }

@@ -1,51 +1,44 @@
-'use client'
+"use client";
 
-import { formatDistanceToNow } from 'date-fns'
-import { vi } from 'date-fns/locale'
-import {
-  ArrowRight,
-  Clock,
-  User,
-} from 'lucide-react'
-import { useTranslation } from '@/i18n'
-import { getStatusColor } from '@/lib/orders/state-machine'
-import type { OrderStatus } from '@prisma/client'
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
+import { ArrowRight, Clock, User } from "lucide-react";
+import { useTranslation } from "@/i18n";
+import { getStatusColor } from "@/lib/orders/state-machine";
+import type { OrderStatus } from ".prisma/crm-client";
 
 interface StatusHistoryEntry {
-  id: string
-  fromStatus: string
-  toStatus: string
-  note: string | null
-  createdAt: string | Date
-  user: { id: string; name: string | null } | null
+  id: string;
+  fromStatus: string;
+  toStatus: string;
+  note: string | null;
+  createdAt: string | Date;
+  user: { id: string; name: string | null } | null;
 }
 
 interface StatusTimelineProps {
-  history: StatusHistoryEntry[]
+  history: StatusHistoryEntry[];
 }
 
 export function StatusTimeline({ history }: StatusTimelineProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   if (history.length === 0) {
     return (
       <div className="text-sm text-[var(--crm-text-muted)] text-center py-4">
-        {t('orders.noHistory')}
+        {t("orders.noHistory")}
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-3">
       {history.map((entry) => {
-        const fromColor = getStatusColor(entry.fromStatus as OrderStatus)
-        const toColor = getStatusColor(entry.toStatus as OrderStatus)
+        const fromColor = getStatusColor(entry.fromStatus as OrderStatus);
+        const toColor = getStatusColor(entry.toStatus as OrderStatus);
 
         return (
-          <div
-            key={entry.id}
-            className="flex items-start gap-3 relative"
-          >
+          <div key={entry.id} className="flex items-start gap-3 relative">
             {/* Timeline dot */}
             <div className="flex-shrink-0 mt-1">
               <div
@@ -59,7 +52,10 @@ export function StatusTimeline({ history }: StatusTimelineProps) {
               <div className="flex items-center gap-2 flex-wrap">
                 <span
                   className="text-xs font-medium px-1.5 py-0.5 rounded"
-                  style={{ backgroundColor: `${fromColor}20`, color: fromColor }}
+                  style={{
+                    backgroundColor: `${fromColor}20`,
+                    color: fromColor,
+                  }}
                 >
                   {t(`orderStatus.${statusKey(entry.fromStatus)}`)}
                 </span>
@@ -95,22 +91,22 @@ export function StatusTimeline({ history }: StatusTimelineProps) {
               </div>
             </div>
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 /** Map OrderStatus enum to i18n key suffix */
 function statusKey(status: string): string {
   const map: Record<string, string> = {
-    PENDING: 'pending',
-    CONFIRMED: 'confirmed',
-    IN_PRODUCTION: 'inProduction',
-    SHIPPED: 'shipped',
-    DELIVERED: 'delivered',
-    CANCELLED: 'cancelled',
-    REFUNDED: 'refunded',
-  }
-  return map[status] ?? status.toLowerCase()
+    PENDING: "pending",
+    CONFIRMED: "confirmed",
+    IN_PRODUCTION: "inProduction",
+    SHIPPED: "shipped",
+    DELIVERED: "delivered",
+    CANCELLED: "cancelled",
+    REFUNDED: "refunded",
+  };
+  return map[status] ?? status.toLowerCase();
 }

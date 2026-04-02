@@ -1,22 +1,22 @@
 // src/lib/workflow/approver-resolver.ts
 // Workflow Approver Resolver
 
-import { db } from '@/lib/db'
-import type { ApproverType } from '@prisma/client'
+import { db } from "@/lib/db";
+import type { ApproverType } from ".prisma/hrm-unified-client";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
 
 export interface WorkflowStepConfig {
-  approverType: ApproverType
-  specificUserId?: string | null
-  specificRole?: string | null
+  approverType: ApproverType;
+  specificUserId?: string | null;
+  specificRole?: string | null;
 }
 
 export interface ApproverResult {
-  approverId: string
-  delegatedFromId?: string
+  approverId: string;
+  delegatedFromId?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -32,54 +32,54 @@ export async function resolveApprover(
   step: WorkflowStepConfig,
   requesterId: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _context: Record<string, unknown> = {}
+  _context: Record<string, unknown> = {},
 ): Promise<ApproverResult> {
-  let approverId: string | null = null
+  let approverId: string | null = null;
 
   switch (step.approverType) {
-    case 'SPECIFIC_USER':
-      approverId = step.specificUserId || null
-      break
+    case "SPECIFIC_USER":
+      approverId = step.specificUserId || null;
+      break;
 
-    case 'DIRECT_MANAGER':
-      approverId = await getDirectManager(requesterId)
-      break
+    case "DIRECT_MANAGER":
+      approverId = await getDirectManager(requesterId);
+      break;
 
-    case 'DEPARTMENT_HEAD':
-      approverId = await getDepartmentHead(requesterId)
-      break
+    case "DEPARTMENT_HEAD":
+      approverId = await getDepartmentHead(requesterId);
+      break;
 
-    case 'HR_MANAGER':
-      approverId = await getHRManager(tenantId)
-      break
+    case "HR_MANAGER":
+      approverId = await getHRManager(tenantId);
+      break;
 
-    case 'ROLE_BASED':
+    case "ROLE_BASED":
       if (step.specificRole) {
-        approverId = await getUserByRole(tenantId, step.specificRole)
+        approverId = await getUserByRole(tenantId, step.specificRole);
       }
-      break
+      break;
   }
 
   // Fallback to HR Manager if no approver found
   if (!approverId) {
-    approverId = await getHRManager(tenantId)
+    approverId = await getHRManager(tenantId);
   }
 
   if (!approverId) {
-    throw new Error('Không thể xác định người duyệt')
+    throw new Error("Không thể xác định người duyệt");
   }
 
   // Check for active delegation
-  const delegation = await getActiveDelegation(tenantId, approverId)
+  const delegation = await getActiveDelegation(tenantId, approverId);
 
   if (delegation) {
     return {
       approverId: delegation.delegateId,
       delegatedFromId: approverId,
-    }
+    };
   }
 
-  return { approverId }
+  return { approverId };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -103,9 +103,9 @@ async function getDirectManager(userId: string): Promise<string | null> {
         },
       },
     },
-  })
+  });
 
-  return user?.employee?.directManager?.user?.id || null
+  return user?.employee?.directManager?.user?.id || null;
 }
 
 /**
@@ -129,9 +129,9 @@ async function getDepartmentHead(userId: string): Promise<string | null> {
         },
       },
     },
-  })
+  });
 
-  return user?.employee?.department?.manager?.user?.id || null
+  return user?.employee?.department?.manager?.user?.id || null;
 }
 
 /**
@@ -141,18 +141,21 @@ async function getHRManager(tenantId: string): Promise<string | null> {
   const user = await db.user.findFirst({
     where: {
       tenantId,
-      role: 'HR_MANAGER',
+      role: "HR_MANAGER",
       isActive: true,
     },
-  })
+  });
 
-  return user?.id || null
+  return user?.id || null;
 }
 
 /**
  * Get a user by role
  */
-async function getUserByRole(tenantId: string, role: string): Promise<string | null> {
+async function getUserByRole(
+  tenantId: string,
+  role: string,
+): Promise<string | null> {
   const user = await db.user.findFirst({
     where: {
       tenantId,
@@ -160,9 +163,9 @@ async function getUserByRole(tenantId: string, role: string): Promise<string | n
       role: role as any,
       isActive: true,
     },
-  })
+  });
 
-  return user?.id || null
+  return user?.id || null;
 }
 
 /**
@@ -170,10 +173,10 @@ async function getUserByRole(tenantId: string, role: string): Promise<string | n
  */
 async function getActiveDelegation(
   tenantId: string,
-  userId: string
+  userId: string,
 ): Promise<{ delegateId: string } | null> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const delegation = await db.delegation.findFirst({
     where: {
@@ -186,9 +189,9 @@ async function getActiveDelegation(
     select: {
       delegateId: true,
     },
-  })
+  });
 
-  return delegation
+  return delegation;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -201,19 +204,19 @@ async function getActiveDelegation(
 export async function getApproverPreview(
   tenantId: string,
   step: WorkflowStepConfig,
-  requesterId: string
+  requesterId: string,
 ): Promise<{ id: string; name: string; email: string }[]> {
-  const approvers: { id: string; name: string; email: string }[] = []
+  const approvers: { id: string; name: string; email: string }[] = [];
 
   try {
-    const result = await resolveApprover(tenantId, step, requesterId)
+    const result = await resolveApprover(tenantId, step, requesterId);
     const user = await db.user.findUnique({
       where: { id: result.approverId },
       select: { id: true, name: true, email: true },
-    })
+    });
 
     if (user) {
-      approvers.push(user)
+      approvers.push(user);
     }
 
     // If delegated, also show original approver
@@ -221,18 +224,18 @@ export async function getApproverPreview(
       const originalUser = await db.user.findUnique({
         where: { id: result.delegatedFromId },
         select: { id: true, name: true, email: true },
-      })
+      });
 
       if (originalUser) {
         approvers.push({
           ...originalUser,
           name: `${originalUser.name} (ủy quyền)`,
-        })
+        });
       }
     }
   } catch {
     // Ignore errors in preview
   }
 
-  return approvers
+  return approvers;
 }

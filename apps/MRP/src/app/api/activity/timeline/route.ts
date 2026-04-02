@@ -1,10 +1,10 @@
 // src/app/api/activity/timeline/route.ts
 // Work session activity timeline endpoint
 
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import type { Prisma } from ".prisma/mrp-client";
 
 function getEntityUrl(entityType: string, entityId: string): string {
   const routes: Record<string, string> = {
@@ -16,22 +16,22 @@ function getEntityUrl(entityType: string, entityId: string): string {
     PART: `/engineering/parts/${entityId}`,
     BOM: `/engineering/bom/${entityId}`,
   };
-  return routes[entityType] || '/';
+  return routes[entityType] || "/";
 }
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const searchParams = req.nextUrl.searchParams;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const entityType = searchParams.get('entityType');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
+    const offset = parseInt(searchParams.get("offset") || "0");
+    const entityType = searchParams.get("entityType");
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
 
     const sessionWhere: Prisma.WorkSessionWhereInput = {
       userId: session.user.id,
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     const [activities, total] = await Promise.all([
       prisma.sessionActivity.findMany({
         where,
-        orderBy: { timestamp: 'desc' },
+        orderBy: { timestamp: "desc" },
         take: limit,
         skip: offset,
         include: {
@@ -77,7 +77,10 @@ export async function GET(req: NextRequest) {
       timestamp: activity.timestamp.toISOString(),
       entityType: activity.session.entityType,
       entityNumber: activity.session.entityNumber,
-      entityUrl: getEntityUrl(activity.session.entityType, activity.session.entityId),
+      entityUrl: getEntityUrl(
+        activity.session.entityType,
+        activity.session.entityId,
+      ),
       metadata: (activity.metadataJson as Record<string, unknown>) || {},
     }));
 
@@ -87,7 +90,10 @@ export async function GET(req: NextRequest) {
       hasMore: offset + limit < total,
     });
   } catch (error) {
-    console.error('GET /api/activity/timeline error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error("GET /api/activity/timeline error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

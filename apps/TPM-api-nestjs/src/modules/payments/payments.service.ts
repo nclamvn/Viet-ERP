@@ -3,7 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateTransactionDto, TransactionTypeEnum } from './dto/create-transaction.dto';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class PaymentsService {

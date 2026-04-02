@@ -1,32 +1,32 @@
 // src/services/knowledge.service.ts
 // Knowledge Base Service
 
-import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
-import type { PaginatedResponse } from '@/types'
+import { db } from "@/lib/db";
+import type { Prisma } from ".prisma/hrm-ai-client";
+import type { PaginatedResponse } from "@/types";
 
 export interface KnowledgeFilters {
-  category?: string
-  search?: string
-  isPublished?: boolean
-  page?: number
-  pageSize?: number
+  category?: string;
+  search?: string;
+  isPublished?: boolean;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface CreateKnowledgeInput {
-  title: string
-  content: string
-  category: string
-  keywords?: string[]
-  isPublished?: boolean
+  title: string;
+  content: string;
+  category: string;
+  keywords?: string[];
+  isPublished?: boolean;
 }
 
 export interface UpdateKnowledgeInput {
-  title?: string
-  content?: string
-  category?: string
-  keywords?: string[]
-  isPublished?: boolean
+  title?: string;
+  content?: string;
+  category?: string;
+  keywords?: string[];
+  isPublished?: boolean;
 }
 
 export const knowledgeService = {
@@ -35,10 +35,10 @@ export const knowledgeService = {
    */
   async getAll(
     tenantId: string,
-    filters: KnowledgeFilters = {}
+    filters: KnowledgeFilters = {},
   ): Promise<PaginatedResponse<Prisma.KnowledgeArticleGetPayload<object>>> {
-    const { category, search, isPublished, page = 1, pageSize = 20 } = filters
-    const skip = (page - 1) * pageSize
+    const { category, search, isPublished, page = 1, pageSize = 20 } = filters;
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.KnowledgeArticleWhereInput = {
       tenantId,
@@ -46,21 +46,21 @@ export const knowledgeService = {
       ...(isPublished !== undefined && { isPublished }),
       ...(search && {
         OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { content: { contains: search, mode: 'insensitive' } },
+          { title: { contains: search, mode: "insensitive" } },
+          { content: { contains: search, mode: "insensitive" } },
         ],
       }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.knowledgeArticle.findMany({
         where,
-        orderBy: [{ isPublished: 'desc' }, { updatedAt: 'desc' }],
+        orderBy: [{ isPublished: "desc" }, { updatedAt: "desc" }],
         skip,
         take: pageSize,
       }),
       db.knowledgeArticle.count({ where }),
-    ])
+    ]);
 
     return {
       data,
@@ -70,7 +70,7 @@ export const knowledgeService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
 
   /**
@@ -78,7 +78,7 @@ export const knowledgeService = {
    */
   async getPublished(
     tenantId: string,
-    category?: string
+    category?: string,
   ): Promise<Prisma.KnowledgeArticleGetPayload<object>[]> {
     return db.knowledgeArticle.findMany({
       where: {
@@ -86,8 +86,8 @@ export const knowledgeService = {
         isPublished: true,
         ...(category && { category }),
       },
-      orderBy: { viewCount: 'desc' },
-    })
+      orderBy: { viewCount: "desc" },
+    });
   },
 
   /**
@@ -95,11 +95,11 @@ export const knowledgeService = {
    */
   async getById(
     tenantId: string,
-    id: string
+    id: string,
   ): Promise<Prisma.KnowledgeArticleGetPayload<object> | null> {
     return db.knowledgeArticle.findFirst({
       where: { id, tenantId },
-    })
+    });
   },
 
   /**
@@ -107,20 +107,20 @@ export const knowledgeService = {
    */
   async getByIdWithView(
     tenantId: string,
-    id: string
+    id: string,
   ): Promise<Prisma.KnowledgeArticleGetPayload<object> | null> {
     const article = await db.knowledgeArticle.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (article) {
       await db.knowledgeArticle.update({
         where: { id },
         data: { viewCount: { increment: 1 } },
-      })
+      });
     }
 
-    return article
+    return article;
   },
 
   /**
@@ -129,15 +129,15 @@ export const knowledgeService = {
   async search(
     tenantId: string,
     query: string,
-    limit: number = 5
+    limit: number = 5,
   ): Promise<Prisma.KnowledgeArticleGetPayload<object>[]> {
     const keywords = query
       .toLowerCase()
       .split(/\s+/)
-      .filter((w) => w.length > 2)
+      .filter((w) => w.length > 2);
 
     if (keywords.length === 0) {
-      return []
+      return [];
     }
 
     return db.knowledgeArticle.findMany({
@@ -145,14 +145,14 @@ export const knowledgeService = {
         tenantId,
         isPublished: true,
         OR: keywords.flatMap((keyword) => [
-          { title: { contains: keyword, mode: 'insensitive' } },
-          { content: { contains: keyword, mode: 'insensitive' } },
+          { title: { contains: keyword, mode: "insensitive" } },
+          { content: { contains: keyword, mode: "insensitive" } },
           { keywords: { has: keyword } },
         ]),
       },
       take: limit,
-      orderBy: { viewCount: 'desc' },
-    })
+      orderBy: { viewCount: "desc" },
+    });
   },
 
   /**
@@ -162,9 +162,9 @@ export const knowledgeService = {
     const result = await db.knowledgeArticle.findMany({
       where: { tenantId },
       select: { category: true },
-      distinct: ['category'],
-    })
-    return result.map((r) => r.category)
+      distinct: ["category"],
+    });
+    return result.map((r) => r.category);
   },
 
   /**
@@ -173,7 +173,7 @@ export const knowledgeService = {
   async create(
     tenantId: string,
     createdBy: string,
-    input: CreateKnowledgeInput
+    input: CreateKnowledgeInput,
   ): Promise<Prisma.KnowledgeArticleGetPayload<object>> {
     return db.knowledgeArticle.create({
       data: {
@@ -185,7 +185,7 @@ export const knowledgeService = {
         keywords: input.keywords || [],
         isPublished: input.isPublished ?? false,
       },
-    })
+    });
   },
 
   /**
@@ -194,11 +194,11 @@ export const knowledgeService = {
   async update(
     tenantId: string,
     id: string,
-    input: UpdateKnowledgeInput
+    input: UpdateKnowledgeInput,
   ): Promise<Prisma.KnowledgeArticleGetPayload<object>> {
-    const article = await this.getById(tenantId, id)
+    const article = await this.getById(tenantId, id);
     if (!article) {
-      throw new Error('Bài viết không tồn tại')
+      throw new Error("Bài viết không tồn tại");
     }
 
     return db.knowledgeArticle.update({
@@ -208,21 +208,23 @@ export const knowledgeService = {
         ...(input.content !== undefined && { content: input.content }),
         ...(input.category !== undefined && { category: input.category }),
         ...(input.keywords !== undefined && { keywords: input.keywords }),
-        ...(input.isPublished !== undefined && { isPublished: input.isPublished }),
+        ...(input.isPublished !== undefined && {
+          isPublished: input.isPublished,
+        }),
       },
-    })
+    });
   },
 
   /**
    * Delete an article
    */
   async delete(tenantId: string, id: string): Promise<void> {
-    const article = await this.getById(tenantId, id)
+    const article = await this.getById(tenantId, id);
     if (!article) {
-      throw new Error('Bài viết không tồn tại')
+      throw new Error("Bài viết không tồn tại");
     }
 
-    await db.knowledgeArticle.delete({ where: { id } })
+    await db.knowledgeArticle.delete({ where: { id } });
   },
 
   /**
@@ -230,31 +232,31 @@ export const knowledgeService = {
    */
   async togglePublish(
     tenantId: string,
-    id: string
+    id: string,
   ): Promise<Prisma.KnowledgeArticleGetPayload<object>> {
-    const article = await this.getById(tenantId, id)
+    const article = await this.getById(tenantId, id);
     if (!article) {
-      throw new Error('Bài viết không tồn tại')
+      throw new Error("Bài viết không tồn tại");
     }
 
     return db.knowledgeArticle.update({
       where: { id },
       data: { isPublished: !article.isPublished },
-    })
+    });
   },
 
   /**
    * Mark article as helpful
    */
   async markHelpful(tenantId: string, id: string): Promise<void> {
-    const article = await this.getById(tenantId, id)
+    const article = await this.getById(tenantId, id);
     if (!article) {
-      throw new Error('Bài viết không tồn tại')
+      throw new Error("Bài viết không tồn tại");
     }
 
     await db.knowledgeArticle.update({
       where: { id },
       data: { helpfulCount: { increment: 1 } },
-    })
+    });
   },
-}
+};

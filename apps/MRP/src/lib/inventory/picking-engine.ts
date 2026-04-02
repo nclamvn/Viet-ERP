@@ -2,7 +2,7 @@
 // FIFO / FEFO / ANY picking strategy engine
 
 import { prisma } from "@/lib/prisma";
-import { PickingStrategy } from "@prisma/client";
+import { PickingStrategy } from ".prisma/mrp-client";
 
 interface PickingRequest {
   partId: string;
@@ -33,7 +33,7 @@ interface PickingResult {
  * - ANY: largest quantity first (current/legacy behavior)
  */
 export async function allocateByStrategy(
-  request: PickingRequest
+  request: PickingRequest,
 ): Promise<PickingResult> {
   const { partId, warehouseId, requiredQty } = request;
 
@@ -77,7 +77,9 @@ export async function allocateByStrategy(
       success: false,
       allocations: [],
       totalAllocated: 0,
-      errors: [`No inventory found for part ${partId} in warehouse ${warehouseId}`],
+      errors: [
+        `No inventory found for part ${partId} in warehouse ${warehouseId}`,
+      ],
     };
   }
 
@@ -119,7 +121,9 @@ export async function allocateByStrategy(
     totalAllocated,
     errors:
       remaining > 0
-        ? [`Insufficient inventory: need ${requiredQty}, can allocate ${totalAllocated}`]
+        ? [
+            `Insufficient inventory: need ${requiredQty}, can allocate ${totalAllocated}`,
+          ]
         : [],
   };
 }
@@ -131,7 +135,7 @@ export async function allocateByStrategy(
 export async function getSortedInventory(
   partId: string,
   warehouseId: string,
-  strategy?: PickingStrategy
+  strategy?: PickingStrategy,
 ) {
   // Resolve strategy
   if (!strategy) {

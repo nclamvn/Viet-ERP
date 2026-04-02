@@ -1,75 +1,87 @@
-import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { writeAudit } from "@/lib/services/audit.service"
-import { executeEmployeeImport } from "@/lib/import/executors/employee-executor"
-import { executePayrollImport } from "@/lib/import/executors/payroll-executor"
-import { executeAttendanceImport } from "@/lib/import/executors/attendance-executor"
-import { executeContractImport } from "@/lib/import/executors/contract-executor"
-import type { ColumnMapping } from "@/lib/ai/import-mapper"
-import { Prisma } from "@prisma/client"
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/services/audit.service";
+import { executeEmployeeImport } from "@/lib/import/executors/employee-executor";
+import { executePayrollImport } from "@/lib/import/executors/payroll-executor";
+import { executeAttendanceImport } from "@/lib/import/executors/attendance-executor";
+import { executeContractImport } from "@/lib/import/executors/contract-executor";
+import type { ColumnMapping } from "@/lib/ai/import-mapper";
+import { Prisma } from ".prisma/hrm-client";
 
 export async function POST(request: Request) {
-  const session = await auth()
+  const session = await auth();
   if (!session?.user || session.user.role !== "SUPER_ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   try {
-    const { sessionId } = await request.json()
+    const { sessionId } = await request.json();
 
     if (!sessionId) {
-      return NextResponse.json({ error: "sessionId là bắt buộc" }, { status: 400 })
+      return NextResponse.json(
+        { error: "sessionId là bắt buộc" },
+        { status: 400 },
+      );
     }
 
     const importSession = await prisma.importSession.findUnique({
       where: { id: sessionId },
-    })
+    });
 
     if (!importSession) {
-      return NextResponse.json({ error: "Phiên import không tồn tại" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Phiên import không tồn tại" },
+        { status: 404 },
+      );
     }
 
     if (importSession.status !== "DRY_RUN") {
-      return NextResponse.json({ error: "Phiên import đã được thực hiện" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Phiên import đã được thực hiện" },
+        { status: 400 },
+      );
     }
 
-    const rawData = importSession.rawData as Record<string, unknown>[]
-    const mapping = importSession.mapping as unknown as ColumnMapping
+    const rawData = importSession.rawData as Record<string, unknown>[];
+    const mapping = importSession.mapping as unknown as ColumnMapping;
 
-    let result
+    let result;
     switch (importSession.type) {
       case "EMPLOYEES":
-        result = await executeEmployeeImport(rawData, mapping)
-        break
+        result = await executeEmployeeImport(rawData, mapping);
+        break;
       case "PAYROLL":
-        result = await executePayrollImport(rawData, mapping, session.user.id)
-        break
+        result = await executePayrollImport(rawData, mapping, session.user.id);
+        break;
       case "ATTENDANCE":
-        result = await executeAttendanceImport(rawData, mapping)
-        break
+        result = await executeAttendanceImport(rawData, mapping);
+        break;
       case "CONTRACTS":
-        result = await executeContractImport(rawData, mapping)
-        break
+        result = await executeContractImport(rawData, mapping);
+        break;
     }
 
     // Build metadata for rollback info
-    const metadata: Record<string, unknown> = {}
+    const metadata: Record<string, unknown> = {};
     if ("createdDepartmentIds" in result) {
-      metadata.createdDepartmentIds = result.createdDepartmentIds
+      metadata.createdDepartmentIds = result.createdDepartmentIds;
     }
     if ("createdPositionIds" in result) {
-      metadata.createdPositionIds = result.createdPositionIds
+      metadata.createdPositionIds = result.createdPositionIds;
     }
     if ("createdPeriodIds" in result) {
-      metadata.createdPeriodIds = result.createdPeriodIds
+      metadata.createdPeriodIds = result.createdPeriodIds;
     }
 
     // Update session
     await prisma.importSession.update({
       where: { id: sessionId },
       data: {
-        status: result.errors.length > 0 && result.successCount === 0 ? "FAILED" : "COMPLETED",
+        status:
+          result.errors.length > 0 && result.successCount === 0
+            ? "FAILED"
+            : "COMPLETED",
         importedIds: result.importedIds as unknown as Prisma.InputJsonValue,
         successRows: result.successCount,
         errorRows: result.errors.length,
@@ -77,7 +89,7 @@ export async function POST(request: Request) {
         metadata: metadata as Prisma.InputJsonObject,
         completedAt: new Date(),
       },
-    })
+    });
 
     // Audit log
     try {
@@ -96,7 +108,7 @@ export async function POST(request: Request) {
           successRows: result.successCount,
           errorRows: result.errors.length,
         },
-      })
+      });
     } catch {
       // Audit failure should not block import
     }
@@ -104,13 +116,18 @@ export async function POST(request: Request) {
     return NextResponse.json({
       imported: result.successCount,
       errors: result.errors,
-      status: result.errors.length > 0 && result.successCount === 0 ? "FAILED" : "COMPLETED",
-    })
+      status:
+        result.errors.length > 0 && result.successCount === 0
+          ? "FAILED"
+          : "COMPLETED",
+    });
   } catch (error) {
-    console.error("Import execute error:", error)
+    console.error("Import execute error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Lỗi thực hiện import" },
-      { status: 500 }
-    )
+      {
+        error: error instanceof Error ? error.message : "Lỗi thực hiện import",
+      },
+      { status: 500 },
+    );
   }
 }

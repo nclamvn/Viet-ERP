@@ -1,8 +1,8 @@
-import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import type { Prisma } from ".prisma/mrp-client";
 
 interface MatchResult {
-  status: 'matched' | 'mismatch_pending_review';
+  status: "matched" | "mismatch_pending_review";
   qtyVariance: number;
   qtyVariancePct: number;
   amtVariance: number | null;
@@ -13,7 +13,7 @@ export function calculateMatch(
   poQuantity: number,
   poTotalAmount: number,
   grnAcceptedQty: number,
-  invoiceAmount?: number
+  invoiceAmount?: number,
 ): MatchResult {
   // Quantity variance
   const qtyVariance = grnAcceptedQty - poQuantity;
@@ -34,10 +34,11 @@ export function calculateMatch(
 
   // Strict matching: 0% tolerance
   const qtyMatches = qtyVariance === 0;
-  const amtMatches = invoiceAmount === undefined || invoiceAmount === null || amtVariance === 0;
+  const amtMatches =
+    invoiceAmount === undefined || invoiceAmount === null || amtVariance === 0;
 
-  const status: MatchResult['status'] =
-    qtyMatches && amtMatches ? 'matched' : 'mismatch_pending_review';
+  const status: MatchResult["status"] =
+    qtyMatches && amtMatches ? "matched" : "mismatch_pending_review";
 
   return { status, qtyVariance, qtyVariancePct, amtVariance, amtVariancePct };
 }
@@ -49,7 +50,7 @@ export function calculateMatch(
 export async function createMatchFromGRN(
   purchaseOrderId: string,
   grnId: string,
-  tx?: Prisma.TransactionClient
+  tx?: Prisma.TransactionClient,
 ) {
   const db = tx || prisma;
 
@@ -69,8 +70,14 @@ export async function createMatchFromGRN(
   const poTotalAmount = po.totalAmount || 0;
   const poUnitPrice = poQuantity > 0 ? poTotalAmount / poQuantity : 0;
 
-  const grnQuantity = grn.items.reduce((sum, item) => sum + item.quantityReceived, 0);
-  const grnAcceptedQty = grn.items.reduce((sum, item) => sum + item.quantityAccepted, 0);
+  const grnQuantity = grn.items.reduce(
+    (sum, item) => sum + item.quantityReceived,
+    0,
+  );
+  const grnAcceptedQty = grn.items.reduce(
+    (sum, item) => sum + item.quantityAccepted,
+    0,
+  );
 
   const matchResult = calculateMatch(poQuantity, poTotalAmount, grnAcceptedQty);
 
@@ -98,7 +105,7 @@ export async function updateMatchWithInvoice(
   invoiceNumber: string,
   invoiceAmount: number,
   invoiceDate: Date,
-  purchaseInvoiceId?: string
+  purchaseInvoiceId?: string,
 ) {
   const match = await prisma.threeWayMatch.findUnique({
     where: { id: matchId },
@@ -109,7 +116,7 @@ export async function updateMatchWithInvoice(
     match.poQuantity,
     match.poTotalAmount,
     match.grnAcceptedQty || 0,
-    invoiceAmount
+    invoiceAmount,
   );
 
   return prisma.threeWayMatch.update({

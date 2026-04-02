@@ -3,8 +3,8 @@
 // Automatically filters all queries by tenantId
 // =============================================================================
 
-import { PrismaClient } from '@prisma/client';
-import { logger } from '@/lib/logger';
+import { PrismaClient } from ".prisma/mrp-client";
+import { logger } from "@/lib/logger";
 
 // =============================================================================
 // CONFIGURATION
@@ -22,53 +22,55 @@ interface TenantRecord {
  * allows us to call findFirst on any model without `as any`.
  */
 type PrismaModelDelegate = {
-  findFirst: (args: { where: Record<string, unknown> }) => Promise<TenantRecord | null>;
+  findFirst: (args: {
+    where: Record<string, unknown>;
+  }) => Promise<TenantRecord | null>;
 };
 
 // Models that require tenant filtering
 // These models have a tenantId field
 const TENANT_MODELS = [
-  'part',
-  'supplier',
-  'customer',
-  'bOM',
-  'bOMItem',
-  'warehouse',
-  'inventory',
-  'inventoryTransaction',
-  'salesOrder',
-  'salesOrderItem',
-  'purchaseOrder',
-  'purchaseOrderItem',
-  'workOrder',
-  'workOrderItem',
-  'workOrderOperation',
-  'workOrderLabor',
-  'qualityRecord',
-  'nCR',
-  'mRPRun',
-  'mRPRunOrder',
-  'mRPRequirement',
-  'mRPSuggestion',
-  'workCenter',
-  'equipment',
-  'maintenanceSchedule',
-  'maintenanceOrder',
-  'downtimeRecord',
-  'employee',
-  'skill',
-  'employeeSkill',
-  'employeeCertification',
-  'workCenterSkill',
-  'shift',
-  'shiftAssignment',
-  'workCenterCapacity',
-  'timeEntry',
-  'activityLog',
-  'product',
+  "part",
+  "supplier",
+  "customer",
+  "bOM",
+  "bOMItem",
+  "warehouse",
+  "inventory",
+  "inventoryTransaction",
+  "salesOrder",
+  "salesOrderItem",
+  "purchaseOrder",
+  "purchaseOrderItem",
+  "workOrder",
+  "workOrderItem",
+  "workOrderOperation",
+  "workOrderLabor",
+  "qualityRecord",
+  "nCR",
+  "mRPRun",
+  "mRPRunOrder",
+  "mRPRequirement",
+  "mRPSuggestion",
+  "workCenter",
+  "equipment",
+  "maintenanceSchedule",
+  "maintenanceOrder",
+  "downtimeRecord",
+  "employee",
+  "skill",
+  "employeeSkill",
+  "employeeCertification",
+  "workCenterSkill",
+  "shift",
+  "shiftAssignment",
+  "workCenterCapacity",
+  "timeEntry",
+  "activityLog",
+  "product",
 ] as const;
 
-type TenantModel = typeof TENANT_MODELS[number];
+type TenantModel = (typeof TENANT_MODELS)[number];
 
 function isTenantModel(model: string): model is TenantModel {
   return TENANT_MODELS.includes(model.toLowerCase() as TenantModel);
@@ -78,7 +80,10 @@ function isTenantModel(model: string): model is TenantModel {
  * Get a Prisma model delegate by name from the base client.
  * This is used for ownership verification in update/delete operations.
  */
-function getModelDelegate(prisma: PrismaClient, model: string): PrismaModelDelegate {
+function getModelDelegate(
+  prisma: PrismaClient,
+  model: string,
+): PrismaModelDelegate {
   return (prisma as unknown as Record<string, PrismaModelDelegate>)[model];
 }
 
@@ -97,11 +102,11 @@ function getModelDelegate(prisma: PrismaClient, model: string): PrismaModelDeleg
  */
 export function createTenantPrisma(tenantId: string) {
   const basePrisma = new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
   return basePrisma.$extends({
-    name: 'tenant-isolation',
+    name: "tenant-isolation",
 
     query: {
       $allModels: {
@@ -130,7 +135,10 @@ export function createTenantPrisma(tenantId: string) {
           if (result && isTenantModel(model)) {
             const record = result as TenantRecord;
             if (record.tenantId !== tenantId) {
-              logger.warn(`[TENANT] Access denied: ${model} belongs to different tenant`, { context: 'prisma-tenant' });
+              logger.warn(
+                `[TENANT] Access denied: ${model} belongs to different tenant`,
+                { context: "prisma-tenant" },
+              );
               return null;
             }
           }
@@ -172,7 +180,9 @@ export function createTenantPrisma(tenantId: string) {
           if (isTenantModel(model)) {
             if (Array.isArray(args.data)) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma $allModels extension uses dynamic model types; items are model-specific create inputs
-              args.data = (args.data as Record<string, unknown>[]).map((item) => ({ ...item, tenantId })) as typeof args.data;
+              args.data = (args.data as Record<string, unknown>[]).map(
+                (item) => ({ ...item, tenantId }),
+              ) as typeof args.data;
             } else {
               args.data = { ...args.data, tenantId };
             }
@@ -201,7 +211,9 @@ export function createTenantPrisma(tenantId: string) {
             });
 
             if (!existing) {
-              throw new Error(`Record not found or belongs to different tenant`);
+              throw new Error(
+                `Record not found or belongs to different tenant`,
+              );
             }
           }
           return query(args);
@@ -223,7 +235,9 @@ export function createTenantPrisma(tenantId: string) {
             });
 
             if (!existing) {
-              throw new Error(`Record not found or belongs to different tenant`);
+              throw new Error(
+                `Record not found or belongs to different tenant`,
+              );
             }
           }
           return query(args);
@@ -318,18 +332,19 @@ export function getTenantPrisma(tenantId: string): TenantPrismaClient {
 export async function tenantQuery<T = unknown>(
   tenantId: string,
   sql: string,
-  params: unknown[] = []
+  params: unknown[] = [],
 ): Promise<T> {
   // Validate tenantId format (UUID)
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(tenantId)) {
-    throw new Error('Invalid tenantId format');
+    throw new Error("Invalid tenantId format");
   }
 
   // Validate SQL doesn't contain dangerous patterns
   const dangerousPatterns = /;\s*(DROP|DELETE|TRUNCATE|ALTER|CREATE|GRANT)\s/i;
   if (dangerousPatterns.test(sql)) {
-    throw new Error('SQL contains disallowed statements');
+    throw new Error("SQL contains disallowed statements");
   }
 
   const prisma = new PrismaClient();

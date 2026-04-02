@@ -1,69 +1,69 @@
 // src/lib/learning/services/course.service.ts
 // Course Service - Manage courses, modules, and categories
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   CourseType,
   CourseLevel,
   CourseStatus,
-  Prisma
-} from '@prisma/client'
+  Prisma,
+} from ".prisma/hrm-unified-client";
 
 // Types
 export interface CreateCourseInput {
-  code: string
-  title: string
-  description?: string
-  objectives?: string
-  categoryId?: string
-  courseType: CourseType
-  level?: CourseLevel
-  durationHours: number
-  contentUrl?: string
-  contentType?: string
-  maxParticipants?: number
-  minParticipants?: number
-  providerId?: string
-  instructorName?: string
-  costPerPerson?: number
-  currency?: string
-  prerequisites?: string
-  targetAudience?: string
-  isMandatory?: boolean
-  mandatoryForPositions?: string[]
-  recertificationMonths?: number
-  thumbnailUrl?: string
+  code: string;
+  title: string;
+  description?: string;
+  objectives?: string;
+  categoryId?: string;
+  courseType: CourseType;
+  level?: CourseLevel;
+  durationHours: number;
+  contentUrl?: string;
+  contentType?: string;
+  maxParticipants?: number;
+  minParticipants?: number;
+  providerId?: string;
+  instructorName?: string;
+  costPerPerson?: number;
+  currency?: string;
+  prerequisites?: string;
+  targetAudience?: string;
+  isMandatory?: boolean;
+  mandatoryForPositions?: string[];
+  recertificationMonths?: number;
+  thumbnailUrl?: string;
 }
 
 export interface UpdateCourseInput extends Partial<CreateCourseInput> {
-  status?: CourseStatus
+  status?: CourseStatus;
 }
 
 export interface CourseFilters {
-  status?: CourseStatus[]
-  courseType?: CourseType[]
-  level?: CourseLevel[]
-  categoryId?: string
-  providerId?: string
-  isMandatory?: boolean
-  search?: string
+  status?: CourseStatus[];
+  courseType?: CourseType[];
+  level?: CourseLevel[];
+  categoryId?: string;
+  providerId?: string;
+  isMandatory?: boolean;
+  search?: string;
 }
 
 export interface CreateModuleInput {
-  title: string
-  description?: string
-  contentUrl?: string
-  contentType?: string
-  durationMinutes: number
-  order?: number
+  title: string;
+  description?: string;
+  contentUrl?: string;
+  contentType?: string;
+  durationMinutes: number;
+  order?: number;
 }
 
 export interface CreateCategoryInput {
-  name: string
-  description?: string
-  code?: string
-  parentId?: string
-  order?: number
+  name: string;
+  description?: string;
+  code?: string;
+  parentId?: string;
+  order?: number;
 }
 
 export class CourseService {
@@ -84,7 +84,7 @@ export class CourseService {
         parentId: input.parentId,
         order: input.order || 0,
       },
-    })
+    });
   }
 
   /**
@@ -93,19 +93,19 @@ export class CourseService {
   async getCategories() {
     const categories = await db.courseCategory.findMany({
       where: { tenantId: this.tenantId, parentId: null },
-      orderBy: { order: 'asc' },
+      orderBy: { order: "asc" },
       include: {
         children: {
-          orderBy: { order: 'asc' },
+          orderBy: { order: "asc" },
           include: {
             _count: { select: { courses: true } },
           },
         },
         _count: { select: { courses: true } },
       },
-    })
+    });
 
-    return categories
+    return categories;
   }
 
   /**
@@ -121,7 +121,7 @@ export class CourseService {
         parentId: input.parentId,
         order: input.order,
       },
-    })
+    });
   }
 
   /**
@@ -131,14 +131,14 @@ export class CourseService {
     // Check if category has courses
     const coursesCount = await db.course.count({
       where: { categoryId: id },
-    })
+    });
 
     if (coursesCount > 0) {
-      throw new Error('Cannot delete category with courses')
+      throw new Error("Cannot delete category with courses");
     }
 
-    await db.courseCategory.delete({ where: { id } })
-    return { success: true }
+    await db.courseCategory.delete({ where: { id } });
+    return { success: true };
   }
 
   // ===== COURSES =====
@@ -155,10 +155,10 @@ export class CourseService {
           code: input.code,
         },
       },
-    })
+    });
 
     if (existing) {
-      throw new Error('Course code already exists')
+      throw new Error("Course code already exists");
     }
 
     const course = await db.course.create({
@@ -179,11 +179,12 @@ export class CourseService {
         providerId: input.providerId,
         instructorName: input.instructorName,
         costPerPerson: input.costPerPerson,
-        currency: input.currency || 'VND',
+        currency: input.currency || "VND",
         prerequisites: input.prerequisites,
         targetAudience: input.targetAudience,
         isMandatory: input.isMandatory || false,
-        mandatoryForPositions: input.mandatoryForPositions as unknown as Prisma.InputJsonValue,
+        mandatoryForPositions:
+          input.mandatoryForPositions as unknown as Prisma.InputJsonValue,
         recertificationMonths: input.recertificationMonths,
         thumbnailUrl: input.thumbnailUrl,
         createdById,
@@ -194,9 +195,9 @@ export class CourseService {
         provider: { select: { id: true, name: true } },
         createdBy: { select: { id: true, name: true } },
       },
-    })
+    });
 
-    return course
+    return course;
   }
 
   /**
@@ -213,7 +214,7 @@ export class CourseService {
         provider: { select: { id: true, name: true } },
         createdBy: { select: { id: true, name: true } },
         modules: {
-          orderBy: { order: 'asc' },
+          orderBy: { order: "asc" },
         },
         skills: {
           include: {
@@ -228,61 +229,65 @@ export class CourseService {
           },
         },
       },
-    })
+    });
 
     if (!course) {
-      throw new Error('Course not found')
+      throw new Error("Course not found");
     }
 
-    return course
+    return course;
   }
 
   /**
    * List courses with filters
    */
-  async list(filters: CourseFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: CourseFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.CourseWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.status?.length) {
-      where.status = { in: filters.status }
+      where.status = { in: filters.status };
     }
 
     if (filters.courseType?.length) {
-      where.courseType = { in: filters.courseType }
+      where.courseType = { in: filters.courseType };
     }
 
     if (filters.level?.length) {
-      where.level = { in: filters.level }
+      where.level = { in: filters.level };
     }
 
     if (filters.categoryId) {
-      where.categoryId = filters.categoryId
+      where.categoryId = filters.categoryId;
     }
 
     if (filters.providerId) {
-      where.providerId = filters.providerId
+      where.providerId = filters.providerId;
     }
 
     if (filters.isMandatory !== undefined) {
-      where.isMandatory = filters.isMandatory
+      where.isMandatory = filters.isMandatory;
     }
 
     if (filters.search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { code: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ]
+        { title: { contains: filters.search, mode: "insensitive" } },
+        { code: { contains: filters.search, mode: "insensitive" } },
+        { description: { contains: filters.search, mode: "insensitive" } },
+      ];
     }
 
     const [courses, total] = await Promise.all([
       db.course.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
         include: {
@@ -296,7 +301,7 @@ export class CourseService {
         },
       }),
       db.course.count({ where }),
-    ])
+    ]);
 
     return {
       data: courses,
@@ -304,18 +309,22 @@ export class CourseService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
    * List published courses (for learners)
    */
-  async listPublished(filters: CourseFilters = {}, page: number = 1, pageSize: number = 20) {
+  async listPublished(
+    filters: CourseFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
     return this.list(
       { ...filters, status: [CourseStatus.PUBLISHED] },
       page,
-      pageSize
-    )
+      pageSize,
+    );
   }
 
   /**
@@ -324,10 +333,10 @@ export class CourseService {
   async update(id: string, input: UpdateCourseInput) {
     const course = await db.course.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!course) {
-      throw new Error('Course not found')
+      throw new Error("Course not found");
     }
 
     return db.course.update({
@@ -351,7 +360,8 @@ export class CourseService {
         prerequisites: input.prerequisites,
         targetAudience: input.targetAudience,
         isMandatory: input.isMandatory,
-        mandatoryForPositions: input.mandatoryForPositions as unknown as Prisma.InputJsonValue,
+        mandatoryForPositions:
+          input.mandatoryForPositions as unknown as Prisma.InputJsonValue,
         recertificationMonths: input.recertificationMonths,
         thumbnailUrl: input.thumbnailUrl,
         status: input.status,
@@ -359,7 +369,7 @@ export class CourseService {
       include: {
         category: { select: { id: true, name: true } },
       },
-    })
+    });
   }
 
   /**
@@ -368,14 +378,14 @@ export class CourseService {
   async publish(id: string) {
     const course = await db.course.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!course) {
-      throw new Error('Course not found')
+      throw new Error("Course not found");
     }
 
     if (course.status !== CourseStatus.DRAFT) {
-      throw new Error('Only draft courses can be published')
+      throw new Error("Only draft courses can be published");
     }
 
     return db.course.update({
@@ -384,7 +394,7 @@ export class CourseService {
         status: CourseStatus.PUBLISHED,
         publishedAt: new Date(),
       },
-    })
+    });
   }
 
   /**
@@ -393,10 +403,10 @@ export class CourseService {
   async archive(id: string) {
     const course = await db.course.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!course) {
-      throw new Error('Course not found')
+      throw new Error("Course not found");
     }
 
     return db.course.update({
@@ -405,7 +415,7 @@ export class CourseService {
         status: CourseStatus.ARCHIVED,
         archivedAt: new Date(),
       },
-    })
+    });
   }
 
   /**
@@ -415,10 +425,10 @@ export class CourseService {
     const course = await db.course.findFirst({
       where: { id, tenantId: this.tenantId },
       include: { modules: true },
-    })
+    });
 
     if (!course) {
-      throw new Error('Course not found')
+      throw new Error("Course not found");
     }
 
     // Create new course
@@ -444,18 +454,19 @@ export class CourseService {
         prerequisites: course.prerequisites,
         targetAudience: course.targetAudience,
         isMandatory: course.isMandatory,
-        mandatoryForPositions: course.mandatoryForPositions as Prisma.InputJsonValue,
+        mandatoryForPositions:
+          course.mandatoryForPositions as Prisma.InputJsonValue,
         recertificationMonths: course.recertificationMonths,
         thumbnailUrl: course.thumbnailUrl,
         createdById,
         status: CourseStatus.DRAFT,
       },
-    })
+    });
 
     // Clone modules
     if (course.modules.length > 0) {
       await db.courseModule.createMany({
-        data: course.modules.map(m => ({
+        data: course.modules.map((m) => ({
           courseId: newCourse.id,
           title: m.title,
           description: m.description,
@@ -464,10 +475,10 @@ export class CourseService {
           durationMinutes: m.durationMinutes,
           order: m.order,
         })),
-      })
+      });
     }
 
-    return newCourse
+    return newCourse;
   }
 
   // ===== MODULES =====
@@ -478,19 +489,19 @@ export class CourseService {
   async addModule(courseId: string, input: CreateModuleInput) {
     const course = await db.course.findFirst({
       where: { id: courseId, tenantId: this.tenantId },
-    })
+    });
 
     if (!course) {
-      throw new Error('Course not found')
+      throw new Error("Course not found");
     }
 
     // Get max order
     const lastModule = await db.courseModule.findFirst({
       where: { courseId },
-      orderBy: { order: 'desc' },
-    })
+      orderBy: { order: "desc" },
+    });
 
-    const order = input.order ?? (lastModule ? lastModule.order + 1 : 0)
+    const order = input.order ?? (lastModule ? lastModule.order + 1 : 0);
 
     return db.courseModule.create({
       data: {
@@ -502,7 +513,7 @@ export class CourseService {
         durationMinutes: input.durationMinutes,
         order,
       },
-    })
+    });
   }
 
   /**
@@ -519,15 +530,15 @@ export class CourseService {
         durationMinutes: input.durationMinutes,
         order: input.order,
       },
-    })
+    });
   }
 
   /**
    * Delete a module
    */
   async deleteModule(moduleId: string) {
-    await db.courseModule.delete({ where: { id: moduleId } })
-    return { success: true }
+    await db.courseModule.delete({ where: { id: moduleId } });
+    return { success: true };
   }
 
   /**
@@ -538,11 +549,11 @@ export class CourseService {
       db.courseModule.update({
         where: { id },
         data: { order: index },
-      })
-    )
+      }),
+    );
 
-    await Promise.all(updates)
-    return { success: true }
+    await Promise.all(updates);
+    return { success: true };
   }
 
   // ===== SKILLS =====
@@ -557,7 +568,7 @@ export class CourseService {
         skillId,
         skillLevelGained,
       },
-    })
+    });
   }
 
   /**
@@ -571,8 +582,8 @@ export class CourseService {
           skillId,
         },
       },
-    })
-    return { success: true }
+    });
+    return { success: true };
   }
 
   // ===== STATISTICS =====
@@ -581,42 +592,43 @@ export class CourseService {
    * Get course statistics
    */
   async getStats() {
-    const [total, byStatus, byType, byLevel, recentEnrollments] = await Promise.all([
-      db.course.count({ where: { tenantId: this.tenantId } }),
+    const [total, byStatus, byType, byLevel, recentEnrollments] =
+      await Promise.all([
+        db.course.count({ where: { tenantId: this.tenantId } }),
 
-      db.course.groupBy({
-        by: ['status'],
-        where: { tenantId: this.tenantId },
-        _count: true,
-      }),
+        db.course.groupBy({
+          by: ["status"],
+          where: { tenantId: this.tenantId },
+          _count: true,
+        }),
 
-      db.course.groupBy({
-        by: ['courseType'],
-        where: { tenantId: this.tenantId },
-        _count: true,
-      }),
+        db.course.groupBy({
+          by: ["courseType"],
+          where: { tenantId: this.tenantId },
+          _count: true,
+        }),
 
-      db.course.groupBy({
-        by: ['level'],
-        where: { tenantId: this.tenantId },
-        _count: true,
-      }),
+        db.course.groupBy({
+          by: ["level"],
+          where: { tenantId: this.tenantId },
+          _count: true,
+        }),
 
-      db.enrollment.count({
-        where: {
-          tenantId: this.tenantId,
-          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        },
-      }),
-    ])
+        db.enrollment.count({
+          where: {
+            tenantId: this.tenantId,
+            createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+      ]);
 
     return {
       total,
-      byStatus: byStatus.map(s => ({ status: s.status, count: s._count })),
-      byType: byType.map(t => ({ type: t.courseType, count: t._count })),
-      byLevel: byLevel.map(l => ({ level: l.level, count: l._count })),
+      byStatus: byStatus.map((s) => ({ status: s.status, count: s._count })),
+      byType: byType.map((t) => ({ type: t.courseType, count: t._count })),
+      byLevel: byLevel.map((l) => ({ level: l.level, count: l._count })),
       recentEnrollments,
-    }
+    };
   }
 
   /**
@@ -629,14 +641,14 @@ export class CourseService {
         status: CourseStatus.PUBLISHED,
       },
       orderBy: {
-        enrollments: { _count: 'desc' },
+        enrollments: { _count: "desc" },
       },
       take: limit,
       include: {
         category: { select: { id: true, name: true } },
         _count: { select: { enrollments: true } },
       },
-    })
+    });
   }
 
   /**
@@ -647,7 +659,7 @@ export class CourseService {
       tenantId: this.tenantId,
       status: CourseStatus.PUBLISHED,
       isMandatory: true,
-    }
+    };
 
     // If position specified, filter by mandatory positions
     // Note: This is a simplified version, proper JSON filtering would be more complex
@@ -657,11 +669,11 @@ export class CourseService {
       include: {
         category: { select: { id: true, name: true } },
       },
-    })
+    });
   }
 }
 
 // Factory function
 export function createCourseService(tenantId: string): CourseService {
-  return new CourseService(tenantId)
+  return new CourseService(tenantId);
 }

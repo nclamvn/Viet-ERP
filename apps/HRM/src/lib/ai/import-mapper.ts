@@ -1,14 +1,14 @@
-import Anthropic from "@anthropic-ai/sdk"
-import type { ImportType } from "@prisma/client"
+import Anthropic from "@anthropic-ai/sdk";
+import type { ImportType } from ".prisma/hrm-client";
 
 export interface ColumnMapping {
   mappings: Array<{
-    source: string
-    target: string
-    confidence: number
-  }>
-  unmapped: string[]
-  warnings: string[]
+    source: string;
+    target: string;
+    confidence: number;
+  }>;
+  unmapped: string[];
+  warnings: string[];
 }
 
 const SYSTEM_PROMPTS: Record<ImportType, string> = {
@@ -43,19 +43,23 @@ REQUIRED: employeeCode (Mã NV) HOẶC employeeName (Tên NV), contractType (Lo�
 OPTIONAL: contractNo (Số HĐ), probationNo (Số HĐ thử việc), probationFrom (Từ ngày TV), probationTo (Đến ngày TV), officialFrom (Từ ngày chính thức), officialTo (Đến ngày chính thức), baseSalary (Lương cơ bản), mealAllowance (Phụ cấp cơm), phoneAllowance (Phụ cấp ĐT), fuelAllowance (Phụ cấp xăng), perfAllowance (Phụ cấp hiệu suất), kpiAmount (KPI), notes (Ghi chú)
 
 Lưu ý: Header có thể là tiếng Việt có/không dấu, tiếng Anh, hoặc viết tắt.`,
-}
+};
 
 export async function generateColumnMapping(
   importType: ImportType,
   headers: string[],
-  sampleRows: Record<string, unknown>[]
+  sampleRows: Record<string, unknown>[],
 ): Promise<ColumnMapping> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return { mappings: [], unmapped: headers, warnings: ["ANTHROPIC_API_KEY chưa được cấu hình"] }
+    return {
+      mappings: [],
+      unmapped: headers,
+      warnings: ["ANTHROPIC_API_KEY chưa được cấu hình"],
+    };
   }
 
-  const anthropic = new Anthropic({ apiKey })
+  const anthropic = new Anthropic({ apiKey });
 
   const userPrompt = `Headers: ${JSON.stringify(headers)}
 
@@ -69,7 +73,7 @@ Trả về JSON theo format CHÍNH XÁC sau (không thêm markdown code fences):
   ],
   "unmapped": ["cột không map được"],
   "warnings": ["cảnh báo nếu có"]
-}`
+}`;
 
   try {
     const response = await anthropic.messages.create({
@@ -77,31 +81,33 @@ Trả về JSON theo format CHÍNH XÁC sau (không thêm markdown code fences):
       max_tokens: 2000,
       system: SYSTEM_PROMPTS[importType],
       messages: [{ role: "user", content: userPrompt }],
-    })
+    });
 
     const text = response.content
       .filter((b) => b.type === "text")
       .map((b) => b.text)
-      .join("")
+      .join("");
 
     // Strip markdown code fences if present
     const jsonStr = text
       .replace(/```json\s*/g, "")
       .replace(/```\s*/g, "")
-      .trim()
+      .trim();
 
-    const parsed = JSON.parse(jsonStr)
+    const parsed = JSON.parse(jsonStr);
     return {
       mappings: Array.isArray(parsed.mappings) ? parsed.mappings : [],
       unmapped: Array.isArray(parsed.unmapped) ? parsed.unmapped : [],
       warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
-    }
+    };
   } catch (error) {
-    console.error("AI mapping error:", error)
+    console.error("AI mapping error:", error);
     return {
       mappings: [],
       unmapped: headers,
-      warnings: [`AI mapping thất bại: ${error instanceof Error ? error.message : "Unknown error"}`],
-    }
+      warnings: [
+        `AI mapping thất bại: ${error instanceof Error ? error.message : "Unknown error"}`,
+      ],
+    };
   }
 }

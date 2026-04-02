@@ -4,28 +4,34 @@
 // POST /api/quotations — Create quotation
 // =============================================================================
 
-import { NextRequest } from 'next/server';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { NextRequest } from "next/server";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
 import {
   withPermission,
   successResponse,
   errorResponse,
   validationErrorResponse,
   AuthUser,
-} from '@/lib/api/with-permission';
+} from "@/lib/api/with-permission";
 import {
   parsePaginationParams,
   buildOffsetPaginationQuery,
   buildPaginatedResponse,
   paginatedSuccess,
   paginatedError,
-} from '@/lib/pagination';
-import { generateQuoteNumber } from '@/lib/sales/quote-number';
-import { calculateLineTotal, calculateQuotationTotals } from '@/lib/sales/quotation-calc';
-import { createQuotationSchema } from '@/lib/validations/quotation';
-import { auditCreate } from '@/lib/audit/route-audit';
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+} from "@/lib/pagination";
+import { generateQuoteNumber } from "@/lib/sales/quote-number";
+import {
+  calculateLineTotal,
+  calculateQuotationTotals,
+} from "@/lib/sales/quotation-calc";
+import { createQuotationSchema } from "@/lib/validations/quotation";
+import { auditCreate } from "@/lib/audit/route-audit";
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 
 // =============================================================================
 // GET — List quotations
@@ -33,7 +39,7 @@ import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limi
 
 async function getHandler(
   request: NextRequest,
-  { params, user }: { params?: Record<string, string>; user: AuthUser }
+  { params, user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   const rateLimitResult = await checkReadEndpointLimit(request);
   if (rateLimitResult) return rateLimitResult;
@@ -43,17 +49,17 @@ async function getHandler(
   try {
     const paginationParams = parsePaginationParams(request);
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
-    const status = searchParams.get('status');
-    const customerId = searchParams.get('customerId');
+    const search = searchParams.get("search");
+    const status = searchParams.get("status");
+    const customerId = searchParams.get("customerId");
 
     const where: Prisma.QuotationWhereInput = {};
     if (status) where.status = status;
     if (customerId) where.customerId = customerId;
     if (search) {
       where.OR = [
-        { quoteNumber: { contains: search, mode: 'insensitive' } },
-        { customer: { name: { contains: search, mode: 'insensitive' } } },
+        { quoteNumber: { contains: search, mode: "insensitive" } },
+        { customer: { name: { contains: search, mode: "insensitive" } } },
       ];
     }
 
@@ -64,7 +70,7 @@ async function getHandler(
         ...buildOffsetPaginationQuery(paginationParams),
         orderBy: paginationParams.sortBy
           ? { [paginationParams.sortBy]: paginationParams.sortOrder }
-          : { createdAt: 'desc' },
+          : { createdAt: "desc" },
         include: {
           customer: { select: { id: true, code: true, name: true } },
           _count: { select: { items: true } },
@@ -73,11 +79,16 @@ async function getHandler(
     ]);
 
     return paginatedSuccess(
-      buildPaginatedResponse(quotations, totalCount, paginationParams, startTime)
+      buildPaginatedResponse(
+        quotations,
+        totalCount,
+        paginationParams,
+        startTime,
+      ),
     );
   } catch (error) {
-    console.error('[QUOTATION_LIST]', error);
-    return paginatedError('Không thể lấy danh sách báo giá', 500);
+    console.error("[QUOTATION_LIST]", error);
+    return paginatedError("Không thể lấy danh sách báo giá", 500);
   }
 }
 
@@ -87,7 +98,7 @@ async function getHandler(
 
 async function postHandler(
   request: NextRequest,
-  { params, user }: { params?: Record<string, string>; user: AuthUser }
+  { params, user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   const rateLimitResult = await checkWriteEndpointLimit(request);
   if (rateLimitResult) return rateLimitResult;
@@ -96,14 +107,14 @@ async function postHandler(
   try {
     body = await request.json();
   } catch {
-    return errorResponse('Invalid JSON body', 400);
+    return errorResponse("Invalid JSON body", 400);
   }
 
   const validation = createQuotationSchema.safeParse(body);
   if (!validation.success) {
     const errors: Record<string, string[]> = {};
     validation.error.issues.forEach((err) => {
-      const path = err.path.join('.');
+      const path = err.path.join(".");
       if (!errors[path]) errors[path] = [];
       errors[path].push(err.message);
     });
@@ -116,7 +127,7 @@ async function postHandler(
   const customer = await prisma.customer.findUnique({
     where: { id: data.customerId },
   });
-  if (!customer) return errorResponse('Khách hàng không tồn tại', 404);
+  if (!customer) return errorResponse("Khách hàng không tồn tại", 404);
 
   // Validate parts exist
   const partIds = data.items.map((item) => item.partId);
@@ -127,7 +138,10 @@ async function postHandler(
   const foundPartIds = new Set(parts.map((p) => p.id));
   const missingParts = partIds.filter((pid) => !foundPartIds.has(pid));
   if (missingParts.length > 0) {
-    return errorResponse(`Linh kiện không tồn tại: ${missingParts.join(', ')}`, 400);
+    return errorResponse(
+      `Linh kiện không tồn tại: ${missingParts.join(", ")}`,
+      400,
+    );
   }
 
   // Calculate totals
@@ -144,11 +158,11 @@ async function postHandler(
     data: {
       quoteNumber,
       customerId: data.customerId,
-      status: 'draft',
+      status: "draft",
       validUntil: new Date(data.validUntil),
       createdById: user.id,
       discountPercent: data.discountPercent || 0,
-      currency: data.currency || 'VND',
+      currency: data.currency || "VND",
       ...totals,
       notes: data.notes,
       terms: data.terms,
@@ -167,7 +181,11 @@ async function postHandler(
     include: {
       customer: { select: { id: true, code: true, name: true } },
       items: {
-        include: { part: { select: { id: true, partNumber: true, name: true, unit: true } } },
+        include: {
+          part: {
+            select: { id: true, partNumber: true, name: true, unit: true },
+          },
+        },
       },
     },
   });
@@ -175,9 +193,9 @@ async function postHandler(
   auditCreate(
     request,
     { id: user.id, name: user.name, email: user.email },
-    'Quotation',
+    "Quotation",
     quotation.id,
-    { quoteNumber, customerId: data.customerId, itemCount: data.items.length }
+    { quoteNumber, customerId: data.customerId, itemCount: data.items.length },
   );
 
   return successResponse(quotation, 201);
@@ -187,5 +205,5 @@ async function postHandler(
 // EXPORTS
 // =============================================================================
 
-export const GET = withPermission(getHandler, { read: 'orders:view' });
-export const POST = withPermission(postHandler, { create: 'orders:create' });
+export const GET = withPermission(getHandler, { read: "orders:view" });
+export const POST = withPermission(postHandler, { create: "orders:create" });

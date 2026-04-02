@@ -3,14 +3,19 @@
 // Comprehensive TypeScript types to replace 'any'
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from ".prisma/mrp-client";
 
 // =============================================================================
 // AUTH TYPES
 // =============================================================================
 
-export type UserRole = 'admin' | 'manager' | 'supervisor' | 'operator' | 'viewer';
+export type UserRole =
+  | "admin"
+  | "manager"
+  | "supervisor"
+  | "operator"
+  | "viewer";
 
 export interface AuthUser {
   id: string;
@@ -40,12 +45,12 @@ export interface AuthenticatedRouteContext extends RouteContext {
 
 export type ApiHandler<TParams = Record<string, string>> = (
   request: NextRequest,
-  context: { params: TParams }
+  context: { params: TParams },
 ) => Promise<NextResponse>;
 
 export type AuthenticatedApiHandler<TParams = Record<string, string>> = (
   request: NextRequest,
-  context: { params: TParams; user: AuthUser }
+  context: { params: TParams; user: AuthUser },
 ) => Promise<NextResponse>;
 
 // =============================================================================
@@ -56,7 +61,7 @@ export interface PaginationParams {
   page: number;
   pageSize: number;
   sortBy?: string;
-  sortOrder: 'asc' | 'desc';
+  sortOrder: "asc" | "desc";
 }
 
 export interface SearchParams {
@@ -118,7 +123,7 @@ export interface PartInput {
   critical?: boolean;
   unitCost?: number;
   standardCost?: number;
-  makeOrBuy?: 'MAKE' | 'BUY' | 'BOTH';
+  makeOrBuy?: "MAKE" | "BUY" | "BOTH";
   manufacturer?: string;
   manufacturerPn?: string;
   drawingNumber?: string;
@@ -140,8 +145,8 @@ export interface SalesOrderInput {
   orderDate?: string;
   requestedDate?: string;
   promisedDate?: string;
-  status?: 'DRAFT' | 'PENDING' | 'CONFIRMED';
-  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  status?: "DRAFT" | "PENDING" | "CONFIRMED";
+  priority?: "low" | "normal" | "high" | "urgent";
   currency?: string;
   paymentTerms?: string;
   shippingMethod?: string;
@@ -163,8 +168,8 @@ export interface WorkOrderInput {
   quantity: number;
   startDate?: string;
   dueDate?: string;
-  status?: 'DRAFT' | 'RELEASED';
-  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  status?: "DRAFT" | "RELEASED";
+  priority?: "low" | "normal" | "high" | "urgent";
   workCenter?: string;
   notes?: string;
   operations?: WorkOrderOperationInput[];
@@ -172,24 +177,29 @@ export interface WorkOrderInput {
 
 // NCR
 export interface NCRInput {
-  type?: 'Receiving' | 'In-Process' | 'Final' | 'Customer';
-  source?: 'supplier' | 'production' | 'customer';
+  type?: "Receiving" | "In-Process" | "Final" | "Customer";
+  source?: "supplier" | "production" | "customer";
   partId?: string;
   partNumber?: string;
   partName?: string;
   quantityAffected?: number;
   description: string;
   rootCause?: string;
-  disposition?: 'Scrap' | 'Rework' | 'Return' | 'Use-as-is';
+  disposition?: "Scrap" | "Rework" | "Return" | "Use-as-is";
   costImpact?: number;
   assignedTo?: string;
 }
 
 // Inventory Action
-export type InventoryAction = 'receive' | 'issue' | 'reserve' | 'transfer' | 'adjust';
+export type InventoryAction =
+  | "receive"
+  | "issue"
+  | "reserve"
+  | "transfer"
+  | "adjust";
 
 export interface InventoryReceiveInput {
-  action: 'receive';
+  action: "receive";
   partId: string;
   warehouseId: string;
   quantity: number;
@@ -199,7 +209,7 @@ export interface InventoryReceiveInput {
 }
 
 export interface InventoryIssueInput {
-  action: 'issue';
+  action: "issue";
   partId: string;
   warehouseId: string;
   quantity: number;
@@ -208,7 +218,7 @@ export interface InventoryIssueInput {
 }
 
 export interface InventoryReserveInput {
-  action: 'reserve';
+  action: "reserve";
   partId: string;
   warehouseId: string;
   quantity: number;
@@ -216,7 +226,7 @@ export interface InventoryReserveInput {
 }
 
 export interface InventoryTransferInput {
-  action: 'transfer';
+  action: "transfer";
   partId: string;
   warehouseId: string;
   toWarehouseId: string;
@@ -226,7 +236,7 @@ export interface InventoryTransferInput {
 }
 
 export interface InventoryAdjustInput {
-  action: 'adjust';
+  action: "adjust";
   partId: string;
   warehouseId: string;
   quantity: number;
@@ -258,7 +268,12 @@ export interface BOMLineInput {
   effectivityDate?: string;
   alternateGroup?: string;
   isPrimary?: boolean;
-  bomType?: 'ENGINEERING' | 'MANUFACTURING' | 'CONFIGURABLE' | 'PLANNING' | 'SERVICE';
+  bomType?:
+    | "ENGINEERING"
+    | "MANUFACTURING"
+    | "CONFIGURABLE"
+    | "PLANNING"
+    | "SERVICE";
   subAssembly?: boolean;
   phantom?: boolean;
   sequence?: number;
@@ -355,7 +370,12 @@ export interface DashboardData {
 // ANALYTICS TYPES
 // =============================================================================
 
-export type AnalyticsTab = 'overview' | 'inventory' | 'sales' | 'production' | 'quality';
+export type AnalyticsTab =
+  | "overview"
+  | "inventory"
+  | "sales"
+  | "production"
+  | "quality";
 
 export interface AnalyticsParams {
   tab: AnalyticsTab;
@@ -423,20 +443,24 @@ export type Nullable<T> = T | null;
 export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 // Function types
-export type AsyncFunction<TArgs extends unknown[] = unknown[], TReturn = unknown> =
-  (...args: TArgs) => Promise<TReturn>;
+export type AsyncFunction<
+  TArgs extends unknown[] = unknown[],
+  TReturn = unknown,
+> = (...args: TArgs) => Promise<TReturn>;
 
-export type Debounced<T extends (...args: Parameters<T>) => ReturnType<T>> =
-  (...args: Parameters<T>) => void;
+export type Debounced<T extends (...args: Parameters<T>) => ReturnType<T>> = (
+  ...args: Parameters<T>
+) => void;
 
-export type Throttled<T extends (...args: Parameters<T>) => ReturnType<T>> =
-  (...args: Parameters<T>) => ReturnType<T> | undefined;
+export type Throttled<T extends (...args: Parameters<T>) => ReturnType<T>> = (
+  ...args: Parameters<T>
+) => ReturnType<T> | undefined;
 
 // =============================================================================
 // LOGGER TYPES
 // =============================================================================
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface LogEntry {
   timestamp: string;
@@ -460,13 +484,15 @@ export interface AuditLogEntry {
 // VALIDATION TYPES
 // =============================================================================
 
-export type ValidationResult<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: string;
-}
+export type ValidationResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      error: string;
+    };
 
 export interface FieldError {
   field: string;

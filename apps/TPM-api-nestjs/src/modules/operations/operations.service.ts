@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 import { ImportQueryDto } from './dto/import-query.dto';
 import { CreateImportDto } from './dto/create-import.dto';
 import { FiscalPeriodQueryDto } from './dto/fiscal-period-query.dto';

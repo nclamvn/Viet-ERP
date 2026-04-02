@@ -4,7 +4,7 @@ import { CreateApprovalDto } from './dto/create-approval.dto';
 import { ApprovalQueryDto } from './dto/approval-query.dto';
 import { ApproveRejectDto } from './dto/approve-reject.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class ApprovalsService {

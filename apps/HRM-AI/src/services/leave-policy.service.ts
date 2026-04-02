@@ -1,37 +1,37 @@
 // src/services/leave-policy.service.ts
 // Leave Policy Service
 
-import { db } from '@/lib/db'
-import type { LeaveType, Prisma } from '@prisma/client'
-import type { PaginatedResponse } from '@/types'
+import { db } from "@/lib/db";
+import type { LeaveType, Prisma } from ".prisma/hrm-ai-client";
+import type { PaginatedResponse } from "@/types";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
 
 export interface LeavePolicyFilters {
-  leaveType?: LeaveType
-  isActive?: boolean
-  page?: number
-  pageSize?: number
+  leaveType?: LeaveType;
+  isActive?: boolean;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface CreateLeavePolicyInput {
-  name: string
-  code: string
-  leaveType: LeaveType
-  daysPerYear: number
-  maxCarryOver?: number
-  carryOverExpireMonths?: number
-  minDaysPerRequest?: number
-  maxDaysPerRequest?: number | null
-  advanceNoticeDays?: number
-  allowHalfDay?: boolean
-  allowNegativeBalance?: boolean
-  probationEligible?: boolean
-  minTenureMonths?: number
-  isPaid?: boolean
-  description?: string
+  name: string;
+  code: string;
+  leaveType: LeaveType;
+  daysPerYear: number;
+  maxCarryOver?: number;
+  carryOverExpireMonths?: number;
+  minDaysPerRequest?: number;
+  maxDaysPerRequest?: number | null;
+  advanceNoticeDays?: number;
+  allowHalfDay?: boolean;
+  allowNegativeBalance?: boolean;
+  probationEligible?: boolean;
+  minTenureMonths?: number;
+  isPaid?: boolean;
+  description?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -44,27 +44,27 @@ export const leavePolicyService = {
    */
   async getAll(
     tenantId: string,
-    filters: LeavePolicyFilters = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    filters: LeavePolicyFilters = {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<PaginatedResponse<any>> {
-    const { leaveType, isActive = true, page = 1, pageSize = 50 } = filters
-    const skip = (page - 1) * pageSize
+    const { leaveType, isActive = true, page = 1, pageSize = 50 } = filters;
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.LeavePolicyWhereInput = {
       tenantId,
       ...(leaveType && { leaveType }),
       ...(isActive !== undefined && { isActive }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.leavePolicy.findMany({
         where,
-        orderBy: [{ leaveType: 'asc' }, { name: 'asc' }],
+        orderBy: [{ leaveType: "asc" }, { name: "asc" }],
         skip,
         take: pageSize,
       }),
       db.leavePolicy.count({ where }),
-    ])
+    ]);
 
     return {
       data,
@@ -74,7 +74,7 @@ export const leavePolicyService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
 
   /**
@@ -83,7 +83,7 @@ export const leavePolicyService = {
   async getById(tenantId: string, id: string) {
     return db.leavePolicy.findFirst({
       where: { id, tenantId },
-    })
+    });
   },
 
   /**
@@ -92,7 +92,7 @@ export const leavePolicyService = {
   async getByCode(tenantId: string, code: string) {
     return db.leavePolicy.findUnique({
       where: { tenantId_code: { tenantId, code } },
-    })
+    });
   },
 
   /**
@@ -100,9 +100,9 @@ export const leavePolicyService = {
    */
   async create(tenantId: string, data: CreateLeavePolicyInput) {
     // Check for duplicate code
-    const existing = await this.getByCode(tenantId, data.code)
+    const existing = await this.getByCode(tenantId, data.code);
     if (existing) {
-      throw new Error('Mã chính sách đã tồn tại')
+      throw new Error("Mã chính sách đã tồn tại");
     }
 
     return db.leavePolicy.create({
@@ -125,23 +125,27 @@ export const leavePolicyService = {
         description: data.description,
         isActive: true,
       },
-    })
+    });
   },
 
   /**
    * Update a leave policy
    */
-  async update(tenantId: string, id: string, data: Partial<CreateLeavePolicyInput>) {
-    const policy = await this.getById(tenantId, id)
+  async update(
+    tenantId: string,
+    id: string,
+    data: Partial<CreateLeavePolicyInput>,
+  ) {
+    const policy = await this.getById(tenantId, id);
     if (!policy) {
-      throw new Error('Chính sách không tồn tại')
+      throw new Error("Chính sách không tồn tại");
     }
 
     // If changing code, check for duplicates
     if (data.code && data.code !== policy.code) {
-      const existing = await this.getByCode(tenantId, data.code)
+      const existing = await this.getByCode(tenantId, data.code);
       if (existing) {
-        throw new Error('Mã chính sách đã tồn tại')
+        throw new Error("Mã chính sách đã tồn tại");
       }
     }
 
@@ -151,47 +155,69 @@ export const leavePolicyService = {
         ...(data.name && { name: data.name }),
         ...(data.code && { code: data.code }),
         ...(data.leaveType && { leaveType: data.leaveType }),
-        ...(data.daysPerYear !== undefined && { daysPerYear: data.daysPerYear }),
-        ...(data.maxCarryOver !== undefined && { maxCarryOver: data.maxCarryOver }),
-        ...(data.carryOverExpireMonths !== undefined && { carryOverExpireMonths: data.carryOverExpireMonths }),
-        ...(data.minDaysPerRequest !== undefined && { minDaysPerRequest: data.minDaysPerRequest }),
-        ...(data.maxDaysPerRequest !== undefined && { maxDaysPerRequest: data.maxDaysPerRequest }),
-        ...(data.advanceNoticeDays !== undefined && { advanceNoticeDays: data.advanceNoticeDays }),
-        ...(data.allowHalfDay !== undefined && { allowHalfDay: data.allowHalfDay }),
-        ...(data.allowNegativeBalance !== undefined && { allowNegativeBalance: data.allowNegativeBalance }),
-        ...(data.probationEligible !== undefined && { probationEligible: data.probationEligible }),
-        ...(data.minTenureMonths !== undefined && { minTenureMonths: data.minTenureMonths }),
+        ...(data.daysPerYear !== undefined && {
+          daysPerYear: data.daysPerYear,
+        }),
+        ...(data.maxCarryOver !== undefined && {
+          maxCarryOver: data.maxCarryOver,
+        }),
+        ...(data.carryOverExpireMonths !== undefined && {
+          carryOverExpireMonths: data.carryOverExpireMonths,
+        }),
+        ...(data.minDaysPerRequest !== undefined && {
+          minDaysPerRequest: data.minDaysPerRequest,
+        }),
+        ...(data.maxDaysPerRequest !== undefined && {
+          maxDaysPerRequest: data.maxDaysPerRequest,
+        }),
+        ...(data.advanceNoticeDays !== undefined && {
+          advanceNoticeDays: data.advanceNoticeDays,
+        }),
+        ...(data.allowHalfDay !== undefined && {
+          allowHalfDay: data.allowHalfDay,
+        }),
+        ...(data.allowNegativeBalance !== undefined && {
+          allowNegativeBalance: data.allowNegativeBalance,
+        }),
+        ...(data.probationEligible !== undefined && {
+          probationEligible: data.probationEligible,
+        }),
+        ...(data.minTenureMonths !== undefined && {
+          minTenureMonths: data.minTenureMonths,
+        }),
         ...(data.isPaid !== undefined && { isPaid: data.isPaid }),
-        ...(data.description !== undefined && { description: data.description }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
       },
-    })
+    });
   },
 
   /**
    * Delete (soft) a leave policy
    */
   async delete(tenantId: string, id: string) {
-    const policy = await this.getById(tenantId, id)
+    const policy = await this.getById(tenantId, id);
     if (!policy) {
-      throw new Error('Chính sách không tồn tại')
+      throw new Error("Chính sách không tồn tại");
     }
 
     // Check if policy is in use
     const balanceCount = await db.leaveBalance.count({
       where: { policyId: id },
-    })
+    });
 
     if (balanceCount > 0) {
       // Soft delete - just deactivate
       return db.leavePolicy.update({
         where: { id },
         data: { isActive: false },
-      })
+      });
     }
 
     return db.leavePolicy.delete({
       where: { id },
-    })
+    });
   },
 
   /**
@@ -200,29 +226,30 @@ export const leavePolicyService = {
   async getForEmployee(tenantId: string, employeeId: string) {
     const employee = await db.employee.findFirst({
       where: { id: employeeId, tenantId },
-    })
+    });
 
-    if (!employee) return []
+    if (!employee) return [];
 
     const policies = await db.leavePolicy.findMany({
       where: {
         tenantId,
         isActive: true,
       },
-      orderBy: { leaveType: 'asc' },
-    })
+      orderBy: { leaveType: "asc" },
+    });
 
     // Filter by eligibility (tenure, probation)
-    const now = new Date()
+    const now = new Date();
     const tenureMonths = Math.floor(
-      (now.getTime() - new Date(employee.hireDate).getTime()) / (1000 * 60 * 60 * 24 * 30)
-    )
-    const isProbation = employee.status === 'PROBATION'
+      (now.getTime() - new Date(employee.hireDate).getTime()) /
+        (1000 * 60 * 60 * 24 * 30),
+    );
+    const isProbation = employee.status === "PROBATION";
 
-    return policies.filter(policy => {
-      if (!policy.probationEligible && isProbation) return false
-      if (policy.minTenureMonths > tenureMonths) return false
-      return true
-    })
+    return policies.filter((policy) => {
+      if (!policy.probationEligible && isProbation) return false;
+      if (policy.minTenureMonths > tenureMonths) return false;
+      return true;
+    });
   },
-}
+};

@@ -1,19 +1,19 @@
 // src/lib/work-session/work-session-service.ts
 // Server-side service for Work Session CRUD
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 import type {
   SessionContext,
   StartSessionInput,
   UpdateContextInput,
   UpdateWorkflowInput,
   TrackActivityInput,
-} from '@/types/work-session';
+} from "@/types/work-session";
 
 function parseContext(contextJson: unknown): SessionContext {
   const ctx = (contextJson as Record<string, unknown>) || {};
   return {
-    summary: (ctx.summary as string) || '',
+    summary: (ctx.summary as string) || "",
     completedActions: (ctx.completedActions as string[]) || [],
     pendingActions: (ctx.pendingActions as string[]) || [],
     keyMetrics: (ctx.keyMetrics as Record<string, string | number>) || {},
@@ -68,7 +68,7 @@ export async function startSession(userId: string, input: StartSessionInput) {
       userId,
       entityType: input.entityType,
       entityId: input.entityId,
-      status: { in: ['ACTIVE', 'PAUSED'] },
+      status: { in: ["ACTIVE", "PAUSED"] },
     },
   });
 
@@ -77,7 +77,7 @@ export async function startSession(userId: string, input: StartSessionInput) {
     const updated = await prisma.workSession.update({
       where: { id: existing.id },
       data: {
-        status: 'ACTIVE',
+        status: "ACTIVE",
         lastActivityAt: new Date(),
         pausedAt: null,
         resumeUrl: input.resumeUrl,
@@ -96,9 +96,9 @@ export async function startSession(userId: string, input: StartSessionInput) {
       resumeUrl: input.resumeUrl,
       workflowStep: input.currentStep || 1,
       workflowTotalSteps: input.workflowSteps?.length || 1,
-      workflowStepName: input.workflowSteps?.[0] || '',
+      workflowStepName: input.workflowSteps?.[0] || "",
       contextJson: {
-        summary: '',
+        summary: "",
         completedActions: [],
         pendingActions: [],
         keyMetrics: {},
@@ -112,18 +112,20 @@ export async function startSession(userId: string, input: StartSessionInput) {
 /** Pause a work session */
 export async function pauseSession(sessionId: string, userId: string) {
   const session = await prisma.workSession.findFirst({
-    where: { id: sessionId, userId, status: 'ACTIVE' },
+    where: { id: sessionId, userId, status: "ACTIVE" },
   });
   if (!session) return null;
 
   // Calculate active time increment
   const now = new Date();
-  const elapsed = Math.floor((now.getTime() - session.lastActivityAt.getTime()) / 1000);
+  const elapsed = Math.floor(
+    (now.getTime() - session.lastActivityAt.getTime()) / 1000,
+  );
 
   const updated = await prisma.workSession.update({
     where: { id: sessionId },
     data: {
-      status: 'PAUSED',
+      status: "PAUSED",
       pausedAt: now,
       lastActivityAt: now,
       totalActiveTime: session.totalActiveTime + elapsed,
@@ -138,7 +140,7 @@ export async function resumeSession(sessionId: string, userId: string) {
   const updated = await prisma.workSession.update({
     where: { id: sessionId },
     data: {
-      status: 'ACTIVE',
+      status: "ACTIVE",
       pausedAt: null,
       lastActivityAt: new Date(),
     },
@@ -155,14 +157,15 @@ export async function completeSession(sessionId: string, userId: string) {
   if (!session) return null;
 
   const now = new Date();
-  const elapsed = session.status === 'ACTIVE'
-    ? Math.floor((now.getTime() - session.lastActivityAt.getTime()) / 1000)
-    : 0;
+  const elapsed =
+    session.status === "ACTIVE"
+      ? Math.floor((now.getTime() - session.lastActivityAt.getTime()) / 1000)
+      : 0;
 
   const updated = await prisma.workSession.update({
     where: { id: sessionId },
     data: {
-      status: 'COMPLETED',
+      status: "COMPLETED",
       completedAt: now,
       lastActivityAt: now,
       totalActiveTime: session.totalActiveTime + elapsed,
@@ -179,11 +182,11 @@ export async function abandonStaleSessions(userId: string, maxAgeHours = 48) {
   await prisma.workSession.updateMany({
     where: {
       userId,
-      status: { in: ['ACTIVE', 'PAUSED'] },
+      status: { in: ["ACTIVE", "PAUSED"] },
       lastActivityAt: { lt: cutoff },
     },
     data: {
-      status: 'ABANDONED',
+      status: "ABANDONED",
     },
   });
 }
@@ -196,9 +199,9 @@ export async function getUserSessions(userId: string) {
   const sessions = await prisma.workSession.findMany({
     where: {
       userId,
-      status: { in: ['ACTIVE', 'PAUSED'] },
+      status: { in: ["ACTIVE", "PAUSED"] },
     },
-    orderBy: { lastActivityAt: 'desc' },
+    orderBy: { lastActivityAt: "desc" },
     take: 20,
   });
 
@@ -206,7 +209,10 @@ export async function getUserSessions(userId: string) {
 }
 
 /** Update session context */
-export async function updateSessionContext(userId: string, input: UpdateContextInput) {
+export async function updateSessionContext(
+  userId: string,
+  input: UpdateContextInput,
+) {
   const session = await prisma.workSession.findFirst({
     where: { id: input.sessionId, userId },
   });
@@ -225,7 +231,8 @@ export async function updateSessionContext(userId: string, input: UpdateContextI
   const updated = await prisma.workSession.update({
     where: { id: input.sessionId },
     data: {
-      contextJson: mergedContext as unknown as import('@prisma/client').Prisma.InputJsonValue,
+      contextJson:
+        mergedContext as unknown as import(".prisma/mrp-client").Prisma.InputJsonValue,
       contextSummary: mergedContext.summary || existingContext.summary,
       lastActivityAt: new Date(),
     },
@@ -235,7 +242,10 @@ export async function updateSessionContext(userId: string, input: UpdateContextI
 }
 
 /** Update workflow step */
-export async function updateWorkflowStep(userId: string, input: UpdateWorkflowInput) {
+export async function updateWorkflowStep(
+  userId: string,
+  input: UpdateWorkflowInput,
+) {
   const data: Record<string, unknown> = {
     workflowStep: input.workflowStep,
     workflowStepName: input.workflowStepName,
@@ -268,7 +278,9 @@ export async function trackActivity(userId: string, input: TrackActivityInput) {
         sessionId: input.sessionId,
         action: input.action,
         description: input.description,
-        metadataJson: input.metadata ? (input.metadata as unknown as import('@prisma/client').Prisma.InputJsonValue) : undefined,
+        metadataJson: input.metadata
+          ? (input.metadata as unknown as import(".prisma/mrp-client").Prisma.InputJsonValue)
+          : undefined,
       },
     }),
     prisma.workSession.update({
@@ -288,7 +300,11 @@ export async function trackActivity(userId: string, input: TrackActivityInput) {
 }
 
 /** Get recent activities for a user across all sessions */
-export async function getRecentActivities(userId: string, hours = 24, limit = 20) {
+export async function getRecentActivities(
+  userId: string,
+  hours = 24,
+  limit = 20,
+) {
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const activities = await prisma.sessionActivity.findMany({
@@ -296,7 +312,7 @@ export async function getRecentActivities(userId: string, hours = 24, limit = 20
       session: { userId },
       timestamp: { gte: cutoff },
     },
-    orderBy: { timestamp: 'desc' },
+    orderBy: { timestamp: "desc" },
     take: limit,
     include: {
       session: {

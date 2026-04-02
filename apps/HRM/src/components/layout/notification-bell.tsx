@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import {
   Bell,
   FileText,
@@ -20,25 +20,25 @@ import {
   GitPullRequest,
   LogOut,
   Star,
-} from "lucide-react"
-import { useRouter } from "next/navigation"
-import { formatDistanceToNow } from "date-fns"
-import { vi } from "date-fns/locale"
-import type { NotificationType } from "@prisma/client"
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
+import type { NotificationType } from ".prisma/hrm-client";
 
 interface Notification {
-  id: string
-  type: NotificationType
-  title: string
-  message: string
-  link: string | null
-  isRead: boolean
-  createdAt: string
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link: string | null;
+  isRead: boolean;
+  createdAt: string;
 }
 
 interface NotificationsResponse {
-  notifications: Notification[]
-  unreadCount: number
+  notifications: Notification[];
+  unreadCount: number;
 }
 
 const typeIcons: Record<NotificationType, typeof Bell> = {
@@ -57,50 +57,50 @@ const typeIcons: Record<NotificationType, typeof Bell> = {
   PAYROLL: DollarSign,
   GENERAL: Info,
   REVIEW: Star,
-}
+};
 
 export function NotificationBell() {
-  const queryClient = useQueryClient()
-  const router = useRouter()
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data } = useQuery<NotificationsResponse>({
     queryKey: ["notifications"],
     queryFn: async () => {
-      const res = await fetch("/api/notifications?limit=20")
-      if (!res.ok) throw new Error("Failed to fetch notifications")
-      return res.json()
+      const res = await fetch("/api/notifications?limit=20");
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      return res.json();
     },
     refetchInterval: 60000, // 1 minute (reduce DB load: 70 users × 1/min = 70 queries/min)
     staleTime: 30000,
-  })
+  });
 
   const markReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`/api/notifications/${id}/read`, { method: "POST" })
+      await fetch(`/api/notifications/${id}/read`, { method: "POST" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
-  })
+  });
 
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
-      await fetch("/api/notifications/read-all", { method: "POST" })
+      await fetch("/api/notifications/read-all", { method: "POST" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
-  })
+  });
 
-  const unreadCount = data?.unreadCount ?? 0
-  const notifications = data?.notifications ?? []
+  const unreadCount = data?.unreadCount ?? 0;
+  const notifications = data?.notifications ?? [];
 
   function handleNotificationClick(notification: Notification) {
     if (!notification.isRead) {
-      markReadMutation.mutate(notification.id)
+      markReadMutation.mutate(notification.id);
     }
     if (notification.link) {
-      router.push(notification.link)
+      router.push(notification.link);
     }
   }
 
@@ -135,7 +135,7 @@ export function NotificationBell() {
             </div>
           ) : (
             notifications.map((n) => {
-              const Icon = typeIcons[n.type] || Info
+              const Icon = typeIcons[n.type] || Info;
               return (
                 <button
                   key={n.id}
@@ -145,28 +145,37 @@ export function NotificationBell() {
                   }`}
                 >
                   <div className="mt-0.5 flex-shrink-0">
-                    <Icon className={`h-4 w-4 ${!n.isRead ? "text-blue-600" : "text-slate-400"}`} />
+                    <Icon
+                      className={`h-4 w-4 ${!n.isRead ? "text-blue-600" : "text-slate-400"}`}
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className={`text-sm ${!n.isRead ? "font-semibold" : "text-slate-700"}`}>
+                      <span
+                        className={`text-sm ${!n.isRead ? "font-semibold" : "text-slate-700"}`}
+                      >
                         {n.title}
                       </span>
                       {!n.isRead && (
                         <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{n.message}</p>
+                    <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">
+                      {n.message}
+                    </p>
                     <p className="mt-1 text-xs text-slate-400">
-                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: vi })}
+                      {formatDistanceToNow(new Date(n.createdAt), {
+                        addSuffix: true,
+                        locale: vi,
+                      })}
                     </p>
                   </div>
                 </button>
-              )
+              );
             })
           )}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

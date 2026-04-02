@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma } from ".prisma/mrp-client";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api/with-auth";
 import { logger } from "@/lib/logger";
 import { parsePaginationParams } from "@/lib/pagination";
 import { z } from "zod";
 
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 // Validation schema for creating a product
 const ProductCreateSchema = z.object({
   sku: z.string().min(1, "SKU la bat buoc").max(50),
@@ -21,9 +24,9 @@ const ProductCreateSchema = z.object({
 
 // GET - List all products
 export const GET = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -81,19 +84,21 @@ export const GET = withAuth(async (request, context, session) => {
       },
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'GET /api/products' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "GET /api/products",
+    });
     return NextResponse.json(
       { error: "Failed to fetch products" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
 
 // POST - Create new product
 export const POST = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
     const body = await request.json();
@@ -103,7 +108,7 @@ export const POST = withAuth(async (request, context, session) => {
     if (!validationResult.success) {
       return NextResponse.json(
         { error: "Validation failed", details: validationResult.error.issues },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -117,7 +122,7 @@ export const POST = withAuth(async (request, context, session) => {
     if (existingProduct) {
       return NextResponse.json(
         { error: `SKU ${data.sku} da ton tai` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -129,7 +134,7 @@ export const POST = withAuth(async (request, context, session) => {
       if (!workCenter) {
         return NextResponse.json(
           { error: "Work center khong ton tai" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -155,10 +160,12 @@ export const POST = withAuth(async (request, context, session) => {
 
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'POST /api/products' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "POST /api/products",
+    });
     return NextResponse.json(
       { error: "Failed to create product" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

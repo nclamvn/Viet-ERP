@@ -1,30 +1,30 @@
 // src/services/leave-balance.service.ts
 // Leave Balance Service
 
-import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
-import { calculateAvailableBalance } from '@/lib/leave/calculator'
+import { db } from "@/lib/db";
+import type { Prisma } from ".prisma/hrm-unified-client";
+import { calculateAvailableBalance } from "@/lib/leave/calculator";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
 
 export interface LeaveBalanceWithPolicy {
-  id: string
-  year: number
-  entitlement: number
-  carryOver: number
-  adjustment: number
-  used: number
-  pending: number
-  available: number
+  id: string;
+  year: number;
+  entitlement: number;
+  carryOver: number;
+  adjustment: number;
+  used: number;
+  pending: number;
+  available: number;
   policy: {
-    id: string
-    name: string
-    code: string
-    leaveType: string
-    allowNegativeBalance: boolean
-  }
+    id: string;
+    name: string;
+    code: string;
+    leaveType: string;
+    allowNegativeBalance: boolean;
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -38,9 +38,9 @@ export const leaveBalanceService = {
   async getByEmployee(
     tenantId: string,
     employeeId: string,
-    year?: number
+    year?: number,
   ): Promise<LeaveBalanceWithPolicy[]> {
-    const currentYear = year || new Date().getFullYear()
+    const currentYear = year || new Date().getFullYear();
 
     const balances = await db.leaveBalance.findMany({
       where: {
@@ -60,11 +60,11 @@ export const leaveBalanceService = {
         },
       },
       orderBy: {
-        policy: { leaveType: 'asc' },
+        policy: { leaveType: "asc" },
       },
-    })
+    });
 
-    return balances.map(b => ({
+    return balances.map((b) => ({
       id: b.id,
       year: b.year,
       entitlement: Number(b.entitlement),
@@ -74,7 +74,7 @@ export const leaveBalanceService = {
       pending: Number(b.pending),
       available: Number(b.available),
       policy: b.policy,
-    }))
+    }));
   },
 
   /**
@@ -84,9 +84,9 @@ export const leaveBalanceService = {
     tenantId: string,
     employeeId: string,
     policyId: string,
-    year?: number
+    year?: number,
   ) {
-    const currentYear = year || new Date().getFullYear()
+    const currentYear = year || new Date().getFullYear();
 
     return db.leaveBalance.findUnique({
       where: {
@@ -100,7 +100,7 @@ export const leaveBalanceService = {
       include: {
         policy: true,
       },
-    })
+    });
   },
 
   /**
@@ -109,16 +109,16 @@ export const leaveBalanceService = {
   async initializeForEmployee(
     tenantId: string,
     employeeId: string,
-    year?: number
+    year?: number,
   ) {
-    const currentYear = year || new Date().getFullYear()
+    const currentYear = year || new Date().getFullYear();
 
     // Get all active policies
     const policies = await db.leavePolicy.findMany({
       where: { tenantId, isActive: true },
-    })
+    });
 
-    const balances = []
+    const balances = [];
     for (const policy of policies) {
       // Check if balance already exists
       const existing = await db.leaveBalance.findUnique({
@@ -130,7 +130,7 @@ export const leaveBalanceService = {
             year: currentYear,
           },
         },
-      })
+      });
 
       if (!existing) {
         const balance = await db.leaveBalance.create({
@@ -146,32 +146,32 @@ export const leaveBalanceService = {
             pending: 0,
             available: Number(policy.daysPerYear),
           },
-        })
-        balances.push(balance)
+        });
+        balances.push(balance);
       } else {
-        balances.push(existing)
+        balances.push(existing);
       }
     }
 
-    return balances
+    return balances;
   },
 
   /**
    * Initialize balances for all employees
    */
   async initializeForAllEmployees(tenantId: string, year?: number) {
-    const currentYear = year || new Date().getFullYear()
+    const currentYear = year || new Date().getFullYear();
 
     const employees = await db.employee.findMany({
-      where: { tenantId, status: { in: ['ACTIVE', 'PROBATION'] } },
+      where: { tenantId, status: { in: ["ACTIVE", "PROBATION"] } },
       select: { id: true },
-    })
+    });
 
     for (const emp of employees) {
-      await this.initializeForEmployee(tenantId, emp.id, currentYear)
+      await this.initializeForEmployee(tenantId, emp.id, currentYear);
     }
 
-    return employees.length
+    return employees.length;
   },
 
   /**
@@ -184,21 +184,26 @@ export const leaveBalanceService = {
     year: number,
     adjustmentDays: number,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _reason?: string
+    _reason?: string,
   ) {
-    const balance = await this.getByPolicy(tenantId, employeeId, policyId, year)
+    const balance = await this.getByPolicy(
+      tenantId,
+      employeeId,
+      policyId,
+      year,
+    );
     if (!balance) {
-      throw new Error('Không tìm thấy số dư phép')
+      throw new Error("Không tìm thấy số dư phép");
     }
 
-    const newAdjustment = Number(balance.adjustment) + adjustmentDays
+    const newAdjustment = Number(balance.adjustment) + adjustmentDays;
     const newAvailable = calculateAvailableBalance(
       Number(balance.entitlement),
       Number(balance.carryOver),
       newAdjustment,
       Number(balance.used),
-      Number(balance.pending)
-    )
+      Number(balance.pending),
+    );
 
     return db.leaveBalance.update({
       where: { id: balance.id },
@@ -206,7 +211,7 @@ export const leaveBalanceService = {
         adjustment: newAdjustment,
         available: newAvailable,
       },
-    })
+    });
   },
 
   /**
@@ -217,21 +222,26 @@ export const leaveBalanceService = {
     employeeId: string,
     policyId: string,
     year: number,
-    days: number
+    days: number,
   ) {
-    const balance = await this.getByPolicy(tenantId, employeeId, policyId, year)
+    const balance = await this.getByPolicy(
+      tenantId,
+      employeeId,
+      policyId,
+      year,
+    );
     if (!balance) {
-      throw new Error('Không tìm thấy số dư phép')
+      throw new Error("Không tìm thấy số dư phép");
     }
 
-    const newPending = Number(balance.pending) + days
+    const newPending = Number(balance.pending) + days;
     const newAvailable = calculateAvailableBalance(
       Number(balance.entitlement),
       Number(balance.carryOver),
       Number(balance.adjustment),
       Number(balance.used),
-      newPending
-    )
+      newPending,
+    );
 
     return db.leaveBalance.update({
       where: { id: balance.id },
@@ -239,7 +249,7 @@ export const leaveBalanceService = {
         pending: newPending,
         available: newAvailable,
       },
-    })
+    });
   },
 
   /**
@@ -250,21 +260,26 @@ export const leaveBalanceService = {
     employeeId: string,
     policyId: string,
     year: number,
-    days: number
+    days: number,
   ) {
-    const balance = await this.getByPolicy(tenantId, employeeId, policyId, year)
+    const balance = await this.getByPolicy(
+      tenantId,
+      employeeId,
+      policyId,
+      year,
+    );
     if (!balance) {
-      throw new Error('Không tìm thấy số dư phép')
+      throw new Error("Không tìm thấy số dư phép");
     }
 
-    const newPending = Math.max(0, Number(balance.pending) - days)
+    const newPending = Math.max(0, Number(balance.pending) - days);
     const newAvailable = calculateAvailableBalance(
       Number(balance.entitlement),
       Number(balance.carryOver),
       Number(balance.adjustment),
       Number(balance.used),
-      newPending
-    )
+      newPending,
+    );
 
     return db.leaveBalance.update({
       where: { id: balance.id },
@@ -272,7 +287,7 @@ export const leaveBalanceService = {
         pending: newPending,
         available: newAvailable,
       },
-    })
+    });
   },
 
   /**
@@ -281,22 +296,27 @@ export const leaveBalanceService = {
   async processCarryOver(tenantId: string, fromYear: number, toYear: number) {
     const policies = await db.leavePolicy.findMany({
       where: { tenantId, isActive: true },
-    })
+    });
 
     const employees = await db.employee.findMany({
-      where: { tenantId, status: { in: ['ACTIVE', 'PROBATION'] } },
+      where: { tenantId, status: { in: ["ACTIVE", "PROBATION"] } },
       select: { id: true },
-    })
+    });
 
     for (const emp of employees) {
       for (const policy of policies) {
-        const oldBalance = await this.getByPolicy(tenantId, emp.id, policy.id, fromYear)
-        if (!oldBalance) continue
+        const oldBalance = await this.getByPolicy(
+          tenantId,
+          emp.id,
+          policy.id,
+          fromYear,
+        );
+        if (!oldBalance) continue;
 
         const carryOverDays = Math.min(
           Number(oldBalance.available),
-          Number(policy.maxCarryOver)
-        )
+          Number(policy.maxCarryOver),
+        );
 
         // Create or update new year balance
         await db.leaveBalance.upsert({
@@ -326,7 +346,7 @@ export const leaveBalanceService = {
               increment: carryOverDays,
             },
           },
-        })
+        });
       }
     }
   },
@@ -338,14 +358,14 @@ export const leaveBalanceService = {
     tenantId: string,
     year: number,
     filters: {
-      departmentId?: string
-      search?: string
-      page?: number
-      pageSize?: number
-    } = {}
+      departmentId?: string;
+      search?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
   ) {
-    const { departmentId, search, page = 1, pageSize = 50 } = filters
-    const skip = (page - 1) * pageSize
+    const { departmentId, search, page = 1, pageSize = 50 } = filters;
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.LeaveBalanceWhereInput = {
       tenantId,
@@ -354,12 +374,12 @@ export const leaveBalanceService = {
       ...(search && {
         employee: {
           OR: [
-            { fullName: { contains: search, mode: 'insensitive' } },
-            { employeeCode: { contains: search, mode: 'insensitive' } },
+            { fullName: { contains: search, mode: "insensitive" } },
+            { employeeCode: { contains: search, mode: "insensitive" } },
           ],
         },
       }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.leaveBalance.findMany({
@@ -378,14 +398,14 @@ export const leaveBalanceService = {
           },
         },
         orderBy: [
-          { employee: { fullName: 'asc' } },
-          { policy: { leaveType: 'asc' } },
+          { employee: { fullName: "asc" } },
+          { policy: { leaveType: "asc" } },
         ],
         skip,
         take: pageSize,
       }),
       db.leaveBalance.count({ where }),
-    ])
+    ]);
 
     return {
       data,
@@ -395,6 +415,6 @@ export const leaveBalanceService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
-}
+};

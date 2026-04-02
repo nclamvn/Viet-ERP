@@ -3,13 +3,13 @@
 // Fetch audit logs for the AI Copilot audit log viewer
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/api/with-auth';
-import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/api/with-auth";
+import { logger } from "@/lib/logger";
 
-import { checkReadEndpointLimit } from '@/lib/rate-limit';
+import { checkReadEndpointLimit } from "@/lib/rate-limit";
 /**
  * GET /api/audit-logs
  * Fetch audit logs with optional filters
@@ -24,19 +24,19 @@ import { checkReadEndpointLimit } from '@/lib/rate-limit';
  *   - search: search in entityName, action, or metadata
  */
 export const GET = withAuth(async (req, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(req);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(req);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const moduleFilter = searchParams.get('module');
-    const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
+    const userId = searchParams.get("userId");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const moduleFilter = searchParams.get("module");
+    const search = searchParams.get("search");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
 
     // Build where clause
     const where: Prisma.AuditLogWhereInput = {};
@@ -51,14 +51,19 @@ export const GET = withAuth(async (req, context, session) => {
       if (endDate) where.createdAt.lte = new Date(endDate);
     }
 
-    if (moduleFilter && moduleFilter !== 'all') {
+    if (moduleFilter && moduleFilter !== "all") {
       // Map module names to entity types
       const moduleEntityMap: Record<string, string[]> = {
-        inventory: ['Inventory', 'Part', 'Warehouse'],
-        sales: ['SalesOrder', 'SalesOrderLine', 'Customer'],
-        procurement: ['PurchaseOrder', 'PurchaseOrderLine', 'Supplier', 'PurchaseInvoice'],
-        production: ['WorkOrder', 'MaterialAllocation', 'ProductionReceipt'],
-        quality: ['NCR', 'CAPA', 'Inspection', 'InspectionResult'],
+        inventory: ["Inventory", "Part", "Warehouse"],
+        sales: ["SalesOrder", "SalesOrderLine", "Customer"],
+        procurement: [
+          "PurchaseOrder",
+          "PurchaseOrderLine",
+          "Supplier",
+          "PurchaseInvoice",
+        ],
+        production: ["WorkOrder", "MaterialAllocation", "ProductionReceipt"],
+        quality: ["NCR", "CAPA", "Inspection", "InspectionResult"],
       };
       const entityTypes = moduleEntityMap[moduleFilter];
       if (entityTypes) {
@@ -68,9 +73,9 @@ export const GET = withAuth(async (req, context, session) => {
 
     if (search) {
       where.OR = [
-        { entityName: { contains: search, mode: 'insensitive' } },
-        { action: { contains: search, mode: 'insensitive' } },
-        { entityType: { contains: search, mode: 'insensitive' } },
+        { entityName: { contains: search, mode: "insensitive" } },
+        { action: { contains: search, mode: "insensitive" } },
+        { entityType: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -78,7 +83,7 @@ export const GET = withAuth(async (req, context, session) => {
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -86,36 +91,56 @@ export const GET = withAuth(async (req, context, session) => {
     ]);
 
     // Look up user names for the log entries
-    const userIds = [...new Set(logs.map(l => l.userId))];
+    const userIds = [...new Set(logs.map((l) => l.userId))];
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true, role: true },
     });
-    const userMap = new Map(users.map(u => [u.id, u]));
+    const userMap = new Map(users.map((u) => [u.id, u]));
 
     // Map to the format expected by the AuditLogViewer component
-    const mappedLogs = logs.map(log => {
+    const mappedLogs = logs.map((log) => {
       const user = userMap.get(log.userId);
       const metadata = (log.metadata as Record<string, any>) || {};
 
       // Determine module from entityType
-      let logModule = 'other';
+      let logModule = "other";
       const entityType = log.entityType.toLowerCase();
-      if (['inventory', 'part', 'warehouse'].includes(entityType)) logModule = 'inventory';
-      else if (['salesorder', 'salesorderline', 'customer'].includes(entityType)) logModule = 'sales';
-      else if (['purchaseorder', 'purchaseorderline', 'supplier', 'purchaseinvoice'].includes(entityType)) logModule = 'procurement';
-      else if (['workorder', 'materialallocation', 'productionreceipt'].includes(entityType)) logModule = 'production';
-      else if (['ncr', 'capa', 'inspection', 'inspectionresult'].includes(entityType)) logModule = 'quality';
+      if (["inventory", "part", "warehouse"].includes(entityType))
+        logModule = "inventory";
+      else if (
+        ["salesorder", "salesorderline", "customer"].includes(entityType)
+      )
+        logModule = "sales";
+      else if (
+        [
+          "purchaseorder",
+          "purchaseorderline",
+          "supplier",
+          "purchaseinvoice",
+        ].includes(entityType)
+      )
+        logModule = "procurement";
+      else if (
+        ["workorder", "materialallocation", "productionreceipt"].includes(
+          entityType,
+        )
+      )
+        logModule = "production";
+      else if (
+        ["ncr", "capa", "inspection", "inspectionresult"].includes(entityType)
+      )
+        logModule = "quality";
 
       return {
         id: log.id,
         timestamp: log.createdAt.toISOString(),
         userId: log.userId,
-        userName: user?.name || user?.email || 'Unknown User',
-        userRole: user?.role || metadata.userRole || 'user',
+        userName: user?.name || user?.email || "Unknown User",
+        userRole: user?.role || metadata.userRole || "user",
         sessionId: metadata.sessionId || log.id,
         input: {
-          type: 'action' as const,
+          type: "action" as const,
           content: `${log.action} ${log.entityType}: ${log.entityName || log.entityId}`,
           context: {
             page: log.entityType,
@@ -134,7 +159,7 @@ export const GET = withAuth(async (req, context, session) => {
           responseLength: 0,
           hadWarnings: false,
         },
-        userAction: log.action === 'DELETE' ? 'approved' as const : undefined,
+        userAction: log.action === "DELETE" ? ("approved" as const) : undefined,
         feedback: undefined,
         metadata: {
           entityType: log.entityType,
@@ -159,10 +184,12 @@ export const GET = withAuth(async (req, context, session) => {
       },
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: '/api/audit-logs' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "/api/audit-logs",
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch audit logs' },
-      { status: 500 }
+      { success: false, error: "Failed to fetch audit logs" },
+      { status: 500 },
     );
   }
 });

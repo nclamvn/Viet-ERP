@@ -1,26 +1,26 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { LEAVE_TYPE_CONFIG } from '@/lib/leave/constants'
-import type { LeaveType } from '@prisma/client'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { LEAVE_TYPE_CONFIG } from "@/lib/leave/constants";
+import type { LeaveType } from ".prisma/hrm-ai-client";
 
 interface LeaveBalance {
-  id: string
-  policyId: string
-  year: number
-  entitled: number
-  used: number
-  pending: number
-  carried: number
+  id: string;
+  policyId: string;
+  year: number;
+  entitled: number;
+  used: number;
+  pending: number;
+  carried: number;
   policy: {
-    name: string
-    leaveType: LeaveType
-  }
+    name: string;
+    leaveType: LeaveType;
+  };
 }
 
 interface LeaveBalanceCardProps {
-  balances: LeaveBalance[]
+  balances: LeaveBalance[];
 }
 
 export function LeaveBalanceCard({ balances }: LeaveBalanceCardProps) {
@@ -31,20 +31,23 @@ export function LeaveBalanceCard({ balances }: LeaveBalanceCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {balances.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Chưa có dữ liệu phép năm</p>
+          <p className="text-muted-foreground text-sm">
+            Chưa có dữ liệu phép năm
+          </p>
         ) : (
           balances.map((balance) => {
-            const config = LEAVE_TYPE_CONFIG[balance.policy.leaveType]
-            const total = balance.entitled + balance.carried
-            const available = total - balance.used - balance.pending
-            const usedPercent = total > 0 ? (balance.used / total) * 100 : 0
-            const pendingPercent = total > 0 ? (balance.pending / total) * 100 : 0
+            const config = LEAVE_TYPE_CONFIG[balance.policy.leaveType];
+            const total = balance.entitled + balance.carried;
+            const available = total - balance.used - balance.pending;
+            const usedPercent = total > 0 ? (balance.used / total) * 100 : 0;
+            const pendingPercent =
+              total > 0 ? (balance.pending / total) * 100 : 0;
 
             return (
               <div key={balance.id} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{config?.icon || '📋'}</span>
+                    <span className="text-lg">{config?.icon || "📋"}</span>
                     <span className="font-medium">{balance.policy.name}</span>
                   </div>
                   <span className="font-semibold">
@@ -65,10 +68,10 @@ export function LeaveBalanceCard({ balances }: LeaveBalanceCardProps) {
                   )}
                 </div>
               </div>
-            )
+            );
           })
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,70 +1,67 @@
 // src/lib/recruitment/services/candidate.service.ts
 // Candidate Service - Manage candidate pool and talent database
 
-import { db } from '@/lib/db'
-import {
-  ApplicationSource,
-  Prisma
-} from '@prisma/client'
+import { db } from "@/lib/db";
+import { ApplicationSource, Prisma } from ".prisma/hrm-unified-client";
 
 // Types
 export interface CreateCandidateInput {
-  email: string
-  fullName: string
-  phone?: string
-  dateOfBirth?: Date
-  gender?: string
-  address?: string
-  cvUrl?: string
-  cvFileName?: string
-  portfolioUrl?: string
-  linkedinUrl?: string
-  currentCompany?: string
-  currentPosition?: string
-  currentSalary?: number
-  expectedSalary?: number
-  yearsOfExperience?: number
-  skills?: string[]
-  education?: Education[]
-  workHistory?: WorkHistory[]
-  notes?: string
-  tags?: string[]
-  source?: ApplicationSource
-  referredById?: string
+  email: string;
+  fullName: string;
+  phone?: string;
+  dateOfBirth?: Date;
+  gender?: string;
+  address?: string;
+  cvUrl?: string;
+  cvFileName?: string;
+  portfolioUrl?: string;
+  linkedinUrl?: string;
+  currentCompany?: string;
+  currentPosition?: string;
+  currentSalary?: number;
+  expectedSalary?: number;
+  yearsOfExperience?: number;
+  skills?: string[];
+  education?: Education[];
+  workHistory?: WorkHistory[];
+  notes?: string;
+  tags?: string[];
+  source?: ApplicationSource;
+  referredById?: string;
 }
 
 export interface Education {
-  school: string
-  degree: string
-  field: string
-  startYear: number
-  endYear?: number
-  gpa?: number
+  school: string;
+  degree: string;
+  field: string;
+  startYear: number;
+  endYear?: number;
+  gpa?: number;
 }
 
 export interface WorkHistory {
-  company: string
-  position: string
-  startDate: string
-  endDate?: string
-  description?: string
-  isCurrent?: boolean
+  company: string;
+  position: string;
+  startDate: string;
+  endDate?: string;
+  description?: string;
+  isCurrent?: boolean;
 }
 
 export interface UpdateCandidateInput extends Partial<CreateCandidateInput> {
-  isBlacklisted?: boolean
-  blacklistReason?: string
+  isBlacklisted?: boolean;
+  blacklistReason?: string;
 }
 
 export interface CandidateFilters {
-  search?: string
-  source?: ApplicationSource[]
-  skills?: string[]
-  minExperience?: number
-  maxExperience?: number
-  isBlacklisted?: boolean
-  hasActiveApplication?: boolean
-  tags?: string[]
+  search?: string;
+  source?: ApplicationSource[];
+  skills?: string[];
+  minExperience?: number;
+  maxExperience?: number;
+  isBlacklisted?: boolean;
+  hasActiveApplication?: boolean;
+  tags?: string[];
 }
 
 export class CandidateService {
@@ -82,11 +79,11 @@ export class CandidateService {
           email: input.email,
         },
       },
-    })
+    });
 
     if (existing) {
       // Update existing candidate
-      return this.update(existing.id, input)
+      return this.update(existing.id, input);
     }
 
     // Create new candidate
@@ -110,13 +107,14 @@ export class CandidateService {
         yearsOfExperience: input.yearsOfExperience,
         skills: (input.skills || []) as unknown as Prisma.InputJsonValue,
         education: (input.education || []) as unknown as Prisma.InputJsonValue,
-        workHistory: (input.workHistory || []) as unknown as Prisma.InputJsonValue,
+        workHistory: (input.workHistory ||
+          []) as unknown as Prisma.InputJsonValue,
         notes: input.notes,
         tags: input.tags || [],
         source: input.source || ApplicationSource.CAREERS_PAGE,
         referredById: input.referredById,
       },
-    })
+    });
   }
 
   /**
@@ -137,7 +135,7 @@ export class CandidateService {
           },
         },
         applications: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           include: {
             requisition: {
               select: {
@@ -148,27 +146,27 @@ export class CandidateService {
               },
             },
             interviews: {
-              orderBy: { scheduledAt: 'desc' },
+              orderBy: { scheduledAt: "desc" },
               take: 5,
             },
             evaluations: {
-              orderBy: { createdAt: 'desc' },
+              orderBy: { createdAt: "desc" },
               take: 5,
             },
             offers: {
-              orderBy: { createdAt: 'desc' },
+              orderBy: { createdAt: "desc" },
               take: 1,
             },
           },
         },
       },
-    })
+    });
 
     if (!candidate) {
-      throw new Error('Candidate not found')
+      throw new Error("Candidate not found");
     }
 
-    return candidate
+    return candidate;
   }
 
   /**
@@ -182,46 +180,50 @@ export class CandidateService {
           email,
         },
       },
-    })
+    });
   }
 
   /**
    * List candidates with filters
    */
-  async list(filters: CandidateFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: CandidateFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.CandidateWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.search) {
       where.OR = [
-        { fullName: { contains: filters.search, mode: 'insensitive' } },
-        { email: { contains: filters.search, mode: 'insensitive' } },
-        { phone: { contains: filters.search, mode: 'insensitive' } },
-        { currentCompany: { contains: filters.search, mode: 'insensitive' } },
-        { currentPosition: { contains: filters.search, mode: 'insensitive' } },
-      ]
+        { fullName: { contains: filters.search, mode: "insensitive" } },
+        { email: { contains: filters.search, mode: "insensitive" } },
+        { phone: { contains: filters.search, mode: "insensitive" } },
+        { currentCompany: { contains: filters.search, mode: "insensitive" } },
+        { currentPosition: { contains: filters.search, mode: "insensitive" } },
+      ];
     }
 
     if (filters.source?.length) {
-      where.source = { in: filters.source }
+      where.source = { in: filters.source };
     }
 
     if (filters.isBlacklisted !== undefined) {
-      where.isBlacklisted = filters.isBlacklisted
+      where.isBlacklisted = filters.isBlacklisted;
     }
 
     if (filters.minExperience !== undefined) {
-      where.yearsOfExperience = { gte: filters.minExperience }
+      where.yearsOfExperience = { gte: filters.minExperience };
     }
 
     if (filters.maxExperience !== undefined) {
       where.yearsOfExperience = {
-        ...(where.yearsOfExperience as object || {}),
+        ...((where.yearsOfExperience as object) || {}),
         lte: filters.maxExperience,
-      }
+      };
     }
 
     // Note: Skills and tags filtering requires post-query filtering for JSON fields
@@ -230,15 +232,15 @@ export class CandidateService {
     if (filters.hasActiveApplication) {
       where.applications = {
         some: {
-          status: { notIn: ['HIRED', 'REJECTED', 'WITHDRAWN'] },
+          status: { notIn: ["HIRED", "REJECTED", "WITHDRAWN"] },
         },
-      }
+      };
     }
 
     const [candidates, total] = await Promise.all([
       db.candidate.findMany({
         where,
-        orderBy: { updatedAt: 'desc' },
+        orderBy: { updatedAt: "desc" },
         skip,
         take: pageSize,
         include: {
@@ -247,7 +249,7 @@ export class CandidateService {
           },
           applications: {
             take: 1,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             select: {
               status: true,
               createdAt: true,
@@ -259,10 +261,10 @@ export class CandidateService {
         },
       }),
       db.candidate.count({ where }),
-    ])
+    ]);
 
     return {
-      data: candidates.map(c => ({
+      data: candidates.map((c) => ({
         ...c,
         latestApplication: c.applications[0] || null,
         applications: undefined,
@@ -271,7 +273,7 @@ export class CandidateService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -280,10 +282,10 @@ export class CandidateService {
   async update(id: string, input: UpdateCandidateInput) {
     const candidate = await db.candidate.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!candidate) {
-      throw new Error('Candidate not found')
+      throw new Error("Candidate not found");
     }
 
     return db.candidate.update({
@@ -313,7 +315,7 @@ export class CandidateService {
         isBlacklisted: input.isBlacklisted,
         blacklistReason: input.blacklistReason,
       },
-    })
+    });
   }
 
   /**
@@ -322,19 +324,19 @@ export class CandidateService {
   async addTags(id: string, tags: string[]) {
     const candidate = await db.candidate.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!candidate) {
-      throw new Error('Candidate not found')
+      throw new Error("Candidate not found");
     }
 
-    const existingTags = (candidate.tags as string[]) || []
-    const newTags = Array.from(new Set([...existingTags, ...tags]))
+    const existingTags = (candidate.tags as string[]) || [];
+    const newTags = Array.from(new Set([...existingTags, ...tags]));
 
     return db.candidate.update({
       where: { id },
       data: { tags: newTags },
-    })
+    });
   }
 
   /**
@@ -343,19 +345,19 @@ export class CandidateService {
   async removeTags(id: string, tags: string[]) {
     const candidate = await db.candidate.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!candidate) {
-      throw new Error('Candidate not found')
+      throw new Error("Candidate not found");
     }
 
-    const existingTags = (candidate.tags as string[]) || []
-    const newTags = existingTags.filter(t => !tags.includes(t))
+    const existingTags = (candidate.tags as string[]) || [];
+    const newTags = existingTags.filter((t) => !tags.includes(t));
 
     return db.candidate.update({
       where: { id },
       data: { tags: newTags },
-    })
+    });
   }
 
   /**
@@ -364,10 +366,10 @@ export class CandidateService {
   async blacklist(id: string, reason: string) {
     const candidate = await db.candidate.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!candidate) {
-      throw new Error('Candidate not found')
+      throw new Error("Candidate not found");
     }
 
     return db.candidate.update({
@@ -376,7 +378,7 @@ export class CandidateService {
         isBlacklisted: true,
         blacklistReason: reason,
       },
-    })
+    });
   }
 
   /**
@@ -385,10 +387,10 @@ export class CandidateService {
   async unblacklist(id: string) {
     const candidate = await db.candidate.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!candidate) {
-      throw new Error('Candidate not found')
+      throw new Error("Candidate not found");
     }
 
     return db.candidate.update({
@@ -397,7 +399,7 @@ export class CandidateService {
         isBlacklisted: false,
         blacklistReason: null,
       },
-    })
+    });
   }
 
   /**
@@ -405,29 +407,37 @@ export class CandidateService {
    */
   async merge(primaryId: string, duplicateId: string) {
     const [primary, duplicate] = await Promise.all([
-      db.candidate.findFirst({ where: { id: primaryId, tenantId: this.tenantId } }),
-      db.candidate.findFirst({ where: { id: duplicateId, tenantId: this.tenantId } }),
-    ])
+      db.candidate.findFirst({
+        where: { id: primaryId, tenantId: this.tenantId },
+      }),
+      db.candidate.findFirst({
+        where: { id: duplicateId, tenantId: this.tenantId },
+      }),
+    ]);
 
     if (!primary || !duplicate) {
-      throw new Error('Candidates not found')
+      throw new Error("Candidates not found");
     }
 
     // Move all applications to primary
     await db.application.updateMany({
       where: { candidateId: duplicateId },
       data: { candidateId: primaryId },
-    })
+    });
 
     // Merge tags and skills
-    const mergedTags = Array.from(new Set([
-      ...((primary.tags as string[]) || []),
-      ...((duplicate.tags as string[]) || []),
-    ]))
-    const mergedSkills = Array.from(new Set([
-      ...((primary.skills as string[]) || []),
-      ...((duplicate.skills as string[]) || []),
-    ]))
+    const mergedTags = Array.from(
+      new Set([
+        ...((primary.tags as string[]) || []),
+        ...((duplicate.tags as string[]) || []),
+      ]),
+    );
+    const mergedSkills = Array.from(
+      new Set([
+        ...((primary.skills as string[]) || []),
+        ...((duplicate.skills as string[]) || []),
+      ]),
+    );
 
     // Update primary with merged data
     await db.candidate.update({
@@ -442,15 +452,15 @@ export class CandidateService {
         linkedinUrl: primary.linkedinUrl || duplicate.linkedinUrl,
         portfolioUrl: primary.portfolioUrl || duplicate.portfolioUrl,
         notes: primary.notes
-          ? `${primary.notes}\n\n--- Merged from ${duplicate.email} ---\n${duplicate.notes || ''}`
+          ? `${primary.notes}\n\n--- Merged from ${duplicate.email} ---\n${duplicate.notes || ""}`
           : duplicate.notes,
       },
-    })
+    });
 
     // Delete duplicate
-    await db.candidate.delete({ where: { id: duplicateId } })
+    await db.candidate.delete({ where: { id: duplicateId } });
 
-    return db.candidate.findUnique({ where: { id: primaryId } })
+    return db.candidate.findUnique({ where: { id: primaryId } });
   }
 
   /**
@@ -465,23 +475,23 @@ export class CandidateService {
       include: {
         _count: { select: { applications: true } },
       },
-    })
+    });
 
     // Calculate match score
     return candidates
-      .map(c => {
-        const candidateSkills = (c.skills as string[]) || []
-        const matchedSkills = skills.filter(s =>
-          candidateSkills.some(cs => cs.toLowerCase() === s.toLowerCase())
-        )
+      .map((c) => {
+        const candidateSkills = (c.skills as string[]) || [];
+        const matchedSkills = skills.filter((s) =>
+          candidateSkills.some((cs) => cs.toLowerCase() === s.toLowerCase()),
+        );
         return {
           ...c,
           matchedSkills,
           matchScore: matchedSkills.length,
-        }
+        };
       })
-      .filter(c => c.matchScore >= minMatch)
-      .sort((a, b) => b.matchScore - a.matchScore)
+      .filter((c) => c.matchScore >= minMatch)
+      .sort((a, b) => b.matchScore - a.matchScore);
   }
 
   /**
@@ -492,7 +502,7 @@ export class CandidateService {
       db.candidate.count({ where: { tenantId: this.tenantId } }),
 
       db.candidate.groupBy({
-        by: ['source'],
+        by: ["source"],
         where: { tenantId: this.tenantId },
         _count: true,
       }),
@@ -503,11 +513,11 @@ export class CandidateService {
           createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
-    ])
+    ]);
 
     return {
       total,
-      bySource: bySource.map(s => ({
+      bySource: bySource.map((s) => ({
         source: s.source,
         count: s._count,
       })),
@@ -515,7 +525,7 @@ export class CandidateService {
       blacklisted: await db.candidate.count({
         where: { tenantId: this.tenantId, isBlacklisted: true },
       }),
-    }
+    };
   }
 
   /**
@@ -525,10 +535,10 @@ export class CandidateService {
     const candidates = await db.candidate.findMany({
       where: { tenantId: this.tenantId },
       select: { tags: true },
-    })
+    });
 
-    const allTags = candidates.flatMap(c => (c.tags as string[]) || [])
-    return Array.from(new Set(allTags)).sort()
+    const allTags = candidates.flatMap((c) => (c.tags as string[]) || []);
+    return Array.from(new Set(allTags)).sort();
   }
 
   /**
@@ -538,14 +548,14 @@ export class CandidateService {
     const candidates = await db.candidate.findMany({
       where: { tenantId: this.tenantId },
       select: { skills: true },
-    })
+    });
 
-    const allSkills = candidates.flatMap(c => (c.skills as string[]) || [])
-    return Array.from(new Set(allSkills)).sort()
+    const allSkills = candidates.flatMap((c) => (c.skills as string[]) || []);
+    return Array.from(new Set(allSkills)).sort();
   }
 }
 
 // Factory function
 export function createCandidateService(tenantId: string): CandidateService {
-  return new CandidateService(tenantId)
+  return new CandidateService(tenantId);
 }

@@ -1,13 +1,27 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
-import { Check, X, Clock, User, Calendar, FileText, Loader2 } from 'lucide-react'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
+import { useState } from "react";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import {
+  Check,
+  X,
+  Clock,
+  User,
+  Calendar,
+  FileText,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -15,70 +29,74 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import type { RequestStatus } from '@prisma/client'
+} from "@/components/ui/dialog";
+import type { RequestStatus } from ".prisma/hrm-ai-client";
 
 interface ApprovalItem {
-  id: string
-  stepNumber: number
+  id: string;
+  stepNumber: number;
   workflowInstance: {
     leaveRequest?: {
-      requestCode: string
-      startDate: string | Date
-      endDate: string | Date
-      totalDays: number
-      reason: string
-      status: RequestStatus
+      requestCode: string;
+      startDate: string | Date;
+      endDate: string | Date;
+      totalDays: number;
+      reason: string;
+      status: RequestStatus;
       employee: {
-        firstName: string
-        lastName: string
-        employeeCode: string
-      }
+        firstName: string;
+        lastName: string;
+        employeeCode: string;
+      };
       policy: {
-        name: string
-      }
-    }
-  }
-  createdAt: string | Date
+        name: string;
+      };
+    };
+  };
+  createdAt: string | Date;
 }
 
 interface ApprovalCardProps {
-  approval: ApprovalItem
-  onApprove: (id: string, comment?: string) => Promise<void>
-  onReject: (id: string, reason: string) => Promise<void>
+  approval: ApprovalItem;
+  onApprove: (id: string, comment?: string) => Promise<void>;
+  onReject: (id: string, reason: string) => Promise<void>;
 }
 
-export function ApprovalCard({ approval, onApprove, onReject }: ApprovalCardProps) {
-  const [isApproving, setIsApproving] = useState(false)
-  const [isRejecting, setIsRejecting] = useState(false)
-  const [showRejectDialog, setShowRejectDialog] = useState(false)
-  const [rejectReason, setRejectReason] = useState('')
-  const [comment, setComment] = useState('')
+export function ApprovalCard({
+  approval,
+  onApprove,
+  onReject,
+}: ApprovalCardProps) {
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [comment, setComment] = useState("");
 
-  const request = approval.workflowInstance.leaveRequest
-  if (!request) return null
+  const request = approval.workflowInstance.leaveRequest;
+  if (!request) return null;
 
   const handleApprove = async () => {
-    setIsApproving(true)
+    setIsApproving(true);
     try {
-      await onApprove(approval.id, comment)
+      await onApprove(approval.id, comment);
     } finally {
-      setIsApproving(false)
-      setComment('')
+      setIsApproving(false);
+      setComment("");
     }
-  }
+  };
 
   const handleReject = async () => {
-    if (!rejectReason.trim()) return
-    setIsRejecting(true)
+    if (!rejectReason.trim()) return;
+    setIsRejecting(true);
     try {
-      await onReject(approval.id, rejectReason)
-      setShowRejectDialog(false)
+      await onReject(approval.id, rejectReason);
+      setShowRejectDialog(false);
     } finally {
-      setIsRejecting(false)
-      setRejectReason('')
+      setIsRejecting(false);
+      setRejectReason("");
     }
-  }
+  };
 
   return (
     <>
@@ -114,9 +132,11 @@ export function ApprovalCard({ approval, onApprove, onReject }: ApprovalCardProp
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span>
-              {format(new Date(request.startDate), 'dd/MM/yyyy', { locale: vi })}
-              {' - '}
-              {format(new Date(request.endDate), 'dd/MM/yyyy', { locale: vi })}
+              {format(new Date(request.startDate), "dd/MM/yyyy", {
+                locale: vi,
+              })}
+              {" - "}
+              {format(new Date(request.endDate), "dd/MM/yyyy", { locale: vi })}
             </span>
           </div>
 
@@ -176,7 +196,10 @@ export function ApprovalCard({ approval, onApprove, onReject }: ApprovalCardProp
             rows={3}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowRejectDialog(false)}
+            >
               Hủy
             </Button>
             <Button
@@ -191,5 +214,5 @@ export function ApprovalCard({ approval, onApprove, onReject }: ApprovalCardProp
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

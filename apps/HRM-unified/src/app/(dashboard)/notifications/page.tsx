@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import { formatDistanceToNow, format } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { useState, useEffect, useCallback } from "react";
+import { formatDistanceToNow, format } from "date-fns";
+import { vi } from "date-fns/locale";
 import {
   Bell,
   CheckCircle,
@@ -29,29 +29,35 @@ import {
   Star,
   Volume2,
   VolumeX,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Checkbox } from '@/components/ui/checkbox'
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -59,41 +65,46 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
-import type { NotificationType } from '@prisma/client'
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { NotificationType } from ".prisma/hrm-unified-client";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
 
-type NotificationPriority = 'critical' | 'high' | 'medium' | 'low'
-type NotificationCategory = 'approval' | 'system' | 'ai_insight' | 'reminder' | 'update'
+type NotificationPriority = "critical" | "high" | "medium" | "low";
+type NotificationCategory =
+  | "approval"
+  | "system"
+  | "ai_insight"
+  | "reminder"
+  | "update";
 
 interface Notification {
-  id: string
-  type: NotificationType
-  title: string
-  message: string
-  isRead: boolean
-  actionUrl?: string | null
-  referenceType?: string | null
-  referenceId?: string | null
-  createdAt: string | Date
-  priority?: NotificationPriority
-  category?: NotificationCategory
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  actionUrl?: string | null;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  createdAt: string | Date;
+  priority?: NotificationPriority;
+  category?: NotificationCategory;
 }
 
 interface AIInsight {
-  id: string
-  type: 'trend' | 'anomaly' | 'prediction' | 'recommendation'
-  title: string
-  description: string
-  severity: 'info' | 'warning' | 'critical'
-  actionUrl?: string
-  createdAt: Date
+  id: string;
+  type: "trend" | "anomaly" | "prediction" | "recommendation";
+  title: string;
+  description: string;
+  severity: "info" | "warning" | "critical";
+  actionUrl?: string;
+  createdAt: Date;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -109,72 +120,76 @@ const NOTIFICATION_ICONS: Record<NotificationType, React.ReactNode> = {
   DELEGATION_ASSIGNED: <Info className="h-5 w-5 text-purple-500" />,
   BALANCE_LOW: <AlertTriangle className="h-5 w-5 text-orange-500" />,
   GENERAL: <Info className="h-5 w-5 text-muted-foreground" />,
-}
+};
 
 const PRIORITY_COLORS: Record<NotificationPriority, string> = {
-  critical: 'bg-red-500',
-  high: 'bg-orange-500',
-  medium: 'bg-blue-500',
-  low: 'bg-muted-foreground',
-}
+  critical: "bg-red-500",
+  high: "bg-orange-500",
+  medium: "bg-blue-500",
+  low: "bg-muted-foreground",
+};
 
 const PRIORITY_LABELS: Record<NotificationPriority, string> = {
-  critical: 'Khẩn cấp',
-  high: 'Quan trọng',
-  medium: 'Bình thường',
-  low: 'Thấp',
-}
+  critical: "Khẩn cấp",
+  high: "Quan trọng",
+  medium: "Bình thường",
+  low: "Thấp",
+};
 
-const CATEGORY_LABELS: Record<NotificationCategory | 'all', string> = {
-  all: 'Tất cả',
-  approval: 'Phê duyệt',
-  system: 'Hệ thống',
-  ai_insight: 'AI Insights',
-  reminder: 'Nhắc nhở',
-  update: 'Cập nhật',
-}
+const CATEGORY_LABELS: Record<NotificationCategory | "all", string> = {
+  all: "Tất cả",
+  approval: "Phê duyệt",
+  system: "Hệ thống",
+  ai_insight: "AI Insights",
+  reminder: "Nhắc nhở",
+  update: "Cập nhật",
+};
 
-const INSIGHT_ICONS: Record<AIInsight['type'], React.ReactNode> = {
+const INSIGHT_ICONS: Record<AIInsight["type"], React.ReactNode> = {
   trend: <TrendingUp className="h-5 w-5 text-blue-500" />,
   anomaly: <AlertTriangle className="h-5 w-5 text-amber-500" />,
   prediction: <Brain className="h-5 w-5 text-purple-500" />,
   recommendation: <Sparkles className="h-5 w-5 text-green-500" />,
-}
+};
 
 // ═══════════════════════════════════════════════════════════════
 // Helpers
 // ═══════════════════════════════════════════════════════════════
 
 function inferPriority(notification: Notification): NotificationPriority {
-  const type = notification.type
-  const message = notification.message.toLowerCase()
+  const type = notification.type;
+  const message = notification.message.toLowerCase();
 
-  if (type === 'PENDING_APPROVAL' || message.includes('khẩn') || message.includes('urgent')) {
-    return 'critical'
+  if (
+    type === "PENDING_APPROVAL" ||
+    message.includes("khẩn") ||
+    message.includes("urgent")
+  ) {
+    return "critical";
   }
-  if (type === 'REQUEST_REJECTED' || type === 'BALANCE_LOW') {
-    return 'high'
+  if (type === "REQUEST_REJECTED" || type === "BALANCE_LOW") {
+    return "high";
   }
-  if (type === 'REQUEST_APPROVED' || type === 'DELEGATION_ASSIGNED') {
-    return 'medium'
+  if (type === "REQUEST_APPROVED" || type === "DELEGATION_ASSIGNED") {
+    return "medium";
   }
-  return 'low'
+  return "low";
 }
 
 function inferCategory(notification: Notification): NotificationCategory {
   switch (notification.type) {
-    case 'PENDING_APPROVAL':
-    case 'REQUEST_APPROVED':
-    case 'REQUEST_REJECTED':
-    case 'REQUEST_SUBMITTED':
-    case 'REQUEST_CANCELLED':
-      return 'approval'
-    case 'DELEGATION_ASSIGNED':
-      return 'system'
-    case 'BALANCE_LOW':
-      return 'reminder'
+    case "PENDING_APPROVAL":
+    case "REQUEST_APPROVED":
+    case "REQUEST_REJECTED":
+    case "REQUEST_SUBMITTED":
+    case "REQUEST_CANCELLED":
+      return "approval";
+    case "DELEGATION_ASSIGNED":
+      return "system";
+    case "BALANCE_LOW":
+      return "reminder";
     default:
-      return 'update'
+      return "update";
   }
 }
 
@@ -183,11 +198,11 @@ function inferCategory(notification: Notification): NotificationCategory {
 // ═══════════════════════════════════════════════════════════════
 
 interface NotificationRowProps {
-  notification: Notification
-  selected: boolean
-  onSelect: (id: string, selected: boolean) => void
-  onMarkAsRead: (id: string) => void
-  onDelete: (id: string) => void
+  notification: Notification;
+  selected: boolean;
+  onSelect: (id: string, selected: boolean) => void;
+  onMarkAsRead: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function NotificationRow({
@@ -197,24 +212,31 @@ function NotificationRow({
   onMarkAsRead,
   onDelete,
 }: NotificationRowProps) {
-  const priority = notification.priority || inferPriority(notification)
-  const category = notification.category || inferCategory(notification)
+  const priority = notification.priority || inferPriority(notification);
+  const category = notification.category || inferCategory(notification);
 
   return (
     <div
       className={cn(
-        'group flex items-start gap-4 p-4 border-b transition-all duration-200',
-        !notification.isRead && 'bg-primary/5',
-        'hover:bg-muted/50'
+        "group flex items-start gap-4 p-4 border-b transition-all duration-200",
+        !notification.isRead && "bg-primary/5",
+        "hover:bg-muted/50",
       )}
     >
       {/* Priority indicator */}
-      <div className={cn('w-1 h-full min-h-[60px] rounded-full', PRIORITY_COLORS[priority])} />
+      <div
+        className={cn(
+          "w-1 h-full min-h-[60px] rounded-full",
+          PRIORITY_COLORS[priority],
+        )}
+      />
 
       {/* Checkbox */}
       <Checkbox
         checked={selected}
-        onCheckedChange={(checked) => onSelect(notification.id, checked as boolean)}
+        onCheckedChange={(checked) =>
+          onSelect(notification.id, checked as boolean)
+        }
         className="mt-1"
       />
 
@@ -224,10 +246,15 @@ function NotificationRow({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 space-y-1 cursor-pointer" onClick={() => onMarkAsRead(notification.id)}>
+      <div
+        className="flex-1 min-w-0 space-y-1 cursor-pointer"
+        onClick={() => onMarkAsRead(notification.id)}
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className={cn('font-medium', !notification.isRead && 'font-bold')}>
+            <p
+              className={cn("font-medium", !notification.isRead && "font-bold")}
+            >
               {notification.title}
             </p>
             <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
@@ -253,9 +280,9 @@ function NotificationRow({
           <Badge
             variant="outline"
             className={cn(
-              'text-[10px] h-5',
-              priority === 'critical' && 'border-red-500 text-red-500',
-              priority === 'high' && 'border-orange-500 text-orange-500'
+              "text-[10px] h-5",
+              priority === "critical" && "border-red-500 text-red-500",
+              priority === "high" && "border-orange-500 text-orange-500",
             )}
           >
             {PRIORITY_LABELS[priority]}
@@ -292,7 +319,7 @@ function NotificationRow({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function AIInsightCard({ insight }: { insight: AIInsight }) {
@@ -307,19 +334,42 @@ function AIInsightCard({ insight }: { insight: AIInsight }) {
             <div className="flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                AI {insight.type === 'trend' ? 'Xu hướng' : insight.type === 'anomaly' ? 'Bất thường' : insight.type === 'prediction' ? 'Dự đoán' : 'Đề xuất'}
+                AI{" "}
+                {insight.type === "trend"
+                  ? "Xu hướng"
+                  : insight.type === "anomaly"
+                    ? "Bất thường"
+                    : insight.type === "prediction"
+                      ? "Dự đoán"
+                      : "Đề xuất"}
               </span>
               <Badge
-                variant={insight.severity === 'critical' ? 'destructive' : insight.severity === 'warning' ? 'secondary' : 'outline'}
+                variant={
+                  insight.severity === "critical"
+                    ? "destructive"
+                    : insight.severity === "warning"
+                      ? "secondary"
+                      : "outline"
+                }
                 className="text-[10px] h-4"
               >
-                {insight.severity === 'critical' ? 'Nghiêm trọng' : insight.severity === 'warning' ? 'Cảnh báo' : 'Thông tin'}
+                {insight.severity === "critical"
+                  ? "Nghiêm trọng"
+                  : insight.severity === "warning"
+                    ? "Cảnh báo"
+                    : "Thông tin"}
               </Badge>
             </div>
             <h4 className="font-semibold">{insight.title}</h4>
-            <p className="text-sm text-muted-foreground">{insight.description}</p>
+            <p className="text-sm text-muted-foreground">
+              {insight.description}
+            </p>
             {insight.actionUrl && (
-              <Button variant="link" className="h-auto p-0 text-primary" asChild>
+              <Button
+                variant="link"
+                className="h-auto p-0 text-primary"
+                asChild
+              >
                 <a href={insight.actionUrl}>
                   Xem chi tiết <ChevronRight className="h-3 w-3 ml-1" />
                 </a>
@@ -329,7 +379,7 @@ function AIInsightCard({ insight }: { insight: AIInsight }) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -337,14 +387,16 @@ function AIInsightCard({ insight }: { insight: AIInsight }) {
 // ═══════════════════════════════════════════════════════════════
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [aiInsights, setAIInsights] = useState<AIInsight[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'read'>('all')
-  const [categoryFilter, setCategoryFilter] = useState<NotificationCategory | 'all'>('all')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [aiInsights, setAIInsights] = useState<AIInsight[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "unread" | "read">("all");
+  const [categoryFilter, setCategoryFilter] = useState<
+    NotificationCategory | "all"
+  >("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Settings state
   const [settings, setSettings] = useState({
@@ -353,132 +405,141 @@ export default function NotificationsPage() {
     email: true,
     groupByCategory: true,
     showAIInsights: true,
-  })
+  });
 
   // Fetch data
   const fetchData = useCallback(async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const [notifRes, insightRes] = await Promise.all([
-        fetch('/api/notifications?limit=100'),
-        fetch('/api/insights?limit=10&status=active'),
-      ])
+        fetch("/api/notifications?limit=100"),
+        fetch("/api/insights?limit=10&status=active"),
+      ]);
 
       if (notifRes.ok) {
-        const data = await notifRes.json()
-        const notifs = (data.data?.data || data.data || []).map((n: Notification) => ({
-          ...n,
-          priority: inferPriority(n),
-          category: inferCategory(n),
-        }))
-        setNotifications(notifs)
+        const data = await notifRes.json();
+        const notifs = (data.data?.data || data.data || []).map(
+          (n: Notification) => ({
+            ...n,
+            priority: inferPriority(n),
+            category: inferCategory(n),
+          }),
+        );
+        setNotifications(notifs);
       }
 
       if (insightRes.ok) {
-        const data = await insightRes.json()
-        setAIInsights((data.data || []).map((i: AIInsight) => ({
-          ...i,
-          createdAt: new Date(i.createdAt),
-        })))
+        const data = await insightRes.json();
+        setAIInsights(
+          (data.data || []).map((i: AIInsight) => ({
+            ...i,
+            createdAt: new Date(i.createdAt),
+          })),
+        );
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error("Error fetching data:", error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    fetchData();
+  }, [fetchData]);
 
   // Filter notifications
   const filteredNotifications = notifications.filter((n) => {
     // Tab filter
-    if (activeTab === 'unread' && n.isRead) return false
-    if (activeTab === 'read' && !n.isRead) return false
+    if (activeTab === "unread" && n.isRead) return false;
+    if (activeTab === "read" && !n.isRead) return false;
 
     // Category filter
-    if (categoryFilter !== 'all') {
-      const category = n.category || inferCategory(n)
-      if (category !== categoryFilter) return false
+    if (categoryFilter !== "all") {
+      const category = n.category || inferCategory(n);
+      if (category !== categoryFilter) return false;
     }
 
     // Search
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      return n.title.toLowerCase().includes(query) || n.message.toLowerCase().includes(query)
+      const query = searchQuery.toLowerCase();
+      return (
+        n.title.toLowerCase().includes(query) ||
+        n.message.toLowerCase().includes(query)
+      );
     }
 
-    return true
-  })
+    return true;
+  });
 
   // Stats
-  const unreadCount = notifications.filter((n) => !n.isRead).length
-  const criticalCount = notifications.filter((n) => (n.priority || inferPriority(n)) === 'critical' && !n.isRead).length
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const criticalCount = notifications.filter(
+    (n) => (n.priority || inferPriority(n)) === "critical" && !n.isRead,
+  ).length;
 
   // Handlers
   const handleMarkAsRead = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}/read`, { method: 'POST' })
+      await fetch(`/api/notifications/${id}/read`, { method: "POST" });
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      )
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+      );
     } catch {
       // Silent fail
     }
-  }
+  };
 
   const handleMarkAllAsRead = async () => {
     try {
-      await fetch('/api/notifications/mark-all-read', { method: 'POST' })
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      await fetch("/api/notifications/mark-all-read", { method: "POST" });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {
       // Silent fail
     }
-  }
+  };
 
   const handleMarkSelectedAsRead = async () => {
-    const ids = Array.from(selectedIds)
+    const ids = Array.from(selectedIds);
     for (const id of ids) {
-      await handleMarkAsRead(id)
+      await handleMarkAsRead(id);
     }
-    setSelectedIds(new Set())
-  }
+    setSelectedIds(new Set());
+  };
 
   const handleDelete = async (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
     setSelectedIds((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
   const handleDeleteSelected = async () => {
-    setNotifications((prev) => prev.filter((n) => !selectedIds.has(n.id)))
-    setSelectedIds(new Set())
-  }
+    setNotifications((prev) => prev.filter((n) => !selectedIds.has(n.id)));
+    setSelectedIds(new Set());
+  };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(filteredNotifications.map((n) => n.id)))
+      setSelectedIds(new Set(filteredNotifications.map((n) => n.id)));
     } else {
-      setSelectedIds(new Set())
+      setSelectedIds(new Set());
     }
-  }
+  };
 
   const handleSelect = (id: string, selected: boolean) => {
     setSelectedIds((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (selected) {
-        next.add(id)
+        next.add(id);
       } else {
-        next.delete(id)
+        next.delete(id);
       }
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -495,7 +556,7 @@ export default function NotificationsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={fetchData}>
-            <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
           </Button>
           <Button variant="outline" onClick={() => setSettingsOpen(true)}>
             <Settings className="h-4 w-4 mr-2" />
@@ -522,7 +583,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Khẩn cấp</p>
-                <p className="text-2xl font-bold text-red-500">{criticalCount}</p>
+                <p className="text-2xl font-bold text-red-500">
+                  {criticalCount}
+                </p>
               </div>
               <AlertTriangle className="h-8 w-8 text-red-500 opacity-80" />
             </div>
@@ -533,7 +596,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">AI Insights</p>
-                <p className="text-2xl font-bold text-purple-500">{aiInsights.length}</p>
+                <p className="text-2xl font-bold text-purple-500">
+                  {aiInsights.length}
+                </p>
               </div>
               <Brain className="h-8 w-8 text-purple-500 opacity-80" />
             </div>
@@ -579,13 +644,24 @@ export default function NotificationsPage() {
         <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'unread' | 'read')}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) =>
+                setActiveTab(v as "all" | "unread" | "read")
+              }
+            >
               <TabsList>
                 <TabsTrigger value="all">
-                  Tất cả <Badge variant="secondary" className="ml-1.5">{notifications.length}</Badge>
+                  Tất cả{" "}
+                  <Badge variant="secondary" className="ml-1.5">
+                    {notifications.length}
+                  </Badge>
                 </TabsTrigger>
                 <TabsTrigger value="unread">
-                  Chưa đọc <Badge variant="secondary" className="ml-1.5">{unreadCount}</Badge>
+                  Chưa đọc{" "}
+                  <Badge variant="secondary" className="ml-1.5">
+                    {unreadCount}
+                  </Badge>
                 </TabsTrigger>
                 <TabsTrigger value="read">Đã đọc</TabsTrigger>
               </TabsList>
@@ -602,13 +678,23 @@ export default function NotificationsPage() {
                   className="pl-8 w-[250px]"
                 />
               </div>
-              <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as NotificationCategory | 'all')}>
+              <Select
+                value={categoryFilter}
+                onValueChange={(v) =>
+                  setCategoryFilter(v as NotificationCategory | "all")
+                }
+              >
                 <SelectTrigger className="w-[150px]">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Danh mục" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(CATEGORY_LABELS) as (NotificationCategory | 'all')[]).map((cat) => (
+                  {(
+                    Object.keys(CATEGORY_LABELS) as (
+                      | NotificationCategory
+                      | "all"
+                    )[]
+                  ).map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {CATEGORY_LABELS[cat]}
                     </SelectItem>
@@ -623,13 +709,23 @@ export default function NotificationsPage() {
         {selectedIds.size > 0 && (
           <div className="px-6 pb-3">
             <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-              <span className="text-sm font-medium">{selectedIds.size} được chọn</span>
+              <span className="text-sm font-medium">
+                {selectedIds.size} được chọn
+              </span>
               <div className="ml-auto flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={handleMarkSelectedAsRead}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleMarkSelectedAsRead}
+                >
                   <CheckCheck className="h-4 w-4 mr-1.5" />
                   Đánh dấu đã đọc
                 </Button>
-                <Button size="sm" variant="destructive" onClick={handleDeleteSelected}>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleDeleteSelected}
+                >
                   <Trash2 className="h-4 w-4 mr-1.5" />
                   Xóa
                 </Button>
@@ -642,14 +738,24 @@ export default function NotificationsPage() {
           {/* Select All Header */}
           <div className="flex items-center gap-4 px-4 py-2 bg-muted/50 border-y">
             <Checkbox
-              checked={selectedIds.size === filteredNotifications.length && filteredNotifications.length > 0}
+              checked={
+                selectedIds.size === filteredNotifications.length &&
+                filteredNotifications.length > 0
+              }
               onCheckedChange={handleSelectAll}
             />
             <span className="text-sm text-muted-foreground">
-              {selectedIds.size > 0 ? `${selectedIds.size} được chọn` : 'Chọn tất cả'}
+              {selectedIds.size > 0
+                ? `${selectedIds.size} được chọn`
+                : "Chọn tất cả"}
             </span>
             {unreadCount > 0 && (
-              <Button size="sm" variant="ghost" className="ml-auto" onClick={handleMarkAllAsRead}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto"
+                onClick={handleMarkAllAsRead}
+              >
                 <CheckCheck className="h-4 w-4 mr-1.5" />
                 Đánh dấu tất cả đã đọc
               </Button>
@@ -676,7 +782,9 @@ export default function NotificationsPage() {
                 <BellOff className="h-16 w-16 text-muted-foreground/30 mb-4" />
                 <p className="text-lg font-medium">Không có thông báo</p>
                 <p className="text-sm text-muted-foreground">
-                  {searchQuery ? 'Không tìm thấy kết quả phù hợp' : 'Bạn đã xem hết tất cả thông báo'}
+                  {searchQuery
+                    ? "Không tìm thấy kết quả phù hợp"
+                    : "Bạn đã xem hết tất cả thông báo"}
                 </p>
               </div>
             ) : (
@@ -712,15 +820,23 @@ export default function NotificationsPage() {
             {/* Sound */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {settings.sound ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-muted-foreground" />}
+                {settings.sound ? (
+                  <Volume2 className="h-5 w-5" />
+                ) : (
+                  <VolumeX className="h-5 w-5 text-muted-foreground" />
+                )}
                 <div>
                   <Label>Âm thanh</Label>
-                  <p className="text-sm text-muted-foreground">Phát âm thanh khi có thông báo mới</p>
+                  <p className="text-sm text-muted-foreground">
+                    Phát âm thanh khi có thông báo mới
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={settings.sound}
-                onCheckedChange={(checked) => setSettings({ ...settings, sound: checked })}
+                onCheckedChange={(checked) =>
+                  setSettings({ ...settings, sound: checked })
+                }
               />
             </div>
 
@@ -730,12 +846,16 @@ export default function NotificationsPage() {
                 <Bell className="h-5 w-5" />
                 <div>
                   <Label>Thông báo desktop</Label>
-                  <p className="text-sm text-muted-foreground">Hiển thị thông báo trên màn hình</p>
+                  <p className="text-sm text-muted-foreground">
+                    Hiển thị thông báo trên màn hình
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={settings.desktop}
-                onCheckedChange={(checked) => setSettings({ ...settings, desktop: checked })}
+                onCheckedChange={(checked) =>
+                  setSettings({ ...settings, desktop: checked })
+                }
               />
             </div>
 
@@ -745,12 +865,16 @@ export default function NotificationsPage() {
                 <Star className="h-5 w-5" />
                 <div>
                   <Label>Email</Label>
-                  <p className="text-sm text-muted-foreground">Nhận email cho thông báo quan trọng</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nhận email cho thông báo quan trọng
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={settings.email}
-                onCheckedChange={(checked) => setSettings({ ...settings, email: checked })}
+                onCheckedChange={(checked) =>
+                  setSettings({ ...settings, email: checked })
+                }
               />
             </div>
 
@@ -760,12 +884,16 @@ export default function NotificationsPage() {
                 <Brain className="h-5 w-5 text-purple-500" />
                 <div>
                   <Label>AI Insights</Label>
-                  <p className="text-sm text-muted-foreground">Hiển thị phân tích AI thông minh</p>
+                  <p className="text-sm text-muted-foreground">
+                    Hiển thị phân tích AI thông minh
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={settings.showAIInsights}
-                onCheckedChange={(checked) => setSettings({ ...settings, showAIInsights: checked })}
+                onCheckedChange={(checked) =>
+                  setSettings({ ...settings, showAIInsights: checked })
+                }
               />
             </div>
           </div>
@@ -774,12 +902,10 @@ export default function NotificationsPage() {
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={() => setSettingsOpen(false)}>
-              Lưu thay đổi
-            </Button>
+            <Button onClick={() => setSettingsOpen(false)}>Lưu thay đổi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

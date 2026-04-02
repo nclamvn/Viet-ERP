@@ -3,8 +3,8 @@
 // Shared validation logic for forgot-password and reset-password routes
 // =============================================================================
 
-import prisma from '@/lib/prisma';
-import type { PasswordResetToken, User } from '@prisma/client';
+import prisma from "@/lib/prisma";
+import type { PasswordResetToken, User } from ".prisma/mrp-client";
 
 // =============================================================================
 // TYPES
@@ -22,17 +22,17 @@ export interface ValidatedToken {
 
 /** Token record including the associated user (used by POST reset) */
 export interface ValidatedTokenWithUser extends ValidatedToken {
-  user: Pick<User, 'id' | 'email' | 'password'>;
+  user: Pick<User, "id" | "email" | "password">;
 }
 
 /** Error thrown when token validation fails */
 export class TokenValidationError extends Error {
   constructor(
     message: string,
-    public readonly code: 'NOT_FOUND' | 'ALREADY_USED' | 'EXPIRED'
+    public readonly code: "NOT_FOUND" | "ALREADY_USED" | "EXPIRED",
   ) {
     super(message);
-    this.name = 'TokenValidationError';
+    this.name = "TokenValidationError";
   }
 }
 
@@ -44,30 +44,26 @@ export class TokenValidationError extends Error {
  * Validate a password reset token: checks existence, usage, and expiry.
  * Returns the token record or throws a TokenValidationError.
  */
-export async function validateResetToken(token: string): Promise<ValidatedToken> {
+export async function validateResetToken(
+  token: string,
+): Promise<ValidatedToken> {
   const resetToken = await prisma.passwordResetToken.findUnique({
     where: { token },
   });
 
   if (!resetToken) {
     throw new TokenValidationError(
-      'Token khong ton tai hoac da het han',
-      'NOT_FOUND'
+      "Token khong ton tai hoac da het han",
+      "NOT_FOUND",
     );
   }
 
   if (resetToken.usedAt) {
-    throw new TokenValidationError(
-      'Token da duoc su dung',
-      'ALREADY_USED'
-    );
+    throw new TokenValidationError("Token da duoc su dung", "ALREADY_USED");
   }
 
   if (new Date() > resetToken.expiresAt) {
-    throw new TokenValidationError(
-      'Token da het han',
-      'EXPIRED'
-    );
+    throw new TokenValidationError("Token da het han", "EXPIRED");
   }
 
   return resetToken;
@@ -78,7 +74,7 @@ export async function validateResetToken(token: string): Promise<ValidatedToken>
  * Returns the token with user data or throws a TokenValidationError.
  */
 export async function validateResetTokenWithUser(
-  token: string
+  token: string,
 ): Promise<ValidatedTokenWithUser> {
   const resetToken = await prisma.passwordResetToken.findUnique({
     where: { token },
@@ -86,24 +82,15 @@ export async function validateResetTokenWithUser(
   });
 
   if (!resetToken) {
-    throw new TokenValidationError(
-      'Token khong ton tai',
-      'NOT_FOUND'
-    );
+    throw new TokenValidationError("Token khong ton tai", "NOT_FOUND");
   }
 
   if (resetToken.usedAt) {
-    throw new TokenValidationError(
-      'Token da duoc su dung',
-      'ALREADY_USED'
-    );
+    throw new TokenValidationError("Token da duoc su dung", "ALREADY_USED");
   }
 
   if (new Date() > resetToken.expiresAt) {
-    throw new TokenValidationError(
-      'Token da het han',
-      'EXPIRED'
-    );
+    throw new TokenValidationError("Token da het han", "EXPIRED");
   }
 
   return resetToken as ValidatedTokenWithUser;

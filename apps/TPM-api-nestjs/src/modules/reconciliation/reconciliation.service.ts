@@ -7,7 +7,7 @@ import { CreateJournalDto } from './dto/create-journal.dto';
 import { CreateGLAccountDto } from './dto/create-gl-account.dto';
 import { UpdateAccrualConfigDto } from './dto/update-accrual-config.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class ReconciliationService {

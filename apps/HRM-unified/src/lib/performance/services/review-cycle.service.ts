@@ -1,43 +1,43 @@
 // src/lib/performance/services/review-cycle.service.ts
 // Review Cycle Service - Manage performance review cycles
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   ReviewCycleType,
   ReviewCycleStatus,
   ReviewStatus,
-  Prisma
-} from '@prisma/client'
+  Prisma,
+} from ".prisma/hrm-unified-client";
 
 // Types
 export interface CreateReviewCycleInput {
-  name: string
-  description?: string
-  cycleType: ReviewCycleType
-  year: number
-  startDate: Date
-  endDate: Date
-  goalSettingStart?: Date
-  goalSettingEnd?: Date
-  selfReviewStart?: Date
-  selfReviewEnd?: Date
-  managerReviewStart?: Date
-  managerReviewEnd?: Date
-  calibrationStart?: Date
-  calibrationEnd?: Date
-  goalWeight?: number
-  competencyWeight?: number
-  valuesWeight?: number
-  feedbackWeight?: number
-  allowSelfReview?: boolean
-  allow360Feedback?: boolean
-  requireCalibration?: boolean
+  name: string;
+  description?: string;
+  cycleType: ReviewCycleType;
+  year: number;
+  startDate: Date;
+  endDate: Date;
+  goalSettingStart?: Date;
+  goalSettingEnd?: Date;
+  selfReviewStart?: Date;
+  selfReviewEnd?: Date;
+  managerReviewStart?: Date;
+  managerReviewEnd?: Date;
+  calibrationStart?: Date;
+  calibrationEnd?: Date;
+  goalWeight?: number;
+  competencyWeight?: number;
+  valuesWeight?: number;
+  feedbackWeight?: number;
+  allowSelfReview?: boolean;
+  allow360Feedback?: boolean;
+  requireCalibration?: boolean;
 }
 
 export interface ReviewCycleFilters {
-  year?: number
-  cycleType?: ReviewCycleType[]
-  status?: ReviewCycleStatus[]
+  year?: number;
+  cycleType?: ReviewCycleType[];
+  status?: ReviewCycleStatus[];
 }
 
 export class ReviewCycleService {
@@ -48,13 +48,14 @@ export class ReviewCycleService {
    */
   async create(createdById: string, input: CreateReviewCycleInput) {
     // Validate weights sum to 100
-    const totalWeight = (input.goalWeight ?? 40) +
+    const totalWeight =
+      (input.goalWeight ?? 40) +
       (input.competencyWeight ?? 30) +
       (input.valuesWeight ?? 20) +
-      (input.feedbackWeight ?? 10)
+      (input.feedbackWeight ?? 10);
 
     if (totalWeight !== 100) {
-      throw new Error('Score weights must sum to 100')
+      throw new Error("Score weights must sum to 100");
     }
 
     return db.reviewCycle.create({
@@ -87,7 +88,7 @@ export class ReviewCycleService {
       include: {
         createdBy: { select: { id: true, name: true } },
       },
-    })
+    });
   }
 
   /**
@@ -109,41 +110,45 @@ export class ReviewCycleService {
           },
         },
       },
-    })
+    });
 
     if (!cycle) {
-      throw new Error('Review cycle not found')
+      throw new Error("Review cycle not found");
     }
 
-    return cycle
+    return cycle;
   }
 
   /**
    * List review cycles
    */
-  async list(filters: ReviewCycleFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: ReviewCycleFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.ReviewCycleWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.year) {
-      where.year = filters.year
+      where.year = filters.year;
     }
 
     if (filters.cycleType?.length) {
-      where.cycleType = { in: filters.cycleType }
+      where.cycleType = { in: filters.cycleType };
     }
 
     if (filters.status?.length) {
-      where.status = { in: filters.status }
+      where.status = { in: filters.status };
     }
 
     const [cycles, total] = await Promise.all([
       db.reviewCycle.findMany({
         where,
-        orderBy: [{ year: 'desc' }, { startDate: 'desc' }],
+        orderBy: [{ year: "desc" }, { startDate: "desc" }],
         skip,
         take: pageSize,
         include: {
@@ -153,7 +158,7 @@ export class ReviewCycleService {
         },
       }),
       db.reviewCycle.count({ where }),
-    ])
+    ]);
 
     return {
       data: cycles,
@@ -161,7 +166,7 @@ export class ReviewCycleService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -181,50 +186,50 @@ export class ReviewCycleService {
           ],
         },
       },
-      orderBy: { startDate: 'desc' },
-    })
+      orderBy: { startDate: "desc" },
+    });
   }
 
   /**
    * Get current phase info
    */
   async getCurrentPhase(id: string) {
-    const cycle = await this.getById(id)
-    const now = new Date()
+    const cycle = await this.getById(id);
+    const now = new Date();
 
-    let currentPhase = 'UNKNOWN'
-    let phaseStart: Date | null = null
-    let phaseEnd: Date | null = null
+    let currentPhase = "UNKNOWN";
+    let phaseStart: Date | null = null;
+    let phaseEnd: Date | null = null;
 
     if (cycle.goalSettingStart && cycle.goalSettingEnd) {
       if (now >= cycle.goalSettingStart && now <= cycle.goalSettingEnd) {
-        currentPhase = 'GOAL_SETTING'
-        phaseStart = cycle.goalSettingStart
-        phaseEnd = cycle.goalSettingEnd
+        currentPhase = "GOAL_SETTING";
+        phaseStart = cycle.goalSettingStart;
+        phaseEnd = cycle.goalSettingEnd;
       }
     }
 
     if (cycle.selfReviewStart && cycle.selfReviewEnd) {
       if (now >= cycle.selfReviewStart && now <= cycle.selfReviewEnd) {
-        currentPhase = 'SELF_REVIEW'
-        phaseStart = cycle.selfReviewStart
-        phaseEnd = cycle.selfReviewEnd
+        currentPhase = "SELF_REVIEW";
+        phaseStart = cycle.selfReviewStart;
+        phaseEnd = cycle.selfReviewEnd;
       }
     }
 
     if (cycle.managerReviewStart && cycle.managerReviewEnd) {
       if (now >= cycle.managerReviewStart && now <= cycle.managerReviewEnd) {
-        currentPhase = 'MANAGER_REVIEW'
-        phaseStart = cycle.managerReviewStart
-        phaseEnd = cycle.managerReviewEnd
+        currentPhase = "MANAGER_REVIEW";
+        phaseStart = cycle.managerReviewStart;
+        phaseEnd = cycle.managerReviewEnd;
       }
     }
 
     if (cycle.calibrationStart && cycle.calibrationEnd) {
       if (now >= cycle.calibrationStart && now <= cycle.calibrationEnd) {
-        currentPhase = 'CALIBRATION'
-        phaseStart = cycle.calibrationStart
-        phaseEnd = cycle.calibrationEnd
+        currentPhase = "CALIBRATION";
+        phaseStart = cycle.calibrationStart;
+        phaseEnd = cycle.calibrationEnd;
       }
     }
 
@@ -234,9 +239,11 @@ export class ReviewCycleService {
       phaseStart,
       phaseEnd,
       daysRemaining: phaseEnd
-        ? Math.ceil((phaseEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        ? Math.ceil(
+            (phaseEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          )
         : null,
-    }
+    };
   }
 
   /**
@@ -245,22 +252,27 @@ export class ReviewCycleService {
   async update(id: string, input: Partial<CreateReviewCycleInput>) {
     const cycle = await db.reviewCycle.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!cycle) {
-      throw new Error('Review cycle not found')
+      throw new Error("Review cycle not found");
     }
 
     // Validate weights if any are provided
-    if (input.goalWeight !== undefined || input.competencyWeight !== undefined ||
-        input.valuesWeight !== undefined || input.feedbackWeight !== undefined) {
-      const totalWeight = (input.goalWeight ?? Number(cycle.goalWeight)) +
+    if (
+      input.goalWeight !== undefined ||
+      input.competencyWeight !== undefined ||
+      input.valuesWeight !== undefined ||
+      input.feedbackWeight !== undefined
+    ) {
+      const totalWeight =
+        (input.goalWeight ?? Number(cycle.goalWeight)) +
         (input.competencyWeight ?? Number(cycle.competencyWeight)) +
         (input.valuesWeight ?? Number(cycle.valuesWeight)) +
-        (input.feedbackWeight ?? Number(cycle.feedbackWeight))
+        (input.feedbackWeight ?? Number(cycle.feedbackWeight));
 
       if (totalWeight !== 100) {
-        throw new Error('Score weights must sum to 100')
+        throw new Error("Score weights must sum to 100");
       }
     }
 
@@ -289,7 +301,7 @@ export class ReviewCycleService {
         allow360Feedback: input.allow360Feedback,
         requireCalibration: input.requireCalibration,
       },
-    })
+    });
   }
 
   /**
@@ -298,16 +310,16 @@ export class ReviewCycleService {
   async updateStatus(id: string, status: ReviewCycleStatus) {
     const cycle = await db.reviewCycle.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!cycle) {
-      throw new Error('Review cycle not found')
+      throw new Error("Review cycle not found");
     }
 
     return db.reviewCycle.update({
       where: { id },
       data: { status },
-    })
+    });
   }
 
   /**
@@ -317,50 +329,50 @@ export class ReviewCycleService {
     const cycle = await db.reviewCycle.findFirst({
       where: { id, tenantId: this.tenantId },
       include: { _count: { select: { reviews: true } } },
-    })
+    });
 
     if (!cycle) {
-      throw new Error('Review cycle not found')
+      throw new Error("Review cycle not found");
     }
 
     if (cycle.status !== ReviewCycleStatus.DRAFT) {
-      throw new Error('Cycle must be in draft status to start')
+      throw new Error("Cycle must be in draft status to start");
     }
 
     // Get all active employees with managers
     const employees = await db.employee.findMany({
       where: {
         tenantId: this.tenantId,
-        status: 'ACTIVE',
+        status: "ACTIVE",
         directManagerId: { not: null },
       },
       select: { id: true, directManagerId: true },
-    })
+    });
 
     // Create reviews for each employee
-    const reviewData = employees.map(emp => ({
+    const reviewData = employees.map((emp) => ({
       tenantId: this.tenantId,
       reviewCycleId: id,
       employeeId: emp.id,
       managerId: emp.directManagerId!,
       status: ReviewStatus.NOT_STARTED,
-    }))
+    }));
 
     await db.performanceReview.createMany({
       data: reviewData,
       skipDuplicates: true,
-    })
+    });
 
     // Update cycle status
     await db.reviewCycle.update({
       where: { id },
       data: { status: ReviewCycleStatus.GOAL_SETTING },
-    })
+    });
 
     return {
       success: true,
       reviewsCreated: reviewData.length,
-    }
+    };
   }
 
   /**
@@ -369,10 +381,10 @@ export class ReviewCycleService {
   async advancePhase(id: string) {
     const cycle = await db.reviewCycle.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!cycle) {
-      throw new Error('Review cycle not found')
+      throw new Error("Review cycle not found");
     }
 
     const phaseOrder: ReviewCycleStatus[] = [
@@ -383,19 +395,19 @@ export class ReviewCycleService {
       ReviewCycleStatus.MANAGER_REVIEW,
       ReviewCycleStatus.CALIBRATION,
       ReviewCycleStatus.COMPLETED,
-    ]
+    ];
 
-    const currentIndex = phaseOrder.indexOf(cycle.status)
+    const currentIndex = phaseOrder.indexOf(cycle.status);
     if (currentIndex === -1 || currentIndex >= phaseOrder.length - 1) {
-      throw new Error('Cannot advance from current phase')
+      throw new Error("Cannot advance from current phase");
     }
 
-    const nextStatus = phaseOrder[currentIndex + 1]
+    const nextStatus = phaseOrder[currentIndex + 1];
 
     return db.reviewCycle.update({
       where: { id },
       data: { status: nextStatus },
-    })
+    });
   }
 
   /**
@@ -404,10 +416,10 @@ export class ReviewCycleService {
   async complete(id: string) {
     const cycle = await db.reviewCycle.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!cycle) {
-      throw new Error('Review cycle not found')
+      throw new Error("Review cycle not found");
     }
 
     // Check all reviews are completed or acknowledged
@@ -418,16 +430,18 @@ export class ReviewCycleService {
           notIn: [ReviewStatus.COMPLETED, ReviewStatus.ACKNOWLEDGED],
         },
       },
-    })
+    });
 
     if (incompleteReviews > 0) {
-      throw new Error(`Cannot complete cycle. ${incompleteReviews} reviews are still pending.`)
+      throw new Error(
+        `Cannot complete cycle. ${incompleteReviews} reviews are still pending.`,
+      );
     }
 
     return db.reviewCycle.update({
       where: { id },
       data: { status: ReviewCycleStatus.COMPLETED },
-    })
+    });
   }
 
   /**
@@ -437,7 +451,7 @@ export class ReviewCycleService {
     return db.reviewCycle.update({
       where: { id },
       data: { status: ReviewCycleStatus.CANCELLED },
-    })
+    });
   }
 
   /**
@@ -446,52 +460,55 @@ export class ReviewCycleService {
   async delete(id: string) {
     const cycle = await db.reviewCycle.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!cycle) {
-      throw new Error('Review cycle not found')
+      throw new Error("Review cycle not found");
     }
 
     if (cycle.status !== ReviewCycleStatus.DRAFT) {
-      throw new Error('Only draft cycles can be deleted')
+      throw new Error("Only draft cycles can be deleted");
     }
 
-    await db.reviewCycle.delete({ where: { id } })
-    return { success: true }
+    await db.reviewCycle.delete({ where: { id } });
+    return { success: true };
   }
 
   /**
    * Get cycle progress
    */
   async getProgress(id: string) {
-    const cycle = await this.getById(id)
+    const cycle = await this.getById(id);
 
     const reviews = await db.performanceReview.groupBy({
-      by: ['status'],
+      by: ["status"],
       where: { reviewCycleId: id },
       _count: true,
-    })
+    });
 
-    const totalReviews = reviews.reduce((sum, r) => sum + r._count, 0)
+    const totalReviews = reviews.reduce((sum, r) => sum + r._count, 0);
 
-    const statusCounts = reviews.reduce((acc, r) => {
-      acc[r.status] = r._count
-      return acc
-    }, {} as Record<string, number>)
+    const statusCounts = reviews.reduce(
+      (acc, r) => {
+        acc[r.status] = r._count;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Calculate completion percentage
-    const completed = (statusCounts[ReviewStatus.COMPLETED] || 0) +
-      (statusCounts[ReviewStatus.ACKNOWLEDGED] || 0)
-    const completionRate = totalReviews > 0
-      ? Math.round((completed / totalReviews) * 100)
-      : 0
+    const completed =
+      (statusCounts[ReviewStatus.COMPLETED] || 0) +
+      (statusCounts[ReviewStatus.ACKNOWLEDGED] || 0);
+    const completionRate =
+      totalReviews > 0 ? Math.round((completed / totalReviews) * 100) : 0;
 
     return {
       cycle,
       totalReviews,
       statusBreakdown: statusCounts,
       completionRate,
-    }
+    };
   }
 
   /**
@@ -502,29 +519,29 @@ export class ReviewCycleService {
       db.reviewCycle.count({ where: { tenantId: this.tenantId } }),
 
       db.reviewCycle.groupBy({
-        by: ['status'],
+        by: ["status"],
         where: { tenantId: this.tenantId },
         _count: true,
       }),
 
       db.reviewCycle.groupBy({
-        by: ['year'],
+        by: ["year"],
         where: { tenantId: this.tenantId },
         _count: true,
-        orderBy: { year: 'desc' },
+        orderBy: { year: "desc" },
         take: 5,
       }),
-    ])
+    ]);
 
     return {
       total,
-      byStatus: byStatus.map(s => ({ status: s.status, count: s._count })),
-      byYear: byYear.map(y => ({ year: y.year, count: y._count })),
-    }
+      byStatus: byStatus.map((s) => ({ status: s.status, count: s._count })),
+      byYear: byYear.map((y) => ({ year: y.year, count: y._count })),
+    };
   }
 }
 
 // Factory function
 export function createReviewCycleService(tenantId: string): ReviewCycleService {
-  return new ReviewCycleService(tenantId)
+  return new ReviewCycleService(tenantId);
 }

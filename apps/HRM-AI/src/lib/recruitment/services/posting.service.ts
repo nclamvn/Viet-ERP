@@ -1,52 +1,54 @@
 // src/lib/recruitment/services/posting.service.ts
 // Job Posting Service - Manage job postings and careers page
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   JobPostingStatus,
   RequisitionStatus,
   JobType,
   WorkMode,
-  Prisma
-} from '@prisma/client'
-import { generateUniqueSlug } from '../utils'
+  Prisma,
+} from ".prisma/hrm-ai-client";
+import { generateUniqueSlug } from "../utils";
 
 // Types
 export interface CreatePostingInput {
-  requisitionId: string
-  title: string
-  description: string
-  requirements: string
-  benefits?: string
-  location?: string
-  jobType?: JobType
-  workMode?: WorkMode
-  salaryDisplay?: string
-  isInternal?: boolean
-  isPublic?: boolean
-  expiresAt?: Date
+  requisitionId: string;
+  title: string;
+  description: string;
+  requirements: string;
+  benefits?: string;
+  location?: string;
+  jobType?: JobType;
+  workMode?: WorkMode;
+  salaryDisplay?: string;
+  isInternal?: boolean;
+  isPublic?: boolean;
+  expiresAt?: Date;
 }
 
-export interface UpdatePostingInput extends Partial<Omit<CreatePostingInput, 'requisitionId'>> {
-  status?: JobPostingStatus
+export interface UpdatePostingInput extends Partial<
+  Omit<CreatePostingInput, "requisitionId">
+> {
+  status?: JobPostingStatus;
 }
 
 export interface PostingFilters {
-  status?: JobPostingStatus[]
-  requisitionId?: string
-  isInternal?: boolean
-  isPublic?: boolean
-  jobType?: JobType
-  workMode?: WorkMode
-  search?: string
+  status?: JobPostingStatus[];
+  requisitionId?: string;
+  isInternal?: boolean;
+  isPublic?: boolean;
+  jobType?: JobType;
+  workMode?: WorkMode;
+  search?: string;
 }
 
 export interface PublicJobFilters {
-  departmentId?: string
-  jobType?: JobType
-  workMode?: WorkMode
-  location?: string
-  search?: string
+  departmentId?: string;
+  jobType?: JobType;
+  workMode?: WorkMode;
+  location?: string;
+  search?: string;
 }
 
 export class JobPostingService {
@@ -63,14 +65,16 @@ export class JobPostingService {
         tenantId: this.tenantId,
         status: { in: [RequisitionStatus.APPROVED, RequisitionStatus.OPEN] },
       },
-    })
+    });
 
     if (!requisition) {
-      throw new Error('Requisition not found or not in valid status for posting')
+      throw new Error(
+        "Requisition not found or not in valid status for posting",
+      );
     }
 
     // Generate unique slug
-    const slug = await generateUniqueSlug(this.tenantId, input.title)
+    const slug = await generateUniqueSlug(this.tenantId, input.title);
 
     const posting = await db.jobPosting.create({
       data: {
@@ -100,9 +104,9 @@ export class JobPostingService {
           },
         },
       },
-    })
+    });
 
-    return posting
+    return posting;
   }
 
   /**
@@ -130,13 +134,13 @@ export class JobPostingService {
           select: { applications: true },
         },
       },
-    })
+    });
 
     if (!posting) {
-      throw new Error('Job posting not found')
+      throw new Error("Job posting not found");
     }
 
-    return posting
+    return posting;
   }
 
   /**
@@ -149,10 +153,7 @@ export class JobPostingService {
         slug,
         status: JobPostingStatus.PUBLISHED,
         isPublic: true,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       include: {
         requisition: {
@@ -163,67 +164,71 @@ export class JobPostingService {
           },
         },
       },
-    })
+    });
 
     if (!posting) {
-      throw new Error('Job posting not found')
+      throw new Error("Job posting not found");
     }
 
     // Increment view count
     await db.jobPosting.update({
       where: { id: posting.id },
       data: { viewCount: { increment: 1 } },
-    })
+    });
 
-    return posting
+    return posting;
   }
 
   /**
    * List postings with filters
    */
-  async list(filters: PostingFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: PostingFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.JobPostingWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.status?.length) {
-      where.status = { in: filters.status }
+      where.status = { in: filters.status };
     }
 
     if (filters.requisitionId) {
-      where.requisitionId = filters.requisitionId
+      where.requisitionId = filters.requisitionId;
     }
 
     if (filters.isInternal !== undefined) {
-      where.isInternal = filters.isInternal
+      where.isInternal = filters.isInternal;
     }
 
     if (filters.isPublic !== undefined) {
-      where.isPublic = filters.isPublic
+      where.isPublic = filters.isPublic;
     }
 
     if (filters.jobType) {
-      where.jobType = filters.jobType
+      where.jobType = filters.jobType;
     }
 
     if (filters.workMode) {
-      where.workMode = filters.workMode
+      where.workMode = filters.workMode;
     }
 
     if (filters.search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-        { location: { contains: filters.search, mode: 'insensitive' } },
-      ]
+        { title: { contains: filters.search, mode: "insensitive" } },
+        { description: { contains: filters.search, mode: "insensitive" } },
+        { location: { contains: filters.search, mode: "insensitive" } },
+      ];
     }
 
     const [postings, total] = await Promise.all([
       db.jobPosting.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
         include: {
@@ -240,7 +245,7 @@ export class JobPostingService {
         },
       }),
       db.jobPosting.count({ where }),
-    ])
+    ]);
 
     return {
       data: postings,
@@ -248,57 +253,58 @@ export class JobPostingService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
    * List public job postings (for careers page)
    */
-  async listPublic(filters: PublicJobFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async listPublic(
+    filters: PublicJobFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.JobPostingWhereInput = {
       tenantId: this.tenantId,
       status: JobPostingStatus.PUBLISHED,
       isPublic: true,
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
-    }
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    };
 
     if (filters.jobType) {
-      where.jobType = filters.jobType
+      where.jobType = filters.jobType;
     }
 
     if (filters.workMode) {
-      where.workMode = filters.workMode
+      where.workMode = filters.workMode;
     }
 
     if (filters.location) {
-      where.location = { contains: filters.location, mode: 'insensitive' }
+      where.location = { contains: filters.location, mode: "insensitive" };
     }
 
     if (filters.departmentId) {
-      where.requisition = { departmentId: filters.departmentId }
+      where.requisition = { departmentId: filters.departmentId };
     }
 
     if (filters.search) {
       where.AND = [
         {
           OR: [
-            { title: { contains: filters.search, mode: 'insensitive' } },
-            { description: { contains: filters.search, mode: 'insensitive' } },
-            { requirements: { contains: filters.search, mode: 'insensitive' } },
+            { title: { contains: filters.search, mode: "insensitive" } },
+            { description: { contains: filters.search, mode: "insensitive" } },
+            { requirements: { contains: filters.search, mode: "insensitive" } },
           ],
         },
-      ]
+      ];
     }
 
     const [postings, total] = await Promise.all([
       db.jobPosting.findMany({
         where,
-        orderBy: [{ createdAt: 'desc' }],
+        orderBy: [{ createdAt: "desc" }],
         skip,
         take: pageSize,
         select: {
@@ -319,10 +325,10 @@ export class JobPostingService {
         },
       }),
       db.jobPosting.count({ where }),
-    ])
+    ]);
 
     return {
-      data: postings.map(p => ({
+      data: postings.map((p) => ({
         ...p,
         departmentName: p.requisition?.department?.name || null,
         requisition: undefined,
@@ -331,7 +337,7 @@ export class JobPostingService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -340,16 +346,16 @@ export class JobPostingService {
   async update(id: string, input: UpdatePostingInput) {
     const posting = await db.jobPosting.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!posting) {
-      throw new Error('Job posting not found')
+      throw new Error("Job posting not found");
     }
 
     // Generate new slug if title changed
-    let slug = posting.slug
+    let slug = posting.slug;
     if (input.title && input.title !== posting.title) {
-      slug = await generateUniqueSlug(this.tenantId, input.title)
+      slug = await generateUniqueSlug(this.tenantId, input.title);
     }
 
     return db.jobPosting.update({
@@ -378,7 +384,7 @@ export class JobPostingService {
           },
         },
       },
-    })
+    });
   }
 
   /**
@@ -390,14 +396,14 @@ export class JobPostingService {
       include: {
         requisition: true,
       },
-    })
+    });
 
     if (!posting) {
-      throw new Error('Job posting not found')
+      throw new Error("Job posting not found");
     }
 
     if (posting.status !== JobPostingStatus.DRAFT) {
-      throw new Error('Only draft postings can be published')
+      throw new Error("Only draft postings can be published");
     }
 
     // Verify requisition is open
@@ -407,9 +413,11 @@ export class JobPostingService {
         await db.jobRequisition.update({
           where: { id: posting.requisitionId },
           data: { status: RequisitionStatus.OPEN },
-        })
+        });
       } else {
-        throw new Error('Requisition must be approved or open to publish posting')
+        throw new Error(
+          "Requisition must be approved or open to publish posting",
+        );
       }
     }
 
@@ -419,7 +427,7 @@ export class JobPostingService {
         status: JobPostingStatus.PUBLISHED,
         publishedAt: new Date(),
       },
-    })
+    });
   }
 
   /**
@@ -428,20 +436,20 @@ export class JobPostingService {
   async close(id: string) {
     const posting = await db.jobPosting.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!posting) {
-      throw new Error('Job posting not found')
+      throw new Error("Job posting not found");
     }
 
     if (posting.status !== JobPostingStatus.PUBLISHED) {
-      throw new Error('Only published postings can be closed')
+      throw new Error("Only published postings can be closed");
     }
 
     return db.jobPosting.update({
       where: { id },
       data: { status: JobPostingStatus.CLOSED },
-    })
+    });
   }
 
   /**
@@ -450,16 +458,16 @@ export class JobPostingService {
   async archive(id: string) {
     const posting = await db.jobPosting.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!posting) {
-      throw new Error('Job posting not found')
+      throw new Error("Job posting not found");
     }
 
     return db.jobPosting.update({
       where: { id },
       data: { status: JobPostingStatus.ARCHIVED },
-    })
+    });
   }
 
   /**
@@ -468,13 +476,16 @@ export class JobPostingService {
   async clone(id: string) {
     const posting = await db.jobPosting.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!posting) {
-      throw new Error('Job posting not found')
+      throw new Error("Job posting not found");
     }
 
-    const newSlug = await generateUniqueSlug(this.tenantId, `${posting.title} (Copy)`)
+    const newSlug = await generateUniqueSlug(
+      this.tenantId,
+      `${posting.title} (Copy)`,
+    );
 
     return db.jobPosting.create({
       data: {
@@ -493,7 +504,7 @@ export class JobPostingService {
         isPublic: posting.isPublic,
         status: JobPostingStatus.DRAFT,
       },
-    })
+    });
   }
 
   /**
@@ -503,7 +514,7 @@ export class JobPostingService {
     const [byStatus, topPerforming, expiringSoon] = await Promise.all([
       // By status
       db.jobPosting.groupBy({
-        by: ['status'],
+        by: ["status"],
         where: { tenantId: this.tenantId },
         _count: true,
         _sum: { viewCount: true, applicationCount: true },
@@ -515,7 +526,7 @@ export class JobPostingService {
           tenantId: this.tenantId,
           status: JobPostingStatus.PUBLISHED,
         },
-        orderBy: { applicationCount: 'desc' },
+        orderBy: { applicationCount: "desc" },
         take: 5,
         select: {
           id: true,
@@ -542,10 +553,10 @@ export class JobPostingService {
           expiresAt: true,
         },
       }),
-    ])
+    ]);
 
     return {
-      byStatus: byStatus.map(s => ({
+      byStatus: byStatus.map((s) => ({
         status: s.status,
         count: s._count,
         totalViews: s._sum.viewCount || 0,
@@ -553,7 +564,7 @@ export class JobPostingService {
       })),
       topPerforming,
       expiringSoon,
-    }
+    };
   }
 
   /**
@@ -563,11 +574,11 @@ export class JobPostingService {
     return db.jobPosting.update({
       where: { id },
       data: { applicationCount: { increment: 1 } },
-    })
+    });
   }
 }
 
 // Factory function
 export function createJobPostingService(tenantId: string): JobPostingService {
-  return new JobPostingService(tenantId)
+  return new JobPostingService(tenantId);
 }

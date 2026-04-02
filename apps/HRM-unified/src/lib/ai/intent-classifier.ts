@@ -1,9 +1,9 @@
 // src/lib/ai/intent-classifier.ts
 // Quick intent detection for routing
 
-import { classify } from './client'
-import { INTENT_CLASSIFIER_PROMPT } from './prompts'
-import type { AIIntentType } from '@prisma/client'
+import { classify } from "./client";
+import { INTENT_CLASSIFIER_PROMPT } from "./prompts";
+import type { AIIntentType } from ".prisma/hrm-unified-client";
 
 // Intent patterns for quick local classification
 const INTENT_PATTERNS: Record<AIIntentType, RegExp[]> = {
@@ -50,7 +50,7 @@ const INTENT_PATTERNS: Record<AIIntentType, RegExp[]> = {
     /bye/i,
   ],
   UNKNOWN: [],
-}
+};
 
 /**
  * Quick local intent classification using patterns
@@ -58,15 +58,15 @@ const INTENT_PATTERNS: Record<AIIntentType, RegExp[]> = {
  */
 export function classifyIntentLocal(message: string): AIIntentType | null {
   for (const [intent, patterns] of Object.entries(INTENT_PATTERNS)) {
-    if (intent === 'UNKNOWN') continue
+    if (intent === "UNKNOWN") continue;
 
     for (const pattern of patterns) {
       if (pattern.test(message)) {
-        return intent as AIIntentType
+        return intent as AIIntentType;
       }
     }
   }
-  return null
+  return null;
 }
 
 /**
@@ -74,27 +74,27 @@ export function classifyIntentLocal(message: string): AIIntentType | null {
  */
 export async function classifyIntentAI(message: string): Promise<AIIntentType> {
   try {
-    const result = await classify(message, INTENT_CLASSIFIER_PROMPT)
-    const intent = result.toUpperCase().trim()
+    const result = await classify(message, INTENT_CLASSIFIER_PROMPT);
+    const intent = result.toUpperCase().trim();
 
     // Validate the intent
     const validIntents: AIIntentType[] = [
-      'FAQ',
-      'DATA_QUERY',
-      'ACTION_REQUEST',
-      'REPORT_REQUEST',
-      'GENERAL_CHAT',
-      'UNKNOWN',
-    ]
+      "FAQ",
+      "DATA_QUERY",
+      "ACTION_REQUEST",
+      "REPORT_REQUEST",
+      "GENERAL_CHAT",
+      "UNKNOWN",
+    ];
 
     if (validIntents.includes(intent as AIIntentType)) {
-      return intent as AIIntentType
+      return intent as AIIntentType;
     }
 
-    return 'UNKNOWN'
+    return "UNKNOWN";
   } catch (error) {
-    console.error('Intent classification error:', error)
-    return 'UNKNOWN'
+    console.error("Intent classification error:", error);
+    return "UNKNOWN";
   }
 }
 
@@ -104,11 +104,11 @@ export async function classifyIntentAI(message: string): Promise<AIIntentType> {
  */
 export async function classifyIntent(message: string): Promise<AIIntentType> {
   // Try local classification first
-  const localIntent = classifyIntentLocal(message)
+  const localIntent = classifyIntentLocal(message);
   if (localIntent) {
-    return localIntent
+    return localIntent;
   }
 
   // Fall back to AI classification
-  return classifyIntentAI(message)
+  return classifyIntentAI(message);
 }

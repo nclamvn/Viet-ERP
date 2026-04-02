@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { Prisma } from ".prisma/mrp-client";
 
 interface AppliedRule {
   ruleId: string;
@@ -26,16 +26,22 @@ export async function calculatePrice(
   partId: string,
   customerId?: string,
   quantity: number = 1,
-  date: Date = new Date()
+  date: Date = new Date(),
 ): Promise<PriceCalculationResult> {
   // 1. Get part with base price
   const part = await prisma.part.findUnique({
     where: { id: partId },
-    select: { id: true, partNumber: true, name: true, unitCost: true, category: true },
+    select: {
+      id: true,
+      partNumber: true,
+      name: true,
+      unitCost: true,
+      category: true,
+    },
   });
 
   if (!part) {
-    throw new Error('Sản phẩm không tồn tại');
+    throw new Error("Sản phẩm không tồn tại");
   }
 
   const basePrice = part.unitCost || 0;
@@ -46,25 +52,22 @@ export async function calculatePrice(
   // Customer-specific rules
   if (customerId) {
     orConditions.push(
-      { type: 'customer_specific', customerId, partId },
-      { type: 'customer_specific', customerId, partId: null }
+      { type: "customer_specific", customerId, partId },
+      { type: "customer_specific", customerId, partId: null },
     );
   }
 
   // Quantity break rules
   orConditions.push({
-    type: 'quantity_break',
+    type: "quantity_break",
     partId,
     minQuantity: { lte: quantity },
-    OR: [
-      { maxQuantity: { gte: quantity } },
-      { maxQuantity: null },
-    ],
+    OR: [{ maxQuantity: { gte: quantity } }, { maxQuantity: null }],
   });
 
   // Date-based rules
   orConditions.push({
-    type: 'date_based',
+    type: "date_based",
     partId,
     validFrom: { lte: date },
     validTo: { gte: date },
@@ -73,7 +76,7 @@ export async function calculatePrice(
   // Category discount rules
   if (part.category) {
     orConditions.push({
-      type: 'category_discount',
+      type: "category_discount",
       category: part.category,
     });
   }
@@ -83,7 +86,7 @@ export async function calculatePrice(
       isActive: true,
       OR: orConditions,
     },
-    orderBy: { priority: 'desc' },
+    orderBy: { priority: "desc" },
   });
 
   // 3. Apply rules in priority order
@@ -94,15 +97,15 @@ export async function calculatePrice(
     let discountAmount = 0;
 
     switch (rule.discountType) {
-      case 'percent':
+      case "percent":
         discountAmount = currentPrice * (rule.discountValue / 100);
         currentPrice = currentPrice - discountAmount;
         break;
-      case 'fixed_amount':
+      case "fixed_amount":
         discountAmount = Math.min(rule.discountValue, currentPrice);
         currentPrice = currentPrice - discountAmount;
         break;
-      case 'fixed_price':
+      case "fixed_price":
         discountAmount = currentPrice - rule.discountValue;
         currentPrice = rule.discountValue;
         break;
@@ -120,7 +123,7 @@ export async function calculatePrice(
     });
 
     // For fixed_price, stop applying more rules
-    if (rule.discountType === 'fixed_price') {
+    if (rule.discountType === "fixed_price") {
       break;
     }
   }

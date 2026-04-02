@@ -11,7 +11,7 @@ import { UpdateTargetDto } from './dto/update-target.dto';
 import { TargetQueryDto } from './dto/target-query.dto';
 import { CreateTargetAllocationDto } from './dto/create-target-allocation.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class TargetsService {

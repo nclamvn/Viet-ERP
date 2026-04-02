@@ -7,7 +7,7 @@ import { BaselineQueryDto } from './dto/baseline-query.dto';
 import { CreateBaselineDto } from './dto/create-baseline.dto';
 import { UpdateBaselineDto } from './dto/update-baseline.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class PlanningService {

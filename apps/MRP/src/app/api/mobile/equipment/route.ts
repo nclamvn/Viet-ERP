@@ -3,32 +3,40 @@
 //              Equipment status for technicians - Production
 // ═══════════════════════════════════════════════════════════════════
 
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { withAuth } from '@/lib/api/with-auth';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { withAuth } from "@/lib/api/with-auth";
 
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbEquipmentResult = Record<string, any>;
 
 // Helper: Transform equipment from database
 function transformEquipment(eq: DbEquipmentResult) {
   // Calculate next PM date from maintenance schedules or equipment field
-  const nextPM = eq.nextMaintenanceDate?.toISOString().split('T')[0] ||
-                 eq.maintenanceSchedules?.[0]?.nextDueDate?.toISOString().split('T')[0] || null;
+  const nextPM =
+    eq.nextMaintenanceDate?.toISOString().split("T")[0] ||
+    eq.maintenanceSchedules?.[0]?.nextDueDate?.toISOString().split("T")[0] ||
+    null;
 
   // Get last issue from maintenance orders
-  const lastIssue = eq.maintenanceOrders?.find((mo: DbEquipmentResult) => mo.type === 'CM' || mo.type === 'EM')?.problemReported;
+  const lastIssue = eq.maintenanceOrders?.find(
+    (mo: DbEquipmentResult) => mo.type === "CM" || mo.type === "EM",
+  )?.problemReported;
 
   return {
     id: eq.id,
     code: eq.code,
     name: eq.name,
-    type: eq.type || 'General',
-    location: eq.location || eq.workCenter?.location || eq.workCenter?.name || '',
+    type: eq.type || "General",
+    location:
+      eq.location || eq.workCenter?.location || eq.workCenter?.name || "",
     status: mapStatus(eq.status),
     oee: eq.currentOee || eq.targetOee || 0,
     runningHours: Math.round((eq.totalDowntimeHours || 0) * 10) / 10, // Show downtime hours
@@ -40,21 +48,24 @@ function transformEquipment(eq: DbEquipmentResult) {
 }
 
 // Map database status to UI status
-function mapStatus(status: string): 'RUNNING' | 'IDLE' | 'DOWN' | 'MAINTENANCE' {
-  const statusMap: Record<string, 'RUNNING' | 'IDLE' | 'DOWN' | 'MAINTENANCE'> = {
-    operational: 'RUNNING',
-    running: 'RUNNING',
-    active: 'RUNNING',
-    idle: 'IDLE',
-    standby: 'IDLE',
-    down: 'DOWN',
-    breakdown: 'DOWN',
-    failed: 'DOWN',
-    maintenance: 'MAINTENANCE',
-    under_maintenance: 'MAINTENANCE',
-    planned_maintenance: 'MAINTENANCE',
-  };
-  return statusMap[status?.toLowerCase()] || 'IDLE';
+function mapStatus(
+  status: string,
+): "RUNNING" | "IDLE" | "DOWN" | "MAINTENANCE" {
+  const statusMap: Record<string, "RUNNING" | "IDLE" | "DOWN" | "MAINTENANCE"> =
+    {
+      operational: "RUNNING",
+      running: "RUNNING",
+      active: "RUNNING",
+      idle: "IDLE",
+      standby: "IDLE",
+      down: "DOWN",
+      breakdown: "DOWN",
+      failed: "DOWN",
+      maintenance: "MAINTENANCE",
+      under_maintenance: "MAINTENANCE",
+      planned_maintenance: "MAINTENANCE",
+    };
+  return statusMap[status?.toLowerCase()] || "IDLE";
 }
 
 /**
@@ -62,16 +73,16 @@ function mapStatus(status: string): 'RUNNING' | 'IDLE' | 'DOWN' | 'MAINTENANCE' 
  * Get equipment list with status
  */
 export const GET = withAuth(async (req, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(req);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(req);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const { searchParams } = new URL(req.url);
-    const equipmentId = searchParams.get('equipmentId');
-    const status = searchParams.get('status');
-    const workCenterId = searchParams.get('workCenterId');
-    const search = searchParams.get('search');
+    const { searchParams } = new URL(req.url);
+    const equipmentId = searchParams.get("equipmentId");
+    const status = searchParams.get("status");
+    const workCenterId = searchParams.get("workCenterId");
+    const search = searchParams.get("search");
 
     // Build where clause
     const where: Prisma.EquipmentWhereInput = {};
@@ -80,15 +91,21 @@ const { searchParams } = new URL(req.url);
       where.id = equipmentId;
     }
 
-    if (status && status !== 'all') {
+    if (status && status !== "all") {
       // Map UI status to database status values
       const statusMap: Record<string, string[]> = {
-        RUNNING: ['operational', 'running', 'active'],
-        IDLE: ['idle', 'standby'],
-        DOWN: ['down', 'breakdown', 'failed'],
-        MAINTENANCE: ['maintenance', 'under_maintenance', 'planned_maintenance'],
+        RUNNING: ["operational", "running", "active"],
+        IDLE: ["idle", "standby"],
+        DOWN: ["down", "breakdown", "failed"],
+        MAINTENANCE: [
+          "maintenance",
+          "under_maintenance",
+          "planned_maintenance",
+        ],
       };
-      where.status = { in: statusMap[status.toUpperCase()] || [status.toLowerCase()] };
+      where.status = {
+        in: statusMap[status.toUpperCase()] || [status.toLowerCase()],
+      };
     }
 
     if (workCenterId) {
@@ -97,8 +114,8 @@ const { searchParams } = new URL(req.url);
 
     if (search) {
       where.OR = [
-        { code: { contains: search, mode: 'insensitive' } },
-        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: "insensitive" } },
+        { name: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -111,21 +128,18 @@ const { searchParams } = new URL(req.url);
         },
         maintenanceSchedules: {
           where: { isActive: true },
-          orderBy: { nextDueDate: 'asc' },
+          orderBy: { nextDueDate: "asc" },
           take: 1,
           select: { nextDueDate: true },
         },
         maintenanceOrders: {
-          where: { status: { not: 'completed' } },
-          orderBy: { createdAt: 'desc' },
+          where: { status: { not: "completed" } },
+          orderBy: { createdAt: "desc" },
           take: 1,
           select: { type: true, description: true },
         },
       },
-      orderBy: [
-        { status: 'asc' },
-        { code: 'asc' },
-      ],
+      orderBy: [{ status: "asc" }, { code: "asc" }],
       take: 100,
     });
 
@@ -135,10 +149,10 @@ const { searchParams } = new URL(req.url);
     // Calculate summary
     const summary = {
       total: results.length,
-      running: results.filter(e => e.status === 'RUNNING').length,
-      idle: results.filter(e => e.status === 'IDLE').length,
-      down: results.filter(e => e.status === 'DOWN').length,
-      maintenance: results.filter(e => e.status === 'MAINTENANCE').length,
+      running: results.filter((e) => e.status === "RUNNING").length,
+      idle: results.filter((e) => e.status === "IDLE").length,
+      down: results.filter((e) => e.status === "DOWN").length,
+      maintenance: results.filter((e) => e.status === "MAINTENANCE").length,
     };
 
     return NextResponse.json({
@@ -147,10 +161,12 @@ const { searchParams } = new URL(req.url);
       summary,
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: '/api/mobile/equipment' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "/api/mobile/equipment",
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch equipment' },
-      { status: 500 }
+      { success: false, error: "Failed to fetch equipment" },
+      { status: 500 },
     );
   }
 });
@@ -160,12 +176,12 @@ const { searchParams } = new URL(req.url);
  * Update equipment status or report issue
  */
 export const POST = withAuth(async (req, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(req);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(req);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const bodySchema = z.object({
+    const bodySchema = z.object({
       action: z.string(),
       equipmentId: z.string(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -176,8 +192,12 @@ const bodySchema = z.object({
     const parseResult = bodySchema.safeParse(rawBody);
     if (!parseResult.success) {
       return NextResponse.json(
-        { success: false, error: 'Invalid input', details: parseResult.error.flatten().fieldErrors },
-        { status: 400 }
+        {
+          success: false,
+          error: "Invalid input",
+          details: parseResult.error.flatten().fieldErrors,
+        },
+        { status: 400 },
       );
     }
     const body = parseResult.data;
@@ -185,8 +205,11 @@ const bodySchema = z.object({
 
     if (!equipmentId || !action) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: equipmentId, action' },
-        { status: 400 }
+        {
+          success: false,
+          error: "Missing required fields: equipmentId, action",
+        },
+        { status: 400 },
       );
     }
 
@@ -196,18 +219,18 @@ const bodySchema = z.object({
 
     if (!equipment) {
       return NextResponse.json(
-        { success: false, error: 'Equipment not found' },
-        { status: 404 }
+        { success: false, error: "Equipment not found" },
+        { status: 404 },
       );
     }
 
     switch (action) {
-      case 'update_status': {
+      case "update_status": {
         const { newStatus } = data || {};
         if (!newStatus) {
           return NextResponse.json(
-            { success: false, error: 'New status required' },
-            { status: 400 }
+            { success: false, error: "New status required" },
+            { status: 400 },
           );
         }
 
@@ -227,30 +250,35 @@ const bodySchema = z.object({
         });
       }
 
-      case 'report_downtime': {
+      case "report_downtime": {
         const { reason, description, severity } = data || {};
 
         if (!reason || !description) {
           return NextResponse.json(
-            { success: false, error: 'Reason and description required' },
-            { status: 400 }
+            { success: false, error: "Reason and description required" },
+            { status: 400 },
           );
         }
 
         // Update equipment status to down
         await prisma.equipment.update({
           where: { id: equipmentId },
-          data: { status: 'down' },
+          data: { status: "down" },
         });
 
         // Create maintenance order for the issue
         const maintenanceOrder = await prisma.maintenanceOrder.create({
           data: {
-            orderNumber: `MO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`,
+            orderNumber: `MO-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`,
             equipmentId,
-            type: 'CM', // Corrective Maintenance
-            priority: severity === 'critical' ? 'emergency' : severity === 'high' ? 'high' : 'medium',
-            status: 'pending',
+            type: "CM", // Corrective Maintenance
+            priority:
+              severity === "critical"
+                ? "emergency"
+                : severity === "high"
+                  ? "high"
+                  : "medium",
+            status: "pending",
             title: `${reason} - ${equipment.code}`,
             description,
             problemReported: `${reason}: ${description}`,
@@ -269,11 +297,11 @@ const bodySchema = z.object({
         });
       }
 
-      case 'start_maintenance': {
+      case "start_maintenance": {
         // Update equipment status to maintenance
         await prisma.equipment.update({
           where: { id: equipmentId },
-          data: { status: 'maintenance' },
+          data: { status: "maintenance" },
         });
 
         return NextResponse.json({
@@ -286,13 +314,13 @@ const bodySchema = z.object({
         });
       }
 
-      case 'complete_maintenance': {
+      case "complete_maintenance": {
         const { notes } = data || {};
 
         // Update equipment status back to operational
         await prisma.equipment.update({
           where: { id: equipmentId },
-          data: { status: 'operational' },
+          data: { status: "operational" },
         });
 
         return NextResponse.json({
@@ -309,14 +337,16 @@ const bodySchema = z.object({
       default:
         return NextResponse.json(
           { success: false, error: `Invalid action: ${action}` },
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: '/api/mobile/equipment' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "/api/mobile/equipment",
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to process equipment operation' },
-      { status: 500 }
+      { success: false, error: "Failed to process equipment operation" },
+      { status: 500 },
     );
   }
 });

@@ -5,7 +5,7 @@ import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { ChequeQueryDto } from './dto/cheque-query.dto';
 import { VoidChequeDto } from './dto/void-cheque.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class ChequesService {

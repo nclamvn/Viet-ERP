@@ -2,9 +2,9 @@
 // Multi-Factor Authentication System
 
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma } from ".prisma/mrp-client";
 import { createHash, randomBytes } from "crypto";
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 
 // TOTP Configuration
 const TOTP_CONFIG = {
@@ -71,7 +71,10 @@ function base32Decode(encoded: string): Buffer {
 }
 
 // Generate TOTP code
-export async function generateTOTPCode(secret: string, timestamp?: number): Promise<string> {
+export async function generateTOTPCode(
+  secret: string,
+  timestamp?: number,
+): Promise<string> {
   const time = timestamp || Math.floor(Date.now() / 1000);
   const counter = Math.floor(time / TOTP_CONFIG.period);
 
@@ -102,7 +105,7 @@ export async function generateTOTPCode(secret: string, timestamp?: number): Prom
 export async function verifyTOTPCode(
   secret: string,
   code: string,
-  window: number = 1
+  window: number = 1,
 ): Promise<boolean> {
   const time = Math.floor(Date.now() / 1000);
 
@@ -121,7 +124,7 @@ export async function verifyTOTPCode(
 // Generate QR code URL for authenticator apps
 export function generateTOTPQRCodeURL(
   secret: string,
-  userEmail: string
+  userEmail: string,
 ): string {
   const issuer = encodeURIComponent(TOTP_CONFIG.issuer);
   const account = encodeURIComponent(userEmail);
@@ -141,7 +144,7 @@ export function generateBackupCodes(count: number = 10): string[] {
 // Hash backup codes for storage
 export function hashBackupCodes(codes: string[]): string[] {
   return codes.map((code) =>
-    createHash("sha256").update(code.replace("-", "")).digest("hex")
+    createHash("sha256").update(code.replace("-", "")).digest("hex"),
   );
 }
 
@@ -158,7 +161,7 @@ export interface MFASetupResult {
 // Setup MFA for a user
 export async function setupMFA(
   userId: string,
-  deviceName: string = "Authenticator App"
+  deviceName: string = "Authenticator App",
 ): Promise<MFASetupResult> {
   try {
     const user = await prisma.user.findUnique({
@@ -207,7 +210,10 @@ export async function setupMFA(
       backupCodes, // Return plain codes to show user once
     };
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'mfa', operation: 'setupMFA' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "mfa",
+      operation: "setupMFA",
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Setup failed",
@@ -219,7 +225,7 @@ export async function setupMFA(
 export async function verifyMFASetup(
   userId: string,
   deviceId: string,
-  code: string
+  code: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const device = await prisma.mFADevice.findFirst({
@@ -260,7 +266,7 @@ export async function verifyMFASetup(
 export async function verifyMFALogin(
   userId: string,
   code: string,
-  ipAddress?: string
+  ipAddress?: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -338,7 +344,7 @@ export async function verifyMFALogin(
 export async function createMFAChallenge(
   userId: string,
   purpose: string,
-  ipAddress?: string
+  ipAddress?: string,
 ): Promise<{ challengeId: string; expiresAt: Date } | { error: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -375,7 +381,7 @@ export async function createMFAChallenge(
 // Verify MFA challenge
 export async function verifyMFAChallenge(
   challengeId: string,
-  code: string
+  code: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const challenge = await prisma.mFAChallenge.findUnique({
@@ -444,7 +450,7 @@ export async function verifyMFAChallenge(
 // Disable MFA
 export async function disableMFA(
   userId: string,
-  password: string
+  password: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({

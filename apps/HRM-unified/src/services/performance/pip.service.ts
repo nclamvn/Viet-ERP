@@ -1,26 +1,26 @@
-import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
+import { db } from "@/lib/db";
+import type { Prisma } from ".prisma/hrm-unified-client";
 
 export async function createPIP(
   tenantId: string,
   data: {
-    employeeId: string
-    managerId: string
-    hrContactId?: string
-    startDate: Date
-    endDate: Date
-    performanceIssues: string
-    impactDescription?: string
-    expectedOutcomes: string
-    supportProvided?: string
-    resources?: string
+    employeeId: string;
+    managerId: string;
+    hrContactId?: string;
+    startDate: Date;
+    endDate: Date;
+    performanceIssues: string;
+    impactDescription?: string;
+    expectedOutcomes: string;
+    supportProvided?: string;
+    resources?: string;
     milestones?: {
-      title: string
-      description?: string
-      dueDate: Date
-      order?: number
-    }[]
-  }
+      title: string;
+      description?: string;
+      dueDate: Date;
+      order?: number;
+    }[];
+  },
 ) {
   return db.performanceImprovementPlan.create({
     data: {
@@ -35,7 +35,7 @@ export async function createPIP(
       expectedOutcomes: data.expectedOutcomes,
       supportProvided: data.supportProvided,
       resources: data.resources,
-      status: 'DRAFT',
+      status: "DRAFT",
       milestones: data.milestones
         ? {
             create: data.milestones.map((m, index) => ({
@@ -43,7 +43,7 @@ export async function createPIP(
               description: m.description,
               dueDate: m.dueDate,
               order: m.order ?? index,
-              status: 'PENDING',
+              status: "PENDING",
             })),
           }
         : undefined,
@@ -59,22 +59,28 @@ export async function createPIP(
         select: { id: true, name: true },
       },
       milestones: {
-        orderBy: { order: 'asc' },
+        orderBy: { order: "asc" },
       },
     },
-  })
+  });
 }
 
 export async function getPIPs(
   tenantId: string,
   filters?: {
-    employeeId?: string
-    managerId?: string
-    status?: 'DRAFT' | 'ACTIVE' | 'EXTENDED' | 'COMPLETED_SUCCESS' | 'COMPLETED_FAIL' | 'CANCELLED'
-    search?: string
+    employeeId?: string;
+    managerId?: string;
+    status?:
+      | "DRAFT"
+      | "ACTIVE"
+      | "EXTENDED"
+      | "COMPLETED_SUCCESS"
+      | "COMPLETED_FAIL"
+      | "CANCELLED";
+    search?: string;
   },
   page = 1,
-  limit = 20
+  limit = 20,
 ) {
   const where: Prisma.PerformanceImprovementPlanWhereInput = {
     tenantId,
@@ -84,12 +90,22 @@ export async function getPIPs(
     ...(filters?.search && {
       employee: {
         OR: [
-          { fullName: { contains: filters.search, mode: 'insensitive' as const } },
-          { employeeCode: { contains: filters.search, mode: 'insensitive' as const } },
+          {
+            fullName: {
+              contains: filters.search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            employeeCode: {
+              contains: filters.search,
+              mode: "insensitive" as const,
+            },
+          },
         ],
       },
     }),
-  }
+  };
 
   const [data, total] = await Promise.all([
     db.performanceImprovementPlan.findMany({
@@ -105,12 +121,12 @@ export async function getPIPs(
           select: { milestones: true, checkIns: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
     }),
     db.performanceImprovementPlan.count({ where }),
-  ])
+  ]);
 
   return {
     data,
@@ -120,7 +136,7 @@ export async function getPIPs(
       total,
       totalPages: Math.ceil(total / limit),
     },
-  }
+  };
 }
 
 export async function getPIPById(id: string, tenantId: string) {
@@ -137,7 +153,7 @@ export async function getPIPById(id: string, tenantId: string) {
         select: { id: true, name: true },
       },
       milestones: {
-        orderBy: { order: 'asc' },
+        orderBy: { order: "asc" },
       },
       checkIns: {
         include: {
@@ -145,35 +161,41 @@ export async function getPIPById(id: string, tenantId: string) {
             select: { id: true, name: true },
           },
         },
-        orderBy: { checkInDate: 'desc' },
+        orderBy: { checkInDate: "desc" },
       },
     },
-  })
+  });
 }
 
 export async function updatePIP(
   id: string,
   tenantId: string,
   data: {
-    startDate?: Date
-    endDate?: Date
-    performanceIssues?: string
-    impactDescription?: string
-    expectedOutcomes?: string
-    supportProvided?: string
-    resources?: string
-    status?: 'DRAFT' | 'ACTIVE' | 'EXTENDED' | 'COMPLETED_SUCCESS' | 'COMPLETED_FAIL' | 'CANCELLED'
-    outcome?: string
-    completedAt?: Date
-    employeeAcknowledgedAt?: Date
-  }
+    startDate?: Date;
+    endDate?: Date;
+    performanceIssues?: string;
+    impactDescription?: string;
+    expectedOutcomes?: string;
+    supportProvided?: string;
+    resources?: string;
+    status?:
+      | "DRAFT"
+      | "ACTIVE"
+      | "EXTENDED"
+      | "COMPLETED_SUCCESS"
+      | "COMPLETED_FAIL"
+      | "CANCELLED";
+    outcome?: string;
+    completedAt?: Date;
+    employeeAcknowledgedAt?: Date;
+  },
 ) {
   const pip = await db.performanceImprovementPlan.findFirst({
     where: { id, tenantId },
-  })
+  });
 
   if (!pip) {
-    throw new Error('PIP not found')
+    throw new Error("PIP not found");
   }
 
   return db.performanceImprovementPlan.update({
@@ -181,15 +203,25 @@ export async function updatePIP(
     data: {
       ...(data.startDate !== undefined && { startDate: data.startDate }),
       ...(data.endDate !== undefined && { endDate: data.endDate }),
-      ...(data.performanceIssues !== undefined && { performanceIssues: data.performanceIssues }),
-      ...(data.impactDescription !== undefined && { impactDescription: data.impactDescription }),
-      ...(data.expectedOutcomes !== undefined && { expectedOutcomes: data.expectedOutcomes }),
-      ...(data.supportProvided !== undefined && { supportProvided: data.supportProvided }),
+      ...(data.performanceIssues !== undefined && {
+        performanceIssues: data.performanceIssues,
+      }),
+      ...(data.impactDescription !== undefined && {
+        impactDescription: data.impactDescription,
+      }),
+      ...(data.expectedOutcomes !== undefined && {
+        expectedOutcomes: data.expectedOutcomes,
+      }),
+      ...(data.supportProvided !== undefined && {
+        supportProvided: data.supportProvided,
+      }),
       ...(data.resources !== undefined && { resources: data.resources }),
       ...(data.status !== undefined && { status: data.status }),
       ...(data.outcome !== undefined && { outcome: data.outcome }),
       ...(data.completedAt !== undefined && { completedAt: data.completedAt }),
-      ...(data.employeeAcknowledgedAt !== undefined && { employeeAcknowledgedAt: data.employeeAcknowledgedAt }),
+      ...(data.employeeAcknowledgedAt !== undefined && {
+        employeeAcknowledgedAt: data.employeeAcknowledgedAt,
+      }),
     },
     include: {
       employee: {
@@ -199,26 +231,26 @@ export async function updatePIP(
         select: { id: true, fullName: true },
       },
       milestones: {
-        orderBy: { order: 'asc' },
+        orderBy: { order: "asc" },
       },
     },
-  })
+  });
 }
 
 export async function addMilestone(
   pipId: string,
   data: {
-    title: string
-    description?: string
-    dueDate: Date
-    order?: number
-  }
+    title: string;
+    description?: string;
+    dueDate: Date;
+    order?: number;
+  },
 ) {
   // Get max order for this PIP
   const maxOrder = await db.pIPMilestone.aggregate({
     where: { pipId },
     _max: { order: true },
-  })
+  });
 
   return db.pIPMilestone.create({
     data: {
@@ -227,22 +259,22 @@ export async function addMilestone(
       description: data.description,
       dueDate: data.dueDate,
       order: data.order ?? (maxOrder._max.order ?? -1) + 1,
-      status: 'PENDING',
+      status: "PENDING",
     },
-  })
+  });
 }
 
 export async function updateMilestone(
   id: string,
   data: {
-    title?: string
-    description?: string
-    dueDate?: Date
-    status?: string
-    notes?: string
-    completedAt?: Date
-    order?: number
-  }
+    title?: string;
+    description?: string;
+    dueDate?: Date;
+    status?: string;
+    notes?: string;
+    completedAt?: Date;
+    order?: number;
+  },
 ) {
   return db.pIPMilestone.update({
     where: { id },
@@ -255,19 +287,19 @@ export async function updateMilestone(
       ...(data.completedAt !== undefined && { completedAt: data.completedAt }),
       ...(data.order !== undefined && { order: data.order }),
     },
-  })
+  });
 }
 
 export async function addPIPCheckIn(
   pipId: string,
   userId: string,
   data: {
-    checkInDate: Date
-    progressNotes: string
-    managerAssessment?: string
-    isOnTrack: boolean
-    nextSteps?: string
-  }
+    checkInDate: Date;
+    progressNotes: string;
+    managerAssessment?: string;
+    isOnTrack: boolean;
+    nextSteps?: string;
+  },
 ) {
   return db.pIPCheckIn.create({
     data: {
@@ -284,5 +316,5 @@ export async function addPIPCheckIn(
         select: { id: true, name: true },
       },
     },
-  })
+  });
 }

@@ -6,7 +6,7 @@
  * Business logic for internal mobility and career opportunities
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from ".prisma/hrm-ai-client";
 import {
   InternalJobPosting,
   JobPostingStatus,
@@ -29,8 +29,8 @@ import {
   CreateOfferDto,
   JobPostingFilters,
   ApplicationFilters,
-} from '../types/marketplace.types';
-import { v4 as uuidv4 } from 'uuid';
+} from "../types/marketplace.types";
+import { v4 as uuidv4 } from "uuid";
 
 export class MarketplaceService {
   constructor(private prisma: PrismaClient) {}
@@ -39,12 +39,19 @@ export class MarketplaceService {
   // JOB POSTINGS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async createJobPosting(data: CreateJobPostingDto, createdBy: string): Promise<InternalJobPosting> {
+  async createJobPosting(
+    data: CreateJobPostingDto,
+    createdBy: string,
+  ): Promise<InternalJobPosting> {
     const code = await this.generatePostingCode();
 
     // Get department and hiring manager info
-    const department = await this.prisma.department.findUnique({ where: { id: data.departmentId } });
-    const creator = await this.prisma.employee.findUnique({ where: { id: createdBy } });
+    const department = await this.prisma.department.findUnique({
+      where: { id: data.departmentId },
+    });
+    const creator = await this.prisma.employee.findUnique({
+      where: { id: createdBy },
+    });
 
     const posting = await this.prisma.internalJobPosting.create({
       data: {
@@ -53,7 +60,7 @@ export class MarketplaceService {
         description: data.description,
         jobType: data.jobType,
         departmentId: data.departmentId,
-        departmentName: department?.name || '',
+        departmentName: department?.name || "",
         locationId: data.locationId,
         positionId: data.positionId,
         gradeId: data.gradeId,
@@ -63,7 +70,8 @@ export class MarketplaceService {
         showCompensation: false,
         isTemporary: data.isTemporary,
         durationMonths: data.durationMonths,
-        eligibilityCriteria: data.eligibilityCriteria as unknown as Prisma.JsonObject,
+        eligibilityCriteria:
+          data.eligibilityCriteria as unknown as Prisma.JsonObject,
         status: JobPostingStatus.DRAFT,
         applicationDeadline: data.applicationDeadline,
         requiresApproval: true,
@@ -83,13 +91,17 @@ export class MarketplaceService {
     return posting as unknown as InternalJobPosting;
   }
 
-  async updateJobPosting(postingId: string, data: Partial<InternalJobPosting>): Promise<InternalJobPosting> {
+  async updateJobPosting(
+    postingId: string,
+    data: Partial<InternalJobPosting>,
+  ): Promise<InternalJobPosting> {
     const posting = await this.prisma.internalJobPosting.update({
       where: { id: postingId },
       data: {
         ...data,
         requirements: data.requirements as unknown as Prisma.JsonArray,
-        eligibilityCriteria: data.eligibilityCriteria as unknown as Prisma.JsonObject,
+        eligibilityCriteria:
+          data.eligibilityCriteria as unknown as Prisma.JsonObject,
       },
     });
 
@@ -103,7 +115,10 @@ export class MarketplaceService {
     }) as unknown as InternalJobPosting;
   }
 
-  async approvePosting(postingId: string, approvedBy: string): Promise<InternalJobPosting> {
+  async approvePosting(
+    postingId: string,
+    approvedBy: string,
+  ): Promise<InternalJobPosting> {
     return this.prisma.internalJobPosting.update({
       where: { id: postingId },
       data: {
@@ -115,10 +130,18 @@ export class MarketplaceService {
     }) as unknown as InternalJobPosting;
   }
 
-  async closePosting(postingId: string, reason: 'FILLED' | 'CANCELLED'): Promise<InternalJobPosting> {
+  async closePosting(
+    postingId: string,
+    reason: "FILLED" | "CANCELLED",
+  ): Promise<InternalJobPosting> {
     return this.prisma.internalJobPosting.update({
       where: { id: postingId },
-      data: { status: reason === 'FILLED' ? JobPostingStatus.FILLED : JobPostingStatus.CANCELLED },
+      data: {
+        status:
+          reason === "FILLED"
+            ? JobPostingStatus.FILLED
+            : JobPostingStatus.CANCELLED,
+      },
     }) as unknown as InternalJobPosting;
   }
 
@@ -138,7 +161,11 @@ export class MarketplaceService {
     return posting as unknown as InternalJobPosting;
   }
 
-  async listJobPostings(filters: JobPostingFilters, page: number = 1, limit: number = 20) {
+  async listJobPostings(
+    filters: JobPostingFilters,
+    page: number = 1,
+    limit: number = 20,
+  ) {
     const where: Prisma.InternalJobPostingWhereInput = {};
 
     if (filters.status) where.status = filters.status;
@@ -148,25 +175,33 @@ export class MarketplaceService {
     if (filters.gradeId) where.gradeId = filters.gradeId;
     if (filters.searchTerm) {
       where.OR = [
-        { title: { contains: filters.searchTerm, mode: 'insensitive' } },
-        { description: { contains: filters.searchTerm, mode: 'insensitive' } },
+        { title: { contains: filters.searchTerm, mode: "insensitive" } },
+        { description: { contains: filters.searchTerm, mode: "insensitive" } },
       ];
     }
 
     const [postings, total] = await Promise.all([
       this.prisma.internalJobPosting.findMany({
         where,
-        orderBy: { postedDate: 'desc' },
+        orderBy: { postedDate: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.internalJobPosting.count({ where }),
     ]);
 
-    return { data: postings, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      data: postings,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async getActivePostingsForEmployee(employeeId: string): Promise<InternalJobPosting[]> {
+  async getActivePostingsForEmployee(
+    employeeId: string,
+  ): Promise<InternalJobPosting[]> {
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
       include: { department: true },
@@ -183,12 +218,18 @@ export class MarketplaceService {
     });
 
     // Filter by visibility and eligibility
-    return postings.filter(posting => {
+    return postings.filter((posting) => {
       // Check visibility
-      if (posting.visibility === 'DEPARTMENT' && posting.departmentId !== employee.departmentId) {
+      if (
+        posting.visibility === "DEPARTMENT" &&
+        posting.departmentId !== employee.departmentId
+      ) {
         return false;
       }
-      if (posting.visibility === 'CUSTOM' && !posting.visibleToDepartmentIds.includes(employee.departmentId)) {
+      if (
+        posting.visibility === "CUSTOM" &&
+        !posting.visibleToDepartmentIds.includes(employee.departmentId)
+      ) {
         return false;
       }
 
@@ -197,7 +238,10 @@ export class MarketplaceService {
       if (criteria) {
         // Check tenure
         if (criteria.minTenureMonths) {
-          const tenureMonths = Math.floor((Date.now() - new Date(employee.hireDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
+          const tenureMonths = Math.floor(
+            (Date.now() - new Date(employee.hireDate).getTime()) /
+              (1000 * 60 * 60 * 24 * 30),
+          );
           if (tenureMonths < criteria.minTenureMonths) return false;
         }
 
@@ -205,7 +249,10 @@ export class MarketplaceService {
         if (criteria.excludedEmployeeIds?.includes(employeeId)) return false;
 
         // Check allowed departments
-        if (criteria.allowedDepartmentIds?.length && !criteria.allowedDepartmentIds.includes(employee.departmentId)) {
+        if (
+          criteria.allowedDepartmentIds?.length &&
+          !criteria.allowedDepartmentIds.includes(employee.departmentId)
+        ) {
           return false;
         }
       }
@@ -219,35 +266,43 @@ export class MarketplaceService {
     const count = await this.prisma.internalJobPosting.count({
       where: { createdAt: { gte: new Date(year, 0, 1) } },
     });
-    return `IJP-${year}-${String(count + 1).padStart(5, '0')}`;
+    return `IJP-${year}-${String(count + 1).padStart(5, "0")}`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // APPLICATIONS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async submitApplication(data: SubmitApplicationDto, applicantId: string): Promise<JobApplication> {
+  async submitApplication(
+    data: SubmitApplicationDto,
+    applicantId: string,
+  ): Promise<JobApplication> {
     const applicant = await this.prisma.employee.findUnique({
       where: { id: applicantId },
       include: { department: true, position: true },
     });
 
-    if (!applicant) throw new Error('Applicant not found');
+    if (!applicant) throw new Error("Applicant not found");
 
     // Check for existing application
     const existing = await this.prisma.jobApplication.findFirst({
       where: {
         jobPostingId: data.jobPostingId,
         applicantId,
-        status: { notIn: ['WITHDRAWN', 'REJECTED'] },
+        status: { notIn: ["WITHDRAWN", "REJECTED"] },
       },
     });
 
-    if (existing) throw new Error('You have already applied for this position');
+    if (existing) throw new Error("You have already applied for this position");
 
     // Calculate skill match
-    const posting = await this.prisma.internalJobPosting.findUnique({ where: { id: data.jobPostingId } });
-    const skillMatchScore = await this.calculateSkillMatch(applicantId, data.jobPostingId);
+    const posting = await this.prisma.internalJobPosting.findUnique({
+      where: { id: data.jobPostingId },
+    });
+    const skillMatchScore = await this.calculateSkillMatch(
+      applicantId,
+      data.jobPostingId,
+    );
 
     const applicationCode = await this.generateApplicationCode();
 
@@ -258,20 +313,24 @@ export class MarketplaceService {
         applicantId,
         applicantName: `${applicant.firstName} ${applicant.lastName}`,
         applicantEmail: applicant.email,
-        currentDepartment: applicant.department?.name || '',
-        currentPosition: applicant.position?.title || '',
+        currentDepartment: applicant.department?.name || "",
+        currentPosition: applicant.position?.title || "",
         status: ApplicationStatus.SUBMITTED,
-        statusHistory: [{
-          status: ApplicationStatus.SUBMITTED,
-          changedAt: new Date(),
-          notes: 'Application submitted',
-        }] as unknown as Prisma.JsonArray,
+        statusHistory: [
+          {
+            status: ApplicationStatus.SUBMITTED,
+            changedAt: new Date(),
+            notes: "Application submitted",
+          },
+        ] as unknown as Prisma.JsonArray,
         coverLetter: data.coverLetter,
         motivationStatement: data.motivationStatement,
         skillMatchScore: skillMatchScore.overall,
         skillMatches: skillMatchScore.matches as unknown as Prisma.JsonArray,
         currentManagerId: applicant.managerId,
-        currentManagerApproval: posting?.eligibilityCriteria ? 'PENDING' : undefined,
+        currentManagerApproval: posting?.eligibilityCriteria
+          ? "PENDING"
+          : undefined,
         appliedAt: new Date(),
         lastActivityAt: new Date(),
       },
@@ -290,10 +349,12 @@ export class MarketplaceService {
     applicationId: string,
     status: ApplicationStatus,
     updatedBy: string,
-    notes?: string
+    notes?: string,
   ): Promise<JobApplication> {
-    const application = await this.prisma.jobApplication.findUnique({ where: { id: applicationId } });
-    if (!application) throw new Error('Application not found');
+    const application = await this.prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+    });
+    if (!application) throw new Error("Application not found");
 
     const statusHistory = (application.statusHistory as any[]) || [];
     statusHistory.push({
@@ -313,14 +374,17 @@ export class MarketplaceService {
     }) as unknown as JobApplication;
   }
 
-  async withdrawApplication(applicationId: string, reason: string): Promise<JobApplication> {
+  async withdrawApplication(
+    applicationId: string,
+    reason: string,
+  ): Promise<JobApplication> {
     const application = await this.prisma.jobApplication.update({
       where: { id: applicationId },
       data: {
         status: ApplicationStatus.WITHDRAWN,
         withdrawnAt: new Date(),
         withdrawalReason: reason,
-        finalDecision: 'WITHDRAWN',
+        finalDecision: "WITHDRAWN",
         decisionDate: new Date(),
       },
     });
@@ -328,20 +392,31 @@ export class MarketplaceService {
     return application as unknown as JobApplication;
   }
 
-  async approveByManager(applicationId: string, managerId: string, approved: boolean, comments?: string): Promise<JobApplication> {
+  async approveByManager(
+    applicationId: string,
+    managerId: string,
+    approved: boolean,
+    comments?: string,
+  ): Promise<JobApplication> {
     return this.prisma.jobApplication.update({
       where: { id: applicationId },
       data: {
-        currentManagerApproval: approved ? 'APPROVED' : 'DECLINED',
+        currentManagerApproval: approved ? "APPROVED" : "DECLINED",
         currentManagerComments: comments,
         currentManagerApprovedAt: new Date(),
-        status: approved ? ApplicationStatus.UNDER_REVIEW : ApplicationStatus.REJECTED,
+        status: approved
+          ? ApplicationStatus.UNDER_REVIEW
+          : ApplicationStatus.REJECTED,
         decisionReason: !approved ? comments : undefined,
       },
     }) as unknown as JobApplication;
   }
 
-  async listApplications(filters: ApplicationFilters, page: number = 1, limit: number = 50) {
+  async listApplications(
+    filters: ApplicationFilters,
+    page: number = 1,
+    limit: number = 50,
+  ) {
     const where: Prisma.JobApplicationWhereInput = {};
 
     if (filters.jobPostingId) where.jobPostingId = filters.jobPostingId;
@@ -355,20 +430,28 @@ export class MarketplaceService {
       this.prisma.jobApplication.findMany({
         where,
         include: { jobPosting: true },
-        orderBy: { appliedAt: 'desc' },
+        orderBy: { appliedAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.jobApplication.count({ where }),
     ]);
 
-    return { data: applications, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      data: applications,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async getApplicationsForPosting(postingId: string): Promise<JobApplication[]> {
+  async getApplicationsForPosting(
+    postingId: string,
+  ): Promise<JobApplication[]> {
     return this.prisma.jobApplication.findMany({
       where: { jobPostingId: postingId },
-      orderBy: [{ skillMatchScore: 'desc' }, { appliedAt: 'asc' }],
+      orderBy: [{ skillMatchScore: "desc" }, { appliedAt: "asc" }],
     }) as unknown as JobApplication[];
   }
 
@@ -377,14 +460,21 @@ export class MarketplaceService {
     const count = await this.prisma.jobApplication.count({
       where: { appliedAt: { gte: new Date(year, 0, 1) } },
     });
-    return `APP-${year}-${String(count + 1).padStart(6, '0')}`;
+    return `APP-${year}-${String(count + 1).padStart(6, "0")}`;
   }
 
-  private async calculateSkillMatch(employeeId: string, postingId: string): Promise<{ overall: number; matches: any[] }> {
-    const posting = await this.prisma.internalJobPosting.findUnique({ where: { id: postingId } });
+  private async calculateSkillMatch(
+    employeeId: string,
+    postingId: string,
+  ): Promise<{ overall: number; matches: any[] }> {
+    const posting = await this.prisma.internalJobPosting.findUnique({
+      where: { id: postingId },
+    });
     if (!posting) return { overall: 0, matches: [] };
 
-    const profile = await this.prisma.careerProfile.findFirst({ where: { employeeId } });
+    const profile = await this.prisma.careerProfile.findFirst({
+      where: { employeeId },
+    });
     const profileSkills = (profile?.skills as any[]) || [];
     const requirements = (posting.requirements as any[]) || [];
 
@@ -393,7 +483,9 @@ export class MarketplaceService {
     let weightedScore = 0;
 
     for (const req of requirements) {
-      const profileSkill = profileSkills.find(s => s.skillName?.toLowerCase() === req.name?.toLowerCase());
+      const profileSkill = profileSkills.find(
+        (s) => s.skillName?.toLowerCase() === req.name?.toLowerCase(),
+      );
       const weight = req.weight || 1;
       totalWeight += weight;
 
@@ -456,25 +548,38 @@ export class MarketplaceService {
         location: data.location,
         meetingLink: data.meetingLink,
         interviewerIds: data.interviewerIds,
-        interviewerNames: interviewers.map(i => `${i.firstName} ${i.lastName}`),
-        status: 'SCHEDULED',
+        interviewerNames: interviewers.map(
+          (i) => `${i.firstName} ${i.lastName}`,
+        ),
+        status: "SCHEDULED",
       },
     });
 
     // Update application status
-    await this.updateApplicationStatus(data.applicationId, ApplicationStatus.INTERVIEW_SCHEDULED, 'system');
+    await this.updateApplicationStatus(
+      data.applicationId,
+      ApplicationStatus.INTERVIEW_SCHEDULED,
+      "system",
+    );
 
     return interview as unknown as Interview;
   }
 
-  async submitInterviewFeedback(data: SubmitInterviewFeedbackDto, interviewerId: string): Promise<Interview> {
-    const interviewer = await this.prisma.employee.findUnique({ where: { id: interviewerId } });
-    const interview = await this.prisma.interview.findUnique({ where: { id: data.interviewId } });
+  async submitInterviewFeedback(
+    data: SubmitInterviewFeedbackDto,
+    interviewerId: string,
+  ): Promise<Interview> {
+    const interviewer = await this.prisma.employee.findUnique({
+      where: { id: interviewerId },
+    });
+    const interview = await this.prisma.interview.findUnique({
+      where: { id: data.interviewId },
+    });
 
-    if (!interview) throw new Error('Interview not found');
+    if (!interview) throw new Error("Interview not found");
 
     const existingFeedback = (interview.feedback as any[]) || [];
-    
+
     const newFeedback = {
       interviewerId,
       interviewerName: `${interviewer?.firstName} ${interviewer?.lastName}`,
@@ -490,21 +595,27 @@ export class MarketplaceService {
     existingFeedback.push(newFeedback);
 
     // Calculate overall rating
-    const avgRating = existingFeedback.reduce((sum, f) => sum + f.overallRating, 0) / existingFeedback.length;
+    const avgRating =
+      existingFeedback.reduce((sum, f) => sum + f.overallRating, 0) /
+      existingFeedback.length;
 
     const updated = await this.prisma.interview.update({
       where: { id: data.interviewId },
       data: {
         feedback: existingFeedback as unknown as Prisma.JsonArray,
         overallRating: avgRating,
-        status: 'COMPLETED',
+        status: "COMPLETED",
         completedAt: new Date(),
       },
     });
 
     // Update application status if all feedback received
     if (existingFeedback.length >= interview.interviewerIds.length) {
-      await this.updateApplicationStatus(interview.applicationId, ApplicationStatus.INTERVIEW_COMPLETED, 'system');
+      await this.updateApplicationStatus(
+        interview.applicationId,
+        ApplicationStatus.INTERVIEW_COMPLETED,
+        "system",
+      );
     }
 
     return updated as unknown as Interview;
@@ -514,21 +625,26 @@ export class MarketplaceService {
   // OFFERS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async createOffer(data: CreateOfferDto, createdBy: string): Promise<OfferDetails> {
-    const department = await this.prisma.department.findUnique({ where: { id: data.newDepartmentId } });
+  async createOffer(
+    data: CreateOfferDto,
+    createdBy: string,
+  ): Promise<OfferDetails> {
+    const department = await this.prisma.department.findUnique({
+      where: { id: data.newDepartmentId },
+    });
 
     const offer = await this.prisma.offerDetails.create({
       data: {
         applicationId: data.applicationId,
         newPositionTitle: data.newPositionTitle,
         newDepartmentId: data.newDepartmentId,
-        newDepartmentName: department?.name || '',
+        newDepartmentName: department?.name || "",
         newGradeId: data.newGradeId,
         newBaseSalary: data.newBaseSalary,
         proposedStartDate: data.proposedStartDate,
         transitionPeriodDays: data.transitionPeriodDays,
         assignmentEndDate: data.assignmentEndDate,
-        status: 'DRAFT',
+        status: "DRAFT",
         createdBy,
       },
     });
@@ -543,23 +659,31 @@ export class MarketplaceService {
     const offer = await this.prisma.offerDetails.update({
       where: { id: offerId },
       data: {
-        status: 'SENT',
+        status: "SENT",
         sentAt: new Date(),
         expiresAt,
       },
     });
 
     // Update application status
-    await this.updateApplicationStatus(offer.applicationId, ApplicationStatus.OFFER_PENDING, 'system');
+    await this.updateApplicationStatus(
+      offer.applicationId,
+      ApplicationStatus.OFFER_PENDING,
+      "system",
+    );
 
     return offer as unknown as OfferDetails;
   }
 
-  async respondToOffer(offerId: string, accepted: boolean, declineReason?: string): Promise<OfferDetails> {
+  async respondToOffer(
+    offerId: string,
+    accepted: boolean,
+    declineReason?: string,
+  ): Promise<OfferDetails> {
     const offer = await this.prisma.offerDetails.update({
       where: { id: offerId },
       data: {
-        status: accepted ? 'ACCEPTED' : 'DECLINED',
+        status: accepted ? "ACCEPTED" : "DECLINED",
         respondedAt: new Date(),
         declineReason,
       },
@@ -568,15 +692,19 @@ export class MarketplaceService {
     // Update application status
     await this.updateApplicationStatus(
       offer.applicationId,
-      accepted ? ApplicationStatus.OFFER_ACCEPTED : ApplicationStatus.OFFER_DECLINED,
-      'system'
+      accepted
+        ? ApplicationStatus.OFFER_ACCEPTED
+        : ApplicationStatus.OFFER_DECLINED,
+      "system",
     );
 
     // If accepted, close the posting
     if (accepted) {
-      const application = await this.prisma.jobApplication.findUnique({ where: { id: offer.applicationId } });
+      const application = await this.prisma.jobApplication.findUnique({
+        where: { id: offer.applicationId },
+      });
       if (application) {
-        await this.closePosting(application.jobPostingId, 'FILLED');
+        await this.closePosting(application.jobPostingId, "FILLED");
       }
     }
 
@@ -588,7 +716,9 @@ export class MarketplaceService {
   // ═══════════════════════════════════════════════════════════════════════════════
 
   async getOrCreateCareerProfile(employeeId: string): Promise<CareerProfile> {
-    let profile = await this.prisma.careerProfile.findFirst({ where: { employeeId } });
+    let profile = await this.prisma.careerProfile.findFirst({
+      where: { employeeId },
+    });
 
     if (!profile) {
       profile = await this.prisma.careerProfile.create({
@@ -596,8 +726,8 @@ export class MarketplaceService {
           employeeId,
           careerGoals: [],
           targetRoles: [],
-          mobilityPreference: 'BOTH',
-          relocationWillingness: 'SAME_CITY',
+          mobilityPreference: "BOTH",
+          relocationWillingness: "SAME_CITY",
           openToOpportunities: true,
           interestedJobTypes: [],
           skills: [],
@@ -615,12 +745,15 @@ export class MarketplaceService {
     return profile as unknown as CareerProfile;
   }
 
-  async updateCareerProfile(employeeId: string, data: UpdateCareerProfileDto): Promise<CareerProfile> {
+  async updateCareerProfile(
+    employeeId: string,
+    data: UpdateCareerProfileDto,
+  ): Promise<CareerProfile> {
     const profile = await this.getOrCreateCareerProfile(employeeId);
 
     // Add IDs to target roles and skills if not present
-    const targetRoles = data.targetRoles?.map(r => ({ ...r, id: uuidv4() }));
-    const skills = data.skills?.map(s => ({
+    const targetRoles = data.targetRoles?.map((r) => ({ ...r, id: uuidv4() }));
+    const skills = data.skills?.map((s) => ({
       ...s,
       id: uuidv4(),
       isVerified: false,
@@ -634,7 +767,10 @@ export class MarketplaceService {
         targetRoles: targetRoles as unknown as Prisma.JsonArray,
         skills: skills as unknown as Prisma.JsonArray,
         lastActiveAt: new Date(),
-        profileCompleteness: this.calculateProfileCompleteness({ ...profile, ...data } as any),
+        profileCompleteness: this.calculateProfileCompleteness({
+          ...profile,
+          ...data,
+        } as any),
       },
     });
 
@@ -659,9 +795,14 @@ export class MarketplaceService {
     }
   }
 
-  async removeBookmark(employeeId: string, jobPostingId: string): Promise<void> {
+  async removeBookmark(
+    employeeId: string,
+    jobPostingId: string,
+  ): Promise<void> {
     const profile = await this.getOrCreateCareerProfile(employeeId);
-    const bookmarks = (profile.bookmarkedJobIds || []).filter(id => id !== jobPostingId);
+    const bookmarks = (profile.bookmarkedJobIds || []).filter(
+      (id) => id !== jobPostingId,
+    );
 
     await this.prisma.careerProfile.update({
       where: { id: profile.id },
@@ -692,7 +833,10 @@ export class MarketplaceService {
   // MATCHING & RECOMMENDATIONS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async getRecommendedJobsForEmployee(employeeId: string, limit: number = 10): Promise<JobMatch[]> {
+  async getRecommendedJobsForEmployee(
+    employeeId: string,
+    limit: number = 10,
+  ): Promise<JobMatch[]> {
     const profile = await this.getOrCreateCareerProfile(employeeId);
     const postings = await this.getActivePostingsForEmployee(employeeId);
 
@@ -700,15 +844,17 @@ export class MarketplaceService {
 
     for (const posting of postings) {
       const skillMatch = await this.calculateSkillMatch(employeeId, posting.id);
-      
+
       // Calculate preference match
       let preferenceScore = 50;
       if (profile.interestedJobTypes?.includes(posting.jobType as JobType)) {
         preferenceScore += 30;
       }
-      
+
       // Calculate overall score
-      const overallScore = Math.round(skillMatch.overall * 0.6 + preferenceScore * 0.4);
+      const overallScore = Math.round(
+        skillMatch.overall * 0.6 + preferenceScore * 0.4,
+      );
 
       matches.push({
         jobPostingId: posting.id,
@@ -719,8 +865,15 @@ export class MarketplaceService {
         experienceMatchScore: 70, // Simplified
         preferenceMatchScore: preferenceScore,
         skillMatches: skillMatch.matches,
-        matchReasons: this.generateMatchReasons(skillMatch.matches, overallScore),
-        gapAreas: skillMatch.matches.filter(m => m.matchLevel === 'GAP' || m.matchLevel === 'DEVELOPING').map(m => m.requirementName),
+        matchReasons: this.generateMatchReasons(
+          skillMatch.matches,
+          overallScore,
+        ),
+        gapAreas: skillMatch.matches
+          .filter(
+            (m) => m.matchLevel === "GAP" || m.matchLevel === "DEVELOPING",
+          )
+          .map((m) => m.requirementName),
         rank: 0,
         calculatedAt: new Date(),
       });
@@ -728,13 +881,18 @@ export class MarketplaceService {
 
     // Sort by match score and assign ranks
     matches.sort((a, b) => b.matchScore - a.matchScore);
-    matches.forEach((m, i) => m.rank = i + 1);
+    matches.forEach((m, i) => (m.rank = i + 1));
 
     return matches.slice(0, limit);
   }
 
-  async getTalentMatchesForPosting(postingId: string, limit: number = 20): Promise<TalentMatch[]> {
-    const posting = await this.prisma.internalJobPosting.findUnique({ where: { id: postingId } });
+  async getTalentMatchesForPosting(
+    postingId: string,
+    limit: number = 20,
+  ): Promise<TalentMatch[]> {
+    const posting = await this.prisma.internalJobPosting.findUnique({
+      where: { id: postingId },
+    });
     if (!posting) return [];
 
     // Get all career profiles of employees open to opportunities
@@ -753,22 +911,33 @@ export class MarketplaceService {
 
       if (!employee) continue;
 
-      const skillMatch = await this.calculateSkillMatch(profile.employeeId, postingId);
-      const tenure = Math.floor((Date.now() - new Date(employee.hireDate).getTime()) / (1000 * 60 * 60 * 24 * 365));
+      const skillMatch = await this.calculateSkillMatch(
+        profile.employeeId,
+        postingId,
+      );
+      const tenure = Math.floor(
+        (Date.now() - new Date(employee.hireDate).getTime()) /
+          (1000 * 60 * 60 * 24 * 365),
+      );
 
       matches.push({
         employeeId: profile.employeeId,
         employeeName: `${employee.firstName} ${employee.lastName}`,
-        currentPosition: employee.position?.title || '',
-        currentDepartment: employee.department?.name || '',
+        currentPosition: employee.position?.title || "",
+        currentDepartment: employee.department?.name || "",
         matchScore: skillMatch.overall,
         skillMatchScore: skillMatch.overall,
         profileSummary: {
           yearsInCompany: tenure,
-          skillHighlights: (profile.skills as any[])?.slice(0, 5).map(s => s.skillName) || [],
+          skillHighlights:
+            (profile.skills as any[])?.slice(0, 5).map((s) => s.skillName) ||
+            [],
           openToOpportunities: profile.openToOpportunities,
         },
-        matchReasons: this.generateMatchReasons(skillMatch.matches, skillMatch.overall),
+        matchReasons: this.generateMatchReasons(
+          skillMatch.matches,
+          skillMatch.overall,
+        ),
         potentialConcerns: [],
         rank: 0,
       });
@@ -776,24 +945,33 @@ export class MarketplaceService {
 
     // Sort and rank
     matches.sort((a, b) => b.matchScore - a.matchScore);
-    matches.forEach((m, i) => m.rank = i + 1);
+    matches.forEach((m, i) => (m.rank = i + 1));
 
     return matches.slice(0, limit);
   }
 
-  private generateMatchReasons(skillMatches: any[], overallScore: number): string[] {
+  private generateMatchReasons(
+    skillMatches: any[],
+    overallScore: number,
+  ): string[] {
     const reasons: string[] = [];
-    const exceeds = skillMatches.filter(m => m.matchLevel === 'EXCEEDS').map(m => m.requirementName);
-    const meets = skillMatches.filter(m => m.matchLevel === 'MEETS').map(m => m.requirementName);
+    const exceeds = skillMatches
+      .filter((m) => m.matchLevel === "EXCEEDS")
+      .map((m) => m.requirementName);
+    const meets = skillMatches
+      .filter((m) => m.matchLevel === "MEETS")
+      .map((m) => m.requirementName);
 
     if (exceeds.length > 0) {
-      reasons.push(`Exceeds requirements in: ${exceeds.slice(0, 3).join(', ')}`);
+      reasons.push(
+        `Exceeds requirements in: ${exceeds.slice(0, 3).join(", ")}`,
+      );
     }
     if (meets.length > 0) {
-      reasons.push(`Meets requirements in: ${meets.slice(0, 3).join(', ')}`);
+      reasons.push(`Meets requirements in: ${meets.slice(0, 3).join(", ")}`);
     }
     if (overallScore >= 80) {
-      reasons.push('Strong overall match for this role');
+      reasons.push("Strong overall match for this role");
     }
 
     return reasons;
@@ -809,30 +987,38 @@ export class MarketplaceService {
     const thisYear = new Date(now.getFullYear(), 0, 1);
 
     // Posting stats
-    const [totalActive, totalThisMonth, postingsByType, postingsByDept] = await Promise.all([
-      this.prisma.internalJobPosting.count({ where: { status: JobPostingStatus.PUBLISHED } }),
-      this.prisma.internalJobPosting.count({ where: { createdAt: { gte: thisMonth } } }),
-      this.prisma.internalJobPosting.groupBy({
-        by: ['jobType'],
-        where: { status: JobPostingStatus.PUBLISHED },
-        _count: true,
-      }),
-      this.prisma.internalJobPosting.groupBy({
-        by: ['departmentId', 'departmentName'],
-        where: { status: JobPostingStatus.PUBLISHED },
-        _count: true,
-      }),
-    ]);
+    const [totalActive, totalThisMonth, postingsByType, postingsByDept] =
+      await Promise.all([
+        this.prisma.internalJobPosting.count({
+          where: { status: JobPostingStatus.PUBLISHED },
+        }),
+        this.prisma.internalJobPosting.count({
+          where: { createdAt: { gte: thisMonth } },
+        }),
+        this.prisma.internalJobPosting.groupBy({
+          by: ["jobType"],
+          where: { status: JobPostingStatus.PUBLISHED },
+          _count: true,
+        }),
+        this.prisma.internalJobPosting.groupBy({
+          by: ["departmentId", "departmentName"],
+          where: { status: JobPostingStatus.PUBLISHED },
+          _count: true,
+        }),
+      ]);
 
     // Application stats
-    const [totalApplications, applicationsThisMonth, applicationsByStatus] = await Promise.all([
-      this.prisma.jobApplication.count(),
-      this.prisma.jobApplication.count({ where: { appliedAt: { gte: thisMonth } } }),
-      this.prisma.jobApplication.groupBy({
-        by: ['status'],
-        _count: true,
-      }),
-    ]);
+    const [totalApplications, applicationsThisMonth, applicationsByStatus] =
+      await Promise.all([
+        this.prisma.jobApplication.count(),
+        this.prisma.jobApplication.count({
+          where: { appliedAt: { gte: thisMonth } },
+        }),
+        this.prisma.jobApplication.groupBy({
+          by: ["status"],
+          _count: true,
+        }),
+      ]);
 
     // Mobility stats
     const totalMoves = await this.prisma.jobApplication.count({
@@ -841,7 +1027,9 @@ export class MarketplaceService {
 
     // Engagement
     const [activeProfiles, openToOpportunities] = await Promise.all([
-      this.prisma.careerProfile.count({ where: { lastActiveAt: { gte: thisMonth } } }),
+      this.prisma.careerProfile.count({
+        where: { lastActiveAt: { gte: thisMonth } },
+      }),
       this.prisma.careerProfile.count({ where: { openToOpportunities: true } }),
     ]);
 
@@ -850,21 +1038,32 @@ export class MarketplaceService {
       postingStats: {
         totalActive,
         totalThisMonth,
-        byJobType: postingsByType.map(p => ({ type: p.jobType as JobType, count: p._count })),
-        byDepartment: postingsByDept.map(p => ({
+        byJobType: postingsByType.map((p) => ({
+          type: p.jobType as JobType,
+          count: p._count,
+        })),
+        byDepartment: postingsByDept.map((p) => ({
           departmentId: p.departmentId,
           departmentName: p.departmentName,
           count: p._count,
         })),
         avgTimeToFill: 30,
-        fillRate: totalActive > 0 ? Math.round((totalMoves / totalActive) * 100) : 0,
+        fillRate:
+          totalActive > 0 ? Math.round((totalMoves / totalActive) * 100) : 0,
       },
       applicationStats: {
         totalApplications,
         applicationsThisMonth,
-        avgApplicationsPerPosting: totalActive > 0 ? Math.round(totalApplications / totalActive) : 0,
-        byStatus: applicationsByStatus.map(a => ({ status: a.status as ApplicationStatus, count: a._count })),
-        conversionRate: totalApplications > 0 ? Math.round((totalMoves / totalApplications) * 100) : 0,
+        avgApplicationsPerPosting:
+          totalActive > 0 ? Math.round(totalApplications / totalActive) : 0,
+        byStatus: applicationsByStatus.map((a) => ({
+          status: a.status as ApplicationStatus,
+          count: a._count,
+        })),
+        conversionRate:
+          totalApplications > 0
+            ? Math.round((totalMoves / totalApplications) * 100)
+            : 0,
       },
       mobilityStats: {
         totalMoves,
@@ -888,14 +1087,19 @@ export class MarketplaceService {
     };
   }
 
-  async getEmployeeDashboard(employeeId: string): Promise<MarketplaceDashboard['employeeView']> {
+  async getEmployeeDashboard(
+    employeeId: string,
+  ): Promise<MarketplaceDashboard["employeeView"]> {
     const profile = await this.getOrCreateCareerProfile(employeeId);
-    const recommendedJobs = await this.getRecommendedJobsForEmployee(employeeId, 5);
+    const recommendedJobs = await this.getRecommendedJobsForEmployee(
+      employeeId,
+      5,
+    );
 
     const recentApplications = await this.prisma.jobApplication.findMany({
       where: { applicantId: employeeId },
       include: { jobPosting: true },
-      orderBy: { appliedAt: 'desc' },
+      orderBy: { appliedAt: "desc" },
       take: 5,
     });
 
@@ -910,19 +1114,32 @@ export class MarketplaceService {
       recentApplications: recentApplications as unknown as JobApplication[],
       bookmarkedJobs: bookmarkedJobs as unknown as InternalJobPosting[],
       profileCompleteness: profile.profileCompleteness,
-      suggestedSkills: ['Project Management', 'Data Analysis', 'Leadership'],
+      suggestedSkills: ["Project Management", "Data Analysis", "Leadership"],
     };
   }
 
-  async getManagerDashboard(managerId: string): Promise<MarketplaceDashboard['managerView']> {
+  async getManagerDashboard(
+    managerId: string,
+  ): Promise<MarketplaceDashboard["managerView"]> {
     const myPostings = await this.prisma.internalJobPosting.findMany({
-      where: { hiringManagerId: managerId, status: { in: [JobPostingStatus.PUBLISHED, JobPostingStatus.PENDING_APPROVAL] } },
+      where: {
+        hiringManagerId: managerId,
+        status: {
+          in: [JobPostingStatus.PUBLISHED, JobPostingStatus.PENDING_APPROVAL],
+        },
+      },
     });
 
     const pendingApplications = await this.prisma.jobApplication.findMany({
       where: {
         jobPosting: { hiringManagerId: managerId },
-        status: { in: [ApplicationStatus.SUBMITTED, ApplicationStatus.UNDER_REVIEW, ApplicationStatus.SHORTLISTED] },
+        status: {
+          in: [
+            ApplicationStatus.SUBMITTED,
+            ApplicationStatus.UNDER_REVIEW,
+            ApplicationStatus.SHORTLISTED,
+          ],
+        },
       },
       include: { jobPosting: true },
     });
@@ -930,7 +1147,7 @@ export class MarketplaceService {
     const scheduledInterviews = await this.prisma.interview.findMany({
       where: {
         interviewerIds: { has: managerId },
-        status: 'SCHEDULED',
+        status: "SCHEDULED",
         scheduledAt: { gte: new Date() },
       },
     });

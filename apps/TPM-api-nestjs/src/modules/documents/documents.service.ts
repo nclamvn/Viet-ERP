@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 import { FileQueryDto } from './dto/file-query.dto';
 import { CreateFileDto } from './dto/create-file.dto';
 import { CreatePoaDto } from './dto/create-poa.dto';

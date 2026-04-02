@@ -3,8 +3,8 @@
 // Analyzes supplier dependencies and concentration risks
 // =============================================================================
 
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { Prisma } from ".prisma/mrp-client";
 
 // =============================================================================
 // PRISMA RESULT TYPES
@@ -59,7 +59,7 @@ export interface DependencySummary {
   avgSuppliersPerPart: number;
   criticalPartsAtRisk: number;
   overallDependencyScore: number;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskLevel: "low" | "medium" | "high" | "critical";
 }
 
 export interface SingleSourcePart {
@@ -91,7 +91,7 @@ export interface AlternativeSupplier {
 
 export interface ConcentrationRisk {
   overallScore: number;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskLevel: "low" | "medium" | "high" | "critical";
   spendConcentration: SpendConcentration;
   volumeConcentration: VolumeConcentration;
   partConcentration: PartConcentration;
@@ -136,7 +136,7 @@ export interface TopSupplierDependency {
 
 export interface GeographicRisk {
   overallScore: number;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskLevel: "low" | "medium" | "high" | "critical";
   countryConcentration: CountryConcentration[];
   regionConcentration: RegionConcentration[];
   diversificationScore: number;
@@ -166,9 +166,9 @@ export interface CriticalDependency {
   partName: string;
   isCritical: boolean;
   category: string;
-  dependencyType: 'single_source' | 'geographic' | 'supplier_risk' | 'volume';
+  dependencyType: "single_source" | "geographic" | "supplier_risk" | "volume";
   riskScore: number;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskLevel: "low" | "medium" | "high" | "critical";
   primarySupplier: {
     supplierId: string;
     supplierName: string;
@@ -180,13 +180,18 @@ export interface CriticalDependency {
 }
 
 export interface DependencyRecommendation {
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  type: 'dual_source' | 'geographic_diversify' | 'supplier_develop' | 'inventory_buffer' | 'qualify_alternate';
+  priority: "critical" | "high" | "medium" | "low";
+  type:
+    | "dual_source"
+    | "geographic_diversify"
+    | "supplier_develop"
+    | "inventory_buffer"
+    | "qualify_alternate";
   title: string;
   description: string;
   affectedParts: string[];
-  estimatedEffort: 'low' | 'medium' | 'high';
-  estimatedImpact: 'low' | 'medium' | 'high';
+  estimatedEffort: "low" | "medium" | "high";
+  estimatedImpact: "low" | "medium" | "high";
 }
 
 // =============================================================================
@@ -194,32 +199,32 @@ export interface DependencyRecommendation {
 // =============================================================================
 
 const COUNTRY_REGIONS: Record<string, string> = {
-  'USA': 'North America',
-  'Canada': 'North America',
-  'Mexico': 'North America',
-  'China': 'Asia Pacific',
-  'Japan': 'Asia Pacific',
-  'South Korea': 'Asia Pacific',
-  'Taiwan': 'Asia Pacific',
-  'Vietnam': 'Asia Pacific',
-  'Thailand': 'Asia Pacific',
-  'India': 'Asia Pacific',
-  'Germany': 'Europe',
-  'France': 'Europe',
-  'Italy': 'Europe',
-  'UK': 'Europe',
-  'Spain': 'Europe',
-  'Poland': 'Europe',
-  'Brazil': 'South America',
-  'Argentina': 'South America',
+  USA: "North America",
+  Canada: "North America",
+  Mexico: "North America",
+  China: "Asia Pacific",
+  Japan: "Asia Pacific",
+  "South Korea": "Asia Pacific",
+  Taiwan: "Asia Pacific",
+  Vietnam: "Asia Pacific",
+  Thailand: "Asia Pacific",
+  India: "Asia Pacific",
+  Germany: "Europe",
+  France: "Europe",
+  Italy: "Europe",
+  UK: "Europe",
+  Spain: "Europe",
+  Poland: "Europe",
+  Brazil: "South America",
+  Argentina: "South America",
 };
 
 const COUNTRY_RISK_FACTORS: Record<string, string[]> = {
-  'China': ['Trade tensions', 'Long lead times', 'IP concerns'],
-  'Vietnam': ['Developing infrastructure', 'Quality consistency'],
-  'India': ['Infrastructure challenges', 'Quality variability'],
-  'Mexico': ['Border delays', 'Security concerns'],
-  'Taiwan': ['Geopolitical risk', 'Natural disasters'],
+  China: ["Trade tensions", "Long lead times", "IP concerns"],
+  Vietnam: ["Developing infrastructure", "Quality consistency"],
+  India: ["Infrastructure challenges", "Quality variability"],
+  Mexico: ["Border delays", "Security concerns"],
+  Taiwan: ["Geopolitical risk", "Natural disasters"],
 };
 
 // =============================================================================
@@ -236,11 +241,11 @@ export class DependencyAnalyzer {
 
     // Get all active parts and their suppliers
     const parts = await prisma.part.findMany({
-      where: { status: 'active' },
+      where: { status: "active" },
       include: {
         partSuppliers: {
           include: { supplier: true },
-          where: { status: 'active' },
+          where: { status: "active" },
         },
       },
     });
@@ -249,7 +254,7 @@ export class DependencyAnalyzer {
     const orders = await prisma.purchaseOrder.findMany({
       where: {
         orderDate: { gte: startDate },
-        status: { in: ['received', 'completed', 'partial', 'pending'] },
+        status: { in: ["received", "completed", "partial", "pending"] },
       },
       include: {
         supplier: true,
@@ -263,10 +268,17 @@ export class DependencyAnalyzer {
     const supplierMetrics = this.calculateSupplierMetrics(orders);
 
     // Identify single-source parts
-    const singleSourceParts = await this.identifySingleSourceParts(parts, supplierMetrics, months);
+    const singleSourceParts = await this.identifySingleSourceParts(
+      parts,
+      supplierMetrics,
+      months,
+    );
 
     // Analyze concentration risk
-    const concentrationRisk = this.analyzeConcentrationRisk(supplierMetrics, parts);
+    const concentrationRisk = this.analyzeConcentrationRisk(
+      supplierMetrics,
+      parts,
+    );
 
     // Analyze geographic risk
     const geographicRisk = this.analyzeGeographicRisk(supplierMetrics, parts);
@@ -276,7 +288,7 @@ export class DependencyAnalyzer {
       parts,
       singleSourceParts,
       concentrationRisk,
-      geographicRisk
+      geographicRisk,
     );
 
     // Generate summary
@@ -285,7 +297,7 @@ export class DependencyAnalyzer {
       singleSourceParts,
       concentrationRisk,
       geographicRisk,
-      supplierMetrics
+      supplierMetrics,
     );
 
     // Generate recommendations
@@ -293,7 +305,7 @@ export class DependencyAnalyzer {
       singleSourceParts,
       concentrationRisk,
       geographicRisk,
-      criticalDependencies
+      criticalDependencies,
     );
 
     return {
@@ -332,7 +344,7 @@ export class DependencyAnalyzer {
     }[];
     isSingleSource: boolean;
     riskScore: number;
-    riskLevel: 'low' | 'medium' | 'high' | 'critical';
+    riskLevel: "low" | "medium" | "high" | "critical";
     recommendations: string[];
   } | null> {
     const part = await prisma.part.findUnique({
@@ -344,7 +356,7 @@ export class DependencyAnalyzer {
               include: { riskScore: true },
             },
           },
-          where: { status: 'active' },
+          where: { status: "active" },
         },
       },
     });
@@ -378,22 +390,22 @@ export class DependencyAnalyzer {
     });
 
     // Determine risk level
-    let riskLevel: 'low' | 'medium' | 'high' | 'critical';
-    if (riskScore >= 70) riskLevel = 'critical';
-    else if (riskScore >= 50) riskLevel = 'high';
-    else if (riskScore >= 30) riskLevel = 'medium';
-    else riskLevel = 'low';
+    let riskLevel: "low" | "medium" | "high" | "critical";
+    if (riskScore >= 70) riskLevel = "critical";
+    else if (riskScore >= 50) riskLevel = "high";
+    else if (riskScore >= 30) riskLevel = "medium";
+    else riskLevel = "low";
 
     // Generate recommendations
     const recommendations: string[] = [];
     if (isSingleSource) {
-      recommendations.push('Qualify at least one alternate supplier');
+      recommendations.push("Qualify at least one alternate supplier");
       if (part.isCritical) {
-        recommendations.push('Consider strategic safety stock increase');
+        recommendations.push("Consider strategic safety stock increase");
       }
     }
     if (supplierCount === 0) {
-      recommendations.push('Urgently identify and qualify suppliers');
+      recommendations.push("Urgently identify and qualify suppliers");
     }
 
     return {
@@ -437,7 +449,7 @@ export class DependencyAnalyzer {
     soleSourceParts: number;
     totalMonthlySpend: number;
     dependencyScore: number;
-    riskIfRemoved: 'low' | 'medium' | 'high' | 'critical';
+    riskIfRemoved: "low" | "medium" | "high" | "critical";
   } | null> {
     const supplier = await prisma.supplier.findUnique({
       where: { id: supplierId },
@@ -450,7 +462,7 @@ export class DependencyAnalyzer {
               },
             },
           },
-          where: { status: 'active' },
+          where: { status: "active" },
         },
       },
     });
@@ -460,7 +472,7 @@ export class DependencyAnalyzer {
     // Analyze dependent parts
     const dependentParts = supplier.partSuppliers.map((ps) => {
       const alternateCount = ps.part.partSuppliers.filter(
-        (alt) => alt.supplierId !== supplierId && alt.status === 'active'
+        (alt) => alt.supplierId !== supplierId && alt.status === "active",
       ).length;
 
       return {
@@ -475,26 +487,34 @@ export class DependencyAnalyzer {
     });
 
     const totalPartsSupplied = dependentParts.length;
-    const criticalPartsSupplied = dependentParts.filter((p) => p.isCritical).length;
-    const soleSourceParts = dependentParts.filter((p) => p.alternateCount === 0).length;
-    const totalMonthlySpend = dependentParts.reduce((sum, p) => sum + p.monthlySpend, 0);
+    const criticalPartsSupplied = dependentParts.filter(
+      (p) => p.isCritical,
+    ).length;
+    const soleSourceParts = dependentParts.filter(
+      (p) => p.alternateCount === 0,
+    ).length;
+    const totalMonthlySpend = dependentParts.reduce(
+      (sum, p) => sum + p.monthlySpend,
+      0,
+    );
 
     // Calculate dependency score
     let dependencyScore = 0;
     dependencyScore += (soleSourceParts / Math.max(totalPartsSupplied, 1)) * 40;
-    dependencyScore += (criticalPartsSupplied / Math.max(totalPartsSupplied, 1)) * 30;
+    dependencyScore +=
+      (criticalPartsSupplied / Math.max(totalPartsSupplied, 1)) * 30;
     dependencyScore += Math.min((totalPartsSupplied / 10) * 30, 30);
 
     // Determine risk if removed
-    let riskIfRemoved: 'low' | 'medium' | 'high' | 'critical';
+    let riskIfRemoved: "low" | "medium" | "high" | "critical";
     if (soleSourceParts > 5 || criticalPartsSupplied > 3) {
-      riskIfRemoved = 'critical';
+      riskIfRemoved = "critical";
     } else if (soleSourceParts > 2 || criticalPartsSupplied > 1) {
-      riskIfRemoved = 'high';
+      riskIfRemoved = "high";
     } else if (soleSourceParts > 0 || criticalPartsSupplied > 0) {
-      riskIfRemoved = 'medium';
+      riskIfRemoved = "medium";
     } else {
-      riskIfRemoved = 'low';
+      riskIfRemoved = "low";
     }
 
     return {
@@ -518,7 +538,9 @@ export class DependencyAnalyzer {
   // PRIVATE METHODS
   // =============================================================================
 
-  private calculateSupplierMetrics(orders: PurchaseOrderWithDetails[]): Map<string, SupplierMetrics> {
+  private calculateSupplierMetrics(
+    orders: PurchaseOrderWithDetails[],
+  ): Map<string, SupplierMetrics> {
     const metrics = new Map<string, SupplierMetrics>();
 
     orders.forEach((order) => {
@@ -550,7 +572,7 @@ export class DependencyAnalyzer {
   private async identifySingleSourceParts(
     parts: PartWithSuppliers[],
     supplierMetrics: Map<string, SupplierMetrics>,
-    months: number
+    months: number,
   ): Promise<SingleSourcePart[]> {
     const singleSourceParts: SingleSourcePart[] = [];
 
@@ -567,7 +589,10 @@ export class DependencyAnalyzer {
         if (ps.leadTimeDays > 30) riskScore += 10;
 
         // Find potential alternatives
-        const alternatives = await this.findAlternativeSuppliers(part.id, supplier.id);
+        const alternatives = await this.findAlternativeSuppliers(
+          part.id,
+          supplier.id,
+        );
 
         singleSourceParts.push({
           partId: part.id,
@@ -594,7 +619,7 @@ export class DependencyAnalyzer {
 
   private async findAlternativeSuppliers(
     partId: string,
-    currentSupplierId: string
+    currentSupplierId: string,
   ): Promise<AlternativeSupplier[]> {
     // Find suppliers in the same category that could potentially supply this part
     const part = await prisma.part.findUnique({
@@ -606,7 +631,7 @@ export class DependencyAnalyzer {
     const potentialSuppliers = await prisma.supplier.findMany({
       where: {
         id: { not: currentSupplierId },
-        status: 'active',
+        status: "active",
         category: part.category,
       },
       take: 5,
@@ -625,7 +650,7 @@ export class DependencyAnalyzer {
 
   private analyzeConcentrationRisk(
     supplierMetrics: Map<string, SupplierMetrics>,
-    parts: PartWithSuppliers[]
+    parts: PartWithSuppliers[],
   ): ConcentrationRisk {
     const suppliers = Array.from(supplierMetrics.values());
     const totalSpend = suppliers.reduce((sum, s) => sum + s.totalSpend, 0);
@@ -633,44 +658,62 @@ export class DependencyAnalyzer {
 
     // Sort by spend
     const bySpend = [...suppliers].sort((a, b) => b.totalSpend - a.totalSpend);
-    const byVolume = [...suppliers].sort((a, b) => b.totalVolume - a.totalVolume);
+    const byVolume = [...suppliers].sort(
+      (a, b) => b.totalVolume - a.totalVolume,
+    );
 
     // Calculate spend concentration
-    const top1SpendPercent = totalSpend > 0 ? (bySpend[0]?.totalSpend || 0) / totalSpend * 100 : 0;
-    const top3SpendPercent = totalSpend > 0
-      ? bySpend.slice(0, 3).reduce((sum, s) => sum + s.totalSpend, 0) / totalSpend * 100
-      : 0;
-    const top5SpendPercent = totalSpend > 0
-      ? bySpend.slice(0, 5).reduce((sum, s) => sum + s.totalSpend, 0) / totalSpend * 100
-      : 0;
+    const top1SpendPercent =
+      totalSpend > 0 ? ((bySpend[0]?.totalSpend || 0) / totalSpend) * 100 : 0;
+    const top3SpendPercent =
+      totalSpend > 0
+        ? (bySpend.slice(0, 3).reduce((sum, s) => sum + s.totalSpend, 0) /
+            totalSpend) *
+          100
+        : 0;
+    const top5SpendPercent =
+      totalSpend > 0
+        ? (bySpend.slice(0, 5).reduce((sum, s) => sum + s.totalSpend, 0) /
+            totalSpend) *
+          100
+        : 0;
 
     // Calculate Herfindahl Index (market concentration)
-    const herfindahlIndex = suppliers.reduce((sum, s) => {
-      const share = totalSpend > 0 ? s.totalSpend / totalSpend : 0;
-      return sum + Math.pow(share, 2);
-    }, 0) * 10000;
+    const herfindahlIndex =
+      suppliers.reduce((sum, s) => {
+        const share = totalSpend > 0 ? s.totalSpend / totalSpend : 0;
+        return sum + Math.pow(share, 2);
+      }, 0) * 10000;
 
     // Diversification score (inverse of concentration)
-    const diversificationScore = Math.max(0, 100 - (herfindahlIndex / 100));
+    const diversificationScore = Math.max(0, 100 - herfindahlIndex / 100);
 
     // Calculate volume concentration
-    const top1VolumePercent = totalVolume > 0 ? (byVolume[0]?.totalVolume || 0) / totalVolume * 100 : 0;
-    const top3VolumePercent = totalVolume > 0
-      ? byVolume.slice(0, 3).reduce((sum, s) => sum + s.totalVolume, 0) / totalVolume * 100
-      : 0;
-    const top5VolumePercent = totalVolume > 0
-      ? byVolume.slice(0, 5).reduce((sum, s) => sum + s.totalVolume, 0) / totalVolume * 100
-      : 0;
+    const top1VolumePercent =
+      totalVolume > 0
+        ? ((byVolume[0]?.totalVolume || 0) / totalVolume) * 100
+        : 0;
+    const top3VolumePercent =
+      totalVolume > 0
+        ? (byVolume.slice(0, 3).reduce((sum, s) => sum + s.totalVolume, 0) /
+            totalVolume) *
+          100
+        : 0;
+    const top5VolumePercent =
+      totalVolume > 0
+        ? (byVolume.slice(0, 5).reduce((sum, s) => sum + s.totalVolume, 0) /
+            totalVolume) *
+          100
+        : 0;
 
     // Calculate part concentration
     const supplierPartCounts = suppliers.map((s) => ({
       ...s,
       partCount: s.partIds.size,
     }));
-    const maxPartsSupplier = supplierPartCounts.reduce<(typeof supplierPartCounts)[number] | null>(
-      (max, s) => (s.partCount > (max?.partCount || 0) ? s : max),
-      null
-    );
+    const maxPartsSupplier = supplierPartCounts.reduce<
+      (typeof supplierPartCounts)[number] | null
+    >((max, s) => (s.partCount > (max?.partCount || 0) ? s : max), null);
 
     // Calculate risk score
     let riskScore = 0;
@@ -683,23 +726,33 @@ export class DependencyAnalyzer {
     const riskLevel = this.determineRiskLevel(riskScore);
 
     // Top suppliers
-    const topSuppliers: TopSupplierDependency[] = bySpend.slice(0, 10).map((s) => {
-      const criticalParts = parts.filter(
-        (p) => p.isCritical && p.partSuppliers.some((ps) => ps.supplierId === s.supplierId)
-      );
+    const topSuppliers: TopSupplierDependency[] = bySpend
+      .slice(0, 10)
+      .map((s) => {
+        const criticalParts = parts.filter(
+          (p) =>
+            p.isCritical &&
+            p.partSuppliers.some((ps) => ps.supplierId === s.supplierId),
+        );
 
-      return {
-        supplierId: s.supplierId,
-        supplierName: s.supplierName,
-        country: s.country,
-        spendPercent: totalSpend > 0 ? Math.round((s.totalSpend / totalSpend) * 100 * 10) / 10 : 0,
-        volumePercent: totalVolume > 0 ? Math.round((s.totalVolume / totalVolume) * 100 * 10) / 10 : 0,
-        partCount: s.partIds.size,
-        criticalPartCount: criticalParts.length,
-        riskScore: this.calculateSupplierRiskScore(s, totalSpend),
-        rating: s.rating,
-      };
-    });
+        return {
+          supplierId: s.supplierId,
+          supplierName: s.supplierName,
+          country: s.country,
+          spendPercent:
+            totalSpend > 0
+              ? Math.round((s.totalSpend / totalSpend) * 100 * 10) / 10
+              : 0,
+          volumePercent:
+            totalVolume > 0
+              ? Math.round((s.totalVolume / totalVolume) * 100 * 10) / 10
+              : 0,
+          partCount: s.partIds.size,
+          criticalPartCount: criticalParts.length,
+          riskScore: this.calculateSupplierRiskScore(s, totalSpend),
+          rating: s.rating,
+        };
+      });
 
     return {
       overallScore: Math.min(100, riskScore),
@@ -717,9 +770,14 @@ export class DependencyAnalyzer {
         top5SuppliersPercent: Math.round(top5VolumePercent * 10) / 10,
       },
       partConcentration: {
-        avgPartsPerSupplier: suppliers.length > 0
-          ? Math.round(supplierPartCounts.reduce((sum, s) => sum + s.partCount, 0) / suppliers.length * 10) / 10
-          : 0,
+        avgPartsPerSupplier:
+          suppliers.length > 0
+            ? Math.round(
+                (supplierPartCounts.reduce((sum, s) => sum + s.partCount, 0) /
+                  suppliers.length) *
+                  10,
+              ) / 10
+            : 0,
         maxPartsFromSingleSupplier: maxPartsSupplier?.partCount || 0,
         supplierWithMostParts: maxPartsSupplier
           ? {
@@ -735,17 +793,20 @@ export class DependencyAnalyzer {
 
   private analyzeGeographicRisk(
     supplierMetrics: Map<string, SupplierMetrics>,
-    parts: PartWithSuppliers[]
+    parts: PartWithSuppliers[],
   ): GeographicRisk {
     const suppliers = Array.from(supplierMetrics.values());
     const totalSpend = suppliers.reduce((sum, s) => sum + s.totalSpend, 0);
 
     // Group by country
-    const countryMap = new Map<string, {
-      suppliers: SupplierMetrics[];
-      totalSpend: number;
-      partIds: Set<string>;
-    }>();
+    const countryMap = new Map<
+      string,
+      {
+        suppliers: SupplierMetrics[];
+        totalSpend: number;
+        partIds: Set<string>;
+      }
+    >();
 
     suppliers.forEach((s) => {
       const existing = countryMap.get(s.country) || {
@@ -760,18 +821,25 @@ export class DependencyAnalyzer {
     });
 
     // Country concentration
-    const countryConcentration: CountryConcentration[] = Array.from(countryMap.entries())
+    const countryConcentration: CountryConcentration[] = Array.from(
+      countryMap.entries(),
+    )
       .map(([country, data]) => {
         const criticalParts = parts.filter(
-          (p) => p.isCritical && p.partSuppliers.some(
-            (ps) => data.suppliers.some((s) => s.supplierId === ps.supplierId)
-          )
+          (p) =>
+            p.isCritical &&
+            p.partSuppliers.some((ps) =>
+              data.suppliers.some((s) => s.supplierId === ps.supplierId),
+            ),
         );
 
         return {
           country,
           supplierCount: data.suppliers.length,
-          spendPercent: totalSpend > 0 ? Math.round((data.totalSpend / totalSpend) * 100 * 10) / 10 : 0,
+          spendPercent:
+            totalSpend > 0
+              ? Math.round((data.totalSpend / totalSpend) * 100 * 10) / 10
+              : 0,
           partCount: data.partIds.size,
           criticalPartCount: criticalParts.length,
           riskFactors: COUNTRY_RISK_FACTORS[country] || [],
@@ -780,15 +848,18 @@ export class DependencyAnalyzer {
       .sort((a, b) => b.spendPercent - a.spendPercent);
 
     // Region concentration
-    const regionMap = new Map<string, {
-      countries: Set<string>;
-      supplierCount: number;
-      totalSpend: number;
-      partIds: Set<string>;
-    }>();
+    const regionMap = new Map<
+      string,
+      {
+        countries: Set<string>;
+        supplierCount: number;
+        totalSpend: number;
+        partIds: Set<string>;
+      }
+    >();
 
     countryConcentration.forEach((cc) => {
-      const region = COUNTRY_REGIONS[cc.country] || 'Other';
+      const region = COUNTRY_REGIONS[cc.country] || "Other";
       const existing = regionMap.get(region) || {
         countries: new Set<string>(),
         supplierCount: 0,
@@ -805,12 +876,17 @@ export class DependencyAnalyzer {
       regionMap.set(region, existing);
     });
 
-    const regionConcentration: RegionConcentration[] = Array.from(regionMap.entries())
+    const regionConcentration: RegionConcentration[] = Array.from(
+      regionMap.entries(),
+    )
       .map(([region, data]) => ({
         region,
         countries: Array.from(data.countries),
         supplierCount: data.supplierCount,
-        spendPercent: totalSpend > 0 ? Math.round((data.totalSpend / totalSpend) * 100 * 10) / 10 : 0,
+        spendPercent:
+          totalSpend > 0
+            ? Math.round((data.totalSpend / totalSpend) * 100 * 10) / 10
+            : 0,
         partCount: data.partIds.size,
       }))
       .sort((a, b) => b.spendPercent - a.spendPercent);
@@ -821,7 +897,8 @@ export class DependencyAnalyzer {
     if (topCountry) {
       if (topCountry.spendPercent > 50) riskScore += 30;
       else if (topCountry.spendPercent > 30) riskScore += 15;
-      if (topCountry.riskFactors.length > 0) riskScore += 10 * Math.min(topCountry.riskFactors.length, 3);
+      if (topCountry.riskFactors.length > 0)
+        riskScore += 10 * Math.min(topCountry.riskFactors.length, 3);
     }
 
     // Single region concentration
@@ -836,10 +913,12 @@ export class DependencyAnalyzer {
     // Recommendations
     const recommendations: string[] = [];
     if (topCountry && topCountry.spendPercent > 40) {
-      recommendations.push(`Diversify sourcing away from ${topCountry.country} (${topCountry.spendPercent}% of spend)`);
+      recommendations.push(
+        `Diversify sourcing away from ${topCountry.country} (${topCountry.spendPercent}% of spend)`,
+      );
     }
     if (countryConcentration.length < 3) {
-      recommendations.push('Qualify suppliers in additional countries');
+      recommendations.push("Qualify suppliers in additional countries");
     }
 
     return {
@@ -856,7 +935,7 @@ export class DependencyAnalyzer {
     parts: PartWithSuppliers[],
     singleSourceParts: SingleSourcePart[],
     concentrationRisk: ConcentrationRisk,
-    geographicRisk: GeographicRisk
+    geographicRisk: GeographicRisk,
   ): CriticalDependency[] {
     const dependencies: CriticalDependency[] = [];
 
@@ -870,7 +949,7 @@ export class DependencyAnalyzer {
           partName: part.partName,
           isCritical: part.isCritical,
           category: part.category,
-          dependencyType: 'single_source',
+          dependencyType: "single_source",
           riskScore: part.riskScore,
           riskLevel: this.determineRiskLevel(part.riskScore),
           primarySupplier: {
@@ -880,12 +959,12 @@ export class DependencyAnalyzer {
             rating: part.supplierRating,
           },
           impactDescription: part.isCritical
-            ? 'Critical part with no alternate supplier - production stoppage risk'
-            : 'Single source dependency - supply disruption risk',
+            ? "Critical part with no alternate supplier - production stoppage risk"
+            : "Single source dependency - supply disruption risk",
           mitigationOptions: [
-            'Qualify alternate supplier',
-            'Increase safety stock',
-            'Develop long-term supply agreement',
+            "Qualify alternate supplier",
+            "Increase safety stock",
+            "Develop long-term supply agreement",
           ],
         });
       });
@@ -895,7 +974,9 @@ export class DependencyAnalyzer {
       .filter((s) => s.spendPercent > 25 && s.criticalPartCount > 0)
       .forEach((supplier) => {
         const supplierParts = parts.filter(
-          (p) => p.isCritical && p.partSuppliers.some((ps) => ps.supplierId === supplier.supplierId)
+          (p) =>
+            p.isCritical &&
+            p.partSuppliers.some((ps) => ps.supplierId === supplier.supplierId),
         );
 
         supplierParts.forEach((part) => {
@@ -906,7 +987,7 @@ export class DependencyAnalyzer {
               partName: part.name,
               isCritical: part.isCritical,
               category: part.category,
-              dependencyType: 'volume',
+              dependencyType: "volume",
               riskScore: Math.min(100, supplier.riskScore + 20),
               riskLevel: this.determineRiskLevel(supplier.riskScore + 20),
               primarySupplier: {
@@ -917,8 +998,8 @@ export class DependencyAnalyzer {
               },
               impactDescription: `High volume concentration with ${supplier.supplierName} (${supplier.spendPercent}% of spend)`,
               mitigationOptions: [
-                'Redistribute volume to alternate suppliers',
-                'Negotiate better terms with backup suppliers',
+                "Redistribute volume to alternate suppliers",
+                "Negotiate better terms with backup suppliers",
               ],
             });
           }
@@ -933,26 +1014,31 @@ export class DependencyAnalyzer {
     singleSourceParts: SingleSourcePart[],
     concentrationRisk: ConcentrationRisk,
     geographicRisk: GeographicRisk,
-    supplierMetrics: Map<string, SupplierMetrics>
+    supplierMetrics: Map<string, SupplierMetrics>,
   ): DependencySummary {
     const totalActiveParts = parts.length;
     const totalActiveSuppliers = supplierMetrics.size;
     const singleSourcePartCount = singleSourceParts.length;
-    const singleSourcePercent = totalActiveParts > 0
-      ? (singleSourcePartCount / totalActiveParts) * 100
-      : 0;
+    const singleSourcePercent =
+      totalActiveParts > 0
+        ? (singleSourcePartCount / totalActiveParts) * 100
+        : 0;
 
-    const avgSuppliersPerPart = totalActiveParts > 0
-      ? parts.reduce((sum, p) => sum + p.partSuppliers.length, 0) / totalActiveParts
-      : 0;
+    const avgSuppliersPerPart =
+      totalActiveParts > 0
+        ? parts.reduce((sum, p) => sum + p.partSuppliers.length, 0) /
+          totalActiveParts
+        : 0;
 
-    const criticalPartsAtRisk = singleSourceParts.filter((p) => p.isCritical).length;
+    const criticalPartsAtRisk = singleSourceParts.filter(
+      (p) => p.isCritical,
+    ).length;
 
     // Calculate overall dependency score
     const overallDependencyScore = Math.round(
-      (concentrationRisk.overallScore * 0.4 +
+      concentrationRisk.overallScore * 0.4 +
         geographicRisk.overallScore * 0.3 +
-        (singleSourcePercent * 0.3))
+        singleSourcePercent * 0.3,
     );
 
     const riskLevel = this.determineRiskLevel(overallDependencyScore);
@@ -973,7 +1059,7 @@ export class DependencyAnalyzer {
     singleSourceParts: SingleSourcePart[],
     concentrationRisk: ConcentrationRisk,
     geographicRisk: GeographicRisk,
-    criticalDependencies: CriticalDependency[]
+    criticalDependencies: CriticalDependency[],
   ): DependencyRecommendation[] {
     const recommendations: DependencyRecommendation[] = [];
 
@@ -981,13 +1067,13 @@ export class DependencyAnalyzer {
     const criticalSingleSource = singleSourceParts.filter((p) => p.isCritical);
     if (criticalSingleSource.length > 0) {
       recommendations.push({
-        priority: 'critical',
-        type: 'dual_source',
-        title: 'Dual-Source Critical Parts',
+        priority: "critical",
+        type: "dual_source",
+        title: "Dual-Source Critical Parts",
         description: `${criticalSingleSource.length} critical parts have only one supplier. Qualify alternate suppliers immediately.`,
         affectedParts: criticalSingleSource.map((p) => p.partSku),
-        estimatedEffort: 'high',
-        estimatedImpact: 'high',
+        estimatedEffort: "high",
+        estimatedImpact: "high",
       });
     }
 
@@ -995,56 +1081,68 @@ export class DependencyAnalyzer {
     if (concentrationRisk.spendConcentration.top1SupplierPercent > 40) {
       const topSupplier = concentrationRisk.topSuppliers[0];
       recommendations.push({
-        priority: 'high',
-        type: 'supplier_develop',
-        title: 'Reduce Supplier Concentration',
+        priority: "high",
+        type: "supplier_develop",
+        title: "Reduce Supplier Concentration",
         description: `${topSupplier.supplierName} represents ${topSupplier.spendPercent}% of spend. Develop alternative suppliers.`,
         affectedParts: [],
-        estimatedEffort: 'medium',
-        estimatedImpact: 'high',
+        estimatedEffort: "medium",
+        estimatedImpact: "high",
       });
     }
 
     // Geographic diversification
-    if (geographicRisk.riskLevel === 'high' || geographicRisk.riskLevel === 'critical') {
+    if (
+      geographicRisk.riskLevel === "high" ||
+      geographicRisk.riskLevel === "critical"
+    ) {
       recommendations.push({
-        priority: 'medium',
-        type: 'geographic_diversify',
-        title: 'Geographic Diversification',
-        description: 'High geographic concentration risk. Qualify suppliers in different regions.',
+        priority: "medium",
+        type: "geographic_diversify",
+        title: "Geographic Diversification",
+        description:
+          "High geographic concentration risk. Qualify suppliers in different regions.",
         affectedParts: [],
-        estimatedEffort: 'high',
-        estimatedImpact: 'medium',
+        estimatedEffort: "high",
+        estimatedImpact: "medium",
       });
     }
 
     // Safety stock for high risk parts
-    const highRiskParts = criticalDependencies.filter((d) => d.riskLevel === 'high' || d.riskLevel === 'critical');
+    const highRiskParts = criticalDependencies.filter(
+      (d) => d.riskLevel === "high" || d.riskLevel === "critical",
+    );
     if (highRiskParts.length > 0) {
       recommendations.push({
-        priority: 'medium',
-        type: 'inventory_buffer',
-        title: 'Increase Safety Stock',
+        priority: "medium",
+        type: "inventory_buffer",
+        title: "Increase Safety Stock",
         description: `Consider increasing safety stock for ${highRiskParts.length} high-risk parts while alternate sourcing is developed.`,
         affectedParts: highRiskParts.map((p) => p.partSku),
-        estimatedEffort: 'low',
-        estimatedImpact: 'medium',
+        estimatedEffort: "low",
+        estimatedImpact: "medium",
       });
     }
 
     return recommendations;
   }
 
-  private determineRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
-    if (score >= 75) return 'critical';
-    if (score >= 50) return 'high';
-    if (score >= 25) return 'medium';
-    return 'low';
+  private determineRiskLevel(
+    score: number,
+  ): "low" | "medium" | "high" | "critical" {
+    if (score >= 75) return "critical";
+    if (score >= 50) return "high";
+    if (score >= 25) return "medium";
+    return "low";
   }
 
-  private calculateSupplierRiskScore(supplier: SupplierMetrics, totalSpend: number): number {
+  private calculateSupplierRiskScore(
+    supplier: SupplierMetrics,
+    totalSpend: number,
+  ): number {
     let score = 0;
-    const spendPercent = totalSpend > 0 ? (supplier.totalSpend / totalSpend) * 100 : 0;
+    const spendPercent =
+      totalSpend > 0 ? (supplier.totalSpend / totalSpend) * 100 : 0;
 
     if (spendPercent > 30) score += 30;
     else if (spendPercent > 20) score += 20;

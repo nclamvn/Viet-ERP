@@ -1,49 +1,49 @@
 // src/lib/employee-experience/feed/service.ts
 // Company Feed Service - News, Announcements, Events
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   PostType,
   PostVisibility,
   PostStatus,
   EventType,
   RsvpStatus,
-  Prisma
-} from '@prisma/client'
+  Prisma,
+} from ".prisma/hrm-unified-client";
 
 // Types
 export interface CreatePostInput {
-  type: PostType
-  title?: string
-  content: string
-  visibility?: PostVisibility
-  targetDepartments?: string[]
-  isPinned?: boolean
-  mediaUrls?: string[]
+  type: PostType;
+  title?: string;
+  content: string;
+  visibility?: PostVisibility;
+  targetDepartments?: string[];
+  isPinned?: boolean;
+  mediaUrls?: string[];
 }
 
 export interface FeedFilters {
-  types?: PostType[]
-  departmentId?: string
-  authorId?: string
-  isPinned?: boolean
-  search?: string
-  fromDate?: Date
-  toDate?: Date
+  types?: PostType[];
+  departmentId?: string;
+  authorId?: string;
+  isPinned?: boolean;
+  search?: string;
+  fromDate?: Date;
+  toDate?: Date;
 }
 
 export interface PaginationOptions {
-  page?: number
-  pageSize?: number
+  page?: number;
+  pageSize?: number;
 }
 
 export interface FeedResult {
-  posts: any[]
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-  unreadCount: number
+  posts: any[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  unreadCount: number;
 }
 
 // Company Feed Service
@@ -62,7 +62,7 @@ export class CompanyFeedService {
       targetDepartments = [],
       isPinned = false,
       mediaUrls = [],
-    } = input
+    } = input;
 
     // Create post
     const post = await db.companyPost.create({
@@ -95,9 +95,9 @@ export class CompanyFeedService {
           },
         },
       },
-    })
+    });
 
-    return post
+    return post;
   }
 
   /**
@@ -106,16 +106,16 @@ export class CompanyFeedService {
   async getFeed(
     employeeId: string,
     filters: FeedFilters = {},
-    pagination: PaginationOptions = {}
+    pagination: PaginationOptions = {},
   ): Promise<FeedResult> {
-    const { page = 1, pageSize = 20 } = pagination
-    const skip = (page - 1) * pageSize
+    const { page = 1, pageSize = 20 } = pagination;
+    const skip = (page - 1) * pageSize;
 
     // Get employee's department for visibility filtering
     const employee = await db.employee.findUnique({
       where: { id: employeeId },
       select: { departmentId: true },
-    })
+    });
 
     // Build where clause
     const where: Prisma.CompanyPostWhereInput = {
@@ -134,41 +134,44 @@ export class CompanyFeedService {
             ]
           : []),
       ],
-    }
+    };
 
     // Apply filters
     if (filters.types?.length) {
-      where.type = { in: filters.types }
+      where.type = { in: filters.types };
     }
 
     if (filters.authorId) {
-      where.authorId = filters.authorId
+      where.authorId = filters.authorId;
     }
 
     if (filters.isPinned !== undefined) {
-      where.isPinned = filters.isPinned
+      where.isPinned = filters.isPinned;
     }
 
     if (filters.search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { content: { contains: filters.search, mode: 'insensitive' } },
-      ]
+        { title: { contains: filters.search, mode: "insensitive" } },
+        { content: { contains: filters.search, mode: "insensitive" } },
+      ];
     }
 
     if (filters.fromDate) {
-      where.publishedAt = { gte: filters.fromDate }
+      where.publishedAt = { gte: filters.fromDate };
     }
 
     if (filters.toDate) {
-      where.publishedAt = { ...(where.publishedAt as any || {}), lte: filters.toDate }
+      where.publishedAt = {
+        ...((where.publishedAt as any) || {}),
+        lte: filters.toDate,
+      };
     }
 
     // Get posts with pinned first
     const [posts, total, unreadCount] = await Promise.all([
       db.companyPost.findMany({
         where,
-        orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
+        orderBy: [{ isPinned: "desc" }, { publishedAt: "desc" }],
         skip,
         take: pageSize,
         include: {
@@ -194,7 +197,7 @@ export class CompanyFeedService {
           },
           comments: {
             take: 3,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             include: {
               author: {
                 select: {
@@ -220,15 +223,17 @@ export class CompanyFeedService {
       }),
       db.companyPost.count({ where }),
       this.getUnreadCount(employeeId),
-    ])
+    ]);
 
     // Transform posts to include read status
     const transformedPosts = posts.map((post: any) => ({
       ...post,
       isRead: post.readBy.length > 0,
-      userReaction: post.reactions.find((r: any) => r.employeeId === employeeId),
+      userReaction: post.reactions.find(
+        (r: any) => r.employeeId === employeeId,
+      ),
       readBy: undefined,
-    }))
+    }));
 
     return {
       posts: transformedPosts,
@@ -237,7 +242,7 @@ export class CompanyFeedService {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
       unreadCount,
-    }
+    };
   }
 
   /**
@@ -275,7 +280,7 @@ export class CompanyFeedService {
           },
         },
         comments: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: "asc" },
           include: {
             author: {
               select: {
@@ -294,18 +299,18 @@ export class CompanyFeedService {
           },
         },
       },
-    })
+    });
 
     if (!post) {
-      throw new Error('Post not found')
+      throw new Error("Post not found");
     }
 
     // Mark as read if employeeId provided
     if (employeeId) {
-      await this.markAsRead(postId, employeeId)
+      await this.markAsRead(postId, employeeId);
     }
 
-    return post
+    return post;
   }
 
   /**
@@ -320,21 +325,21 @@ export class CompanyFeedService {
           employeeId,
         },
       },
-    })
+    });
 
     if (existing) {
       if (existing.emoji === emoji) {
         // Remove reaction (toggle off)
         await db.postReaction.delete({
           where: { id: existing.id },
-        })
-        return { removed: true }
+        });
+        return { removed: true };
       } else {
         // Update to new emoji
         return db.postReaction.update({
           where: { id: existing.id },
           data: { emoji },
-        })
+        });
       }
     }
 
@@ -345,7 +350,7 @@ export class CompanyFeedService {
         employeeId,
         emoji,
       },
-    })
+    });
   }
 
   /**
@@ -358,10 +363,10 @@ export class CompanyFeedService {
         id: postId,
         tenantId: this.tenantId,
       },
-    })
+    });
 
     if (!post) {
-      throw new Error('Post not found')
+      throw new Error("Post not found");
     }
 
     return db.postComment.create({
@@ -379,7 +384,7 @@ export class CompanyFeedService {
           },
         },
       },
-    })
+    });
   }
 
   /**
@@ -401,7 +406,7 @@ export class CompanyFeedService {
       update: {
         readAt: new Date(),
       },
-    })
+    });
   }
 
   /**
@@ -412,12 +417,12 @@ export class CompanyFeedService {
     const employee = await db.employee.findUnique({
       where: { id: employeeId },
       select: { departmentId: true },
-    })
+    });
 
     const readPostIds = await db.postRead.findMany({
       where: { employeeId },
       select: { postId: true },
-    })
+    });
 
     return db.companyPost.count({
       where: {
@@ -438,7 +443,7 @@ export class CompanyFeedService {
             : []),
         ],
       },
-    })
+    });
   }
 
   /**
@@ -447,7 +452,7 @@ export class CompanyFeedService {
   async updatePost(
     postId: string,
     authorId: string,
-    updates: Partial<CreatePostInput>
+    updates: Partial<CreatePostInput>,
   ) {
     // Verify ownership
     const post = await db.companyPost.findFirst({
@@ -456,10 +461,10 @@ export class CompanyFeedService {
         tenantId: this.tenantId,
         authorId,
       },
-    })
+    });
 
     if (!post) {
-      throw new Error('Post not found or you are not the author')
+      throw new Error("Post not found or you are not the author");
     }
 
     return db.companyPost.update({
@@ -473,7 +478,7 @@ export class CompanyFeedService {
         mediaUrls: updates.mediaUrls,
         updatedAt: new Date(),
       },
-    })
+    });
   }
 
   /**
@@ -487,10 +492,10 @@ export class CompanyFeedService {
         tenantId: this.tenantId,
         ...(isAdmin ? {} : { authorId }),
       },
-    })
+    });
 
     if (!post) {
-      throw new Error('Post not found or you do not have permission')
+      throw new Error("Post not found or you do not have permission");
     }
 
     return db.companyPost.update({
@@ -498,17 +503,13 @@ export class CompanyFeedService {
       data: {
         status: PostStatus.ARCHIVED,
       },
-    })
+    });
   }
 
   /**
    * RSVP to an event
    */
-  async rsvpEvent(
-    eventId: string,
-    employeeId: string,
-    status: RsvpStatus
-  ) {
+  async rsvpEvent(eventId: string, employeeId: string, status: RsvpStatus) {
     const event = await db.companyEvent.findFirst({
       where: {
         id: eventId,
@@ -519,10 +520,10 @@ export class CompanyFeedService {
           select: { attendees: true },
         },
       },
-    })
+    });
 
     if (!event) {
-      throw new Error('Event not found')
+      throw new Error("Event not found");
     }
 
     // Check max attendees for ATTENDING status
@@ -531,7 +532,7 @@ export class CompanyFeedService {
       event.maxAttendees &&
       event._count.attendees >= event.maxAttendees
     ) {
-      throw new Error('Event is at full capacity')
+      throw new Error("Event is at full capacity");
     }
 
     // Upsert attendance
@@ -551,7 +552,7 @@ export class CompanyFeedService {
         status,
         respondedAt: new Date(),
       },
-    })
+    });
   }
 
   /**
@@ -563,7 +564,7 @@ export class CompanyFeedService {
         tenantId: this.tenantId,
         startDate: { gte: new Date() },
       },
-      orderBy: { startDate: 'asc' },
+      orderBy: { startDate: "asc" },
       take: limit,
       include: {
         organizer: {
@@ -577,7 +578,7 @@ export class CompanyFeedService {
           select: { attendees: true },
         },
       },
-    })
+    });
   }
 
   /**
@@ -590,7 +591,7 @@ export class CompanyFeedService {
         status: PostStatus.PUBLISHED,
         type: PostType.ANNOUNCEMENT,
       },
-      orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
+      orderBy: [{ isPinned: "desc" }, { publishedAt: "desc" }],
       take: limit,
       include: {
         author: {
@@ -608,26 +609,29 @@ export class CompanyFeedService {
           },
         },
       },
-    })
+    });
   }
 
   /**
    * Create an event
    */
-  async createEvent(organizerId: string, input: {
-    title: string
-    description?: string
-    type: EventType
-    startDate: Date
-    endDate: Date
-    isAllDay?: boolean
-    location?: string
-    isVirtual?: boolean
-    virtualLink?: string
-    maxAttendees?: number
-    requiresRsvp?: boolean
-    rsvpDeadline?: Date
-  }) {
+  async createEvent(
+    organizerId: string,
+    input: {
+      title: string;
+      description?: string;
+      type: EventType;
+      startDate: Date;
+      endDate: Date;
+      isAllDay?: boolean;
+      location?: string;
+      isVirtual?: boolean;
+      virtualLink?: string;
+      maxAttendees?: number;
+      requiresRsvp?: boolean;
+      rsvpDeadline?: Date;
+    },
+  ) {
     return db.companyEvent.create({
       data: {
         tenantId: this.tenantId,
@@ -653,11 +657,11 @@ export class CompanyFeedService {
           },
         },
       },
-    })
+    });
   }
 }
 
 // Factory function
 export function createCompanyFeedService(tenantId: string): CompanyFeedService {
-  return new CompanyFeedService(tenantId)
+  return new CompanyFeedService(tenantId);
 }

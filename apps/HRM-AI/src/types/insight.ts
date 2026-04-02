@@ -1,4 +1,4 @@
-import type { InsightType, InsightSeverity } from '@prisma/client';
+import type { InsightType, InsightSeverity } from ".prisma/hrm-ai-client";
 
 export interface Insight {
   id: string;

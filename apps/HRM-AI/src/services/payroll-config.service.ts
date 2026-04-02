@@ -1,8 +1,8 @@
 // src/services/payroll-config.service.ts
 // Payroll Configuration Service
 
-import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
+import { db } from "@/lib/db";
+import type { Prisma } from ".prisma/hrm-ai-client";
 import {
   PIT_BRACKETS,
   PIT_DEDUCTIONS,
@@ -10,7 +10,7 @@ import {
   INSURANCE_SALARY_CAP,
   OT_RATES,
   WORK_SETTINGS,
-} from '@/lib/payroll/constants'
+} from "@/lib/payroll/constants";
 
 export const payrollConfigService = {
   // ═══════════════════════════════════════════════════════════════
@@ -21,27 +21,24 @@ export const payrollConfigService = {
    * Get current active config for tenant
    */
   async getCurrentConfig(tenantId: string) {
-    const now = new Date()
+    const now = new Date();
 
     const config = await db.payrollConfig.findFirst({
       where: {
         tenantId,
         isActive: true,
         effectiveFrom: { lte: now },
-        OR: [
-          { effectiveTo: null },
-          { effectiveTo: { gte: now } },
-        ],
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
       },
-      orderBy: { effectiveFrom: 'desc' },
-    })
+      orderBy: { effectiveFrom: "desc" },
+    });
 
     // If no config exists, return default values
     if (!config) {
-      return this.getDefaultConfig()
+      return this.getDefaultConfig();
     }
 
-    return config
+    return config;
   },
 
   /**
@@ -50,8 +47,8 @@ export const payrollConfigService = {
   async findAll(tenantId: string) {
     return db.payrollConfig.findMany({
       where: { tenantId },
-      orderBy: { effectiveFrom: 'desc' },
-    })
+      orderBy: { effectiveFrom: "desc" },
+    });
   },
 
   /**
@@ -60,7 +57,7 @@ export const payrollConfigService = {
   async findById(tenantId: string, id: string) {
     return db.payrollConfig.findFirst({
       where: { id, tenantId },
-    })
+    });
   },
 
   /**
@@ -68,15 +65,15 @@ export const payrollConfigService = {
    */
   async create(
     tenantId: string,
-    data: Omit<Prisma.PayrollConfigCreateInput, 'tenant'>
+    data: Omit<Prisma.PayrollConfigCreateInput, "tenant">,
   ) {
     // Deactivate overlapping configs
     if (data.isActive) {
       await this.deactivateOverlapping(
         tenantId,
         data.effectiveFrom as Date,
-        data.effectiveTo as Date | null
-      )
+        data.effectiveTo as Date | null,
+      );
     }
 
     return db.payrollConfig.create({
@@ -84,7 +81,7 @@ export const payrollConfigService = {
         ...data,
         tenant: { connect: { id: tenantId } },
       },
-    })
+    });
   },
 
   /**
@@ -93,20 +90,20 @@ export const payrollConfigService = {
   async update(
     tenantId: string,
     id: string,
-    data: Omit<Prisma.PayrollConfigUpdateInput, 'tenant'>
+    data: Omit<Prisma.PayrollConfigUpdateInput, "tenant">,
   ) {
     const config = await db.payrollConfig.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!config) {
-      throw new Error('Cấu hình không tồn tại')
+      throw new Error("Cấu hình không tồn tại");
     }
 
     return db.payrollConfig.update({
       where: { id },
       data,
-    })
+    });
   },
 
   /**
@@ -115,15 +112,15 @@ export const payrollConfigService = {
   async delete(tenantId: string, id: string) {
     const config = await db.payrollConfig.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!config) {
-      throw new Error('Cấu hình không tồn tại')
+      throw new Error("Cấu hình không tồn tại");
     }
 
     return db.payrollConfig.delete({
       where: { id },
-    })
+    });
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -136,7 +133,7 @@ export const payrollConfigService = {
   async deactivateOverlapping(
     tenantId: string,
     effectiveFrom: Date,
-    effectiveTo: Date | null
+    effectiveTo: Date | null,
   ) {
     const where: Prisma.PayrollConfigWhereInput = {
       tenantId,
@@ -161,12 +158,12 @@ export const payrollConfigService = {
           ],
         },
       ],
-    }
+    };
 
     await db.payrollConfig.updateMany({
       where,
       data: { isActive: false },
-    })
+    });
   },
 
   /**
@@ -199,17 +196,17 @@ export const payrollConfigService = {
       standardWorkHours: WORK_SETTINGS.STANDARD_WORK_HOURS,
 
       isActive: true,
-    }
+    };
   },
 
   /**
    * Create default config for tenant
    */
   async createDefaultConfig(tenantId: string) {
-    const defaults = this.getDefaultConfig()
+    const defaults = this.getDefaultConfig();
 
     return this.create(tenantId, {
-      effectiveFrom: new Date('2024-01-01'),
+      effectiveFrom: new Date("2024-01-01"),
       effectiveTo: null,
       bhxhEmployeeRate: defaults.bhxhEmployeeRate,
       bhxhEmployerRate: defaults.bhxhEmployerRate,
@@ -228,8 +225,8 @@ export const payrollConfigService = {
       standardWorkDays: defaults.standardWorkDays,
       standardWorkHours: defaults.standardWorkHours,
       isActive: true,
-      notes: 'Cấu hình mặc định theo quy định VN 2024-2026',
-    })
+      notes: "Cấu hình mặc định theo quy định VN 2024-2026",
+    });
   },
 
   /**
@@ -241,18 +238,15 @@ export const payrollConfigService = {
         tenantId,
         isActive: true,
         effectiveFrom: { lte: date },
-        OR: [
-          { effectiveTo: null },
-          { effectiveTo: { gte: date } },
-        ],
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: date } }],
       },
-      orderBy: { effectiveFrom: 'desc' },
-    })
+      orderBy: { effectiveFrom: "desc" },
+    });
 
     if (!config) {
-      return this.getDefaultConfig()
+      return this.getDefaultConfig();
     }
 
-    return config
+    return config;
   },
-}
+};

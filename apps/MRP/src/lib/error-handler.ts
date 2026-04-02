@@ -3,10 +3,10 @@
 // Centralized error handling for API routes
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { logger } from './logger';
-import { ZodError, ZodIssue } from 'zod';
-import { Prisma } from '@prisma/client';
+import { NextRequest, NextResponse } from "next/server";
+import { logger } from "./logger";
+import { ZodError, ZodIssue } from "zod";
+import { Prisma } from ".prisma/mrp-client";
 
 // =============================================================================
 // TYPES
@@ -33,9 +33,9 @@ export class AppError extends Error {
   constructor(
     message: string,
     statusCode: number = 500,
-    code: string = 'INTERNAL_ERROR',
+    code: string = "INTERNAL_ERROR",
     isOperational: boolean = true,
-    context?: ErrorContext
+    context?: ErrorContext,
   ) {
     super(message);
     this.statusCode = statusCode;
@@ -54,19 +54,19 @@ export class AppError extends Error {
 // Common error classes
 export class ValidationError extends AppError {
   constructor(message: string, context?: ErrorContext) {
-    super(message, 400, 'VALIDATION_ERROR', true, context);
+    super(message, 400, "VALIDATION_ERROR", true, context);
   }
 }
 
 export class AuthenticationError extends AppError {
-  constructor(message: string = 'Authentication required') {
-    super(message, 401, 'AUTHENTICATION_ERROR', true);
+  constructor(message: string = "Authentication required") {
+    super(message, 401, "AUTHENTICATION_ERROR", true);
   }
 }
 
 export class AuthorizationError extends AppError {
-  constructor(message: string = 'Permission denied') {
-    super(message, 403, 'AUTHORIZATION_ERROR', true);
+  constructor(message: string = "Permission denied") {
+    super(message, 403, "AUTHORIZATION_ERROR", true);
   }
 }
 
@@ -75,21 +75,21 @@ export class NotFoundError extends AppError {
     super(
       id ? `${resource} with id '${id}' not found` : `${resource} not found`,
       404,
-      'NOT_FOUND',
-      true
+      "NOT_FOUND",
+      true,
     );
   }
 }
 
 export class ConflictError extends AppError {
   constructor(message: string) {
-    super(message, 409, 'CONFLICT', true);
+    super(message, 409, "CONFLICT", true);
   }
 }
 
 export class RateLimitError extends AppError {
-  constructor(message: string = 'Too many requests') {
-    super(message, 429, 'RATE_LIMIT', true);
+  constructor(message: string = "Too many requests") {
+    super(message, 429, "RATE_LIMIT", true);
   }
 }
 
@@ -109,7 +109,7 @@ export function handleError(error: unknown): NextResponse<ErrorResponse> {
   if (error instanceof Error) {
     logger.logError(error);
   } else {
-    logger.error('Unknown error', { error });
+    logger.error("Unknown error", { error });
   }
 
   // Handle known error types
@@ -121,25 +121,25 @@ export function handleError(error: unknown): NextResponse<ErrorResponse> {
         code: error.code,
         details: error.context,
       },
-      { status: error.statusCode }
+      { status: error.statusCode },
     );
   }
 
   // Handle Zod validation errors
   if (error instanceof ZodError) {
-    const details = error.issues.map(e => ({
-      field: e.path.join('.'),
+    const details = error.issues.map((e) => ({
+      field: e.path.join("."),
       message: e.message,
     }));
 
     return NextResponse.json(
       {
         success: false,
-        error: 'Validation failed',
-        code: 'VALIDATION_ERROR',
+        error: "Validation failed",
+        code: "VALIDATION_ERROR",
         details,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -152,27 +152,28 @@ export function handleError(error: unknown): NextResponse<ErrorResponse> {
     return NextResponse.json(
       {
         success: false,
-        error: 'Database validation error',
-        code: 'DB_VALIDATION_ERROR',
+        error: "Database validation error",
+        code: "DB_VALIDATION_ERROR",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   // Handle generic errors
   if (error instanceof Error) {
     // Don't expose internal error messages in production
-    const message = process.env.NODE_ENV === 'production'
-      ? 'An unexpected error occurred'
-      : error.message;
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "An unexpected error occurred"
+        : error.message;
 
     return NextResponse.json(
       {
         success: false,
         error: message,
-        code: 'INTERNAL_ERROR',
+        code: "INTERNAL_ERROR",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -180,10 +181,10 @@ export function handleError(error: unknown): NextResponse<ErrorResponse> {
   return NextResponse.json(
     {
       success: false,
-      error: 'An unexpected error occurred',
-      code: 'UNKNOWN_ERROR',
+      error: "An unexpected error occurred",
+      code: "UNKNOWN_ERROR",
     },
-    { status: 500 }
+    { status: 500 },
   );
 }
 
@@ -191,62 +192,67 @@ export function handleError(error: unknown): NextResponse<ErrorResponse> {
 // PRISMA ERROR HANDLER
 // =============================================================================
 
-function handlePrismaError(error: Prisma.PrismaClientKnownRequestError): NextResponse<ErrorResponse> {
+function handlePrismaError(
+  error: Prisma.PrismaClientKnownRequestError,
+): NextResponse<ErrorResponse> {
   switch (error.code) {
-    case 'P2002':
+    case "P2002":
       // Unique constraint violation
-      const field = (error.meta?.target as string[])?.join(', ') || 'field';
+      const field = (error.meta?.target as string[])?.join(", ") || "field";
       return NextResponse.json(
         {
           success: false,
           error: `A record with this ${field} already exists`,
-          code: 'DUPLICATE_ENTRY',
+          code: "DUPLICATE_ENTRY",
         },
-        { status: 409 }
+        { status: 409 },
       );
 
-    case 'P2025':
+    case "P2025":
       // Record not found
       return NextResponse.json(
         {
           success: false,
-          error: 'Record not found',
-          code: 'NOT_FOUND',
+          error: "Record not found",
+          code: "NOT_FOUND",
         },
-        { status: 404 }
+        { status: 404 },
       );
 
-    case 'P2003':
+    case "P2003":
       // Foreign key constraint violation
       return NextResponse.json(
         {
           success: false,
-          error: 'Related record not found',
-          code: 'FOREIGN_KEY_ERROR',
+          error: "Related record not found",
+          code: "FOREIGN_KEY_ERROR",
         },
-        { status: 400 }
+        { status: 400 },
       );
 
-    case 'P2014':
+    case "P2014":
       // Required relation violation
       return NextResponse.json(
         {
           success: false,
-          error: 'Required relation missing',
-          code: 'RELATION_ERROR',
+          error: "Required relation missing",
+          code: "RELATION_ERROR",
         },
-        { status: 400 }
+        { status: 400 },
       );
 
     default:
-      logger.error('Unhandled Prisma error', { code: error.code, meta: error.meta });
+      logger.error("Unhandled Prisma error", {
+        code: error.code,
+        meta: error.meta,
+      });
       return NextResponse.json(
         {
           success: false,
-          error: 'Database error',
+          error: "Database error",
           code: `DB_ERROR_${error.code}`,
         },
-        { status: 500 }
+        { status: 500 },
       );
   }
 }
@@ -262,7 +268,7 @@ type AsyncHandler<T> = () => Promise<T>;
  */
 export async function tryCatch<T>(
   fn: AsyncHandler<T>,
-  errorMessage?: string
+  errorMessage?: string,
 ): Promise<T> {
   try {
     return await fn();
@@ -271,9 +277,10 @@ export async function tryCatch<T>(
       throw error;
     }
     throw new AppError(
-      errorMessage || (error instanceof Error ? error.message : 'Operation failed'),
+      errorMessage ||
+        (error instanceof Error ? error.message : "Operation failed"),
       500,
-      'OPERATION_FAILED'
+      "OPERATION_FAILED",
     );
   }
 }
@@ -284,7 +291,7 @@ export async function tryCatch<T>(
 
 type RouteHandler = (
   request: NextRequest,
-  context?: { params: RouteParams }
+  context?: { params: RouteParams },
 ) => Promise<NextResponse>;
 
 /**
@@ -307,7 +314,7 @@ export function withErrorHandling(handler: RouteHandler): RouteHandler {
 export function successResponse<T>(
   data: T,
   message?: string,
-  status: number = 200
+  status: number = 200,
 ): NextResponse {
   return NextResponse.json(
     {
@@ -315,12 +322,12 @@ export function successResponse<T>(
       data,
       message,
     },
-    { status }
+    { status },
   );
 }
 
 export function createdResponse<T>(data: T, message?: string): NextResponse {
-  return successResponse(data, message || 'Created successfully', 201);
+  return successResponse(data, message || "Created successfully", 201);
 }
 
 export function noContentResponse(): NextResponse {
@@ -332,7 +339,7 @@ export function paginatedResponse<T>(
   total: number,
   page: number,
   pageSize: number,
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
 ): NextResponse {
   return NextResponse.json({
     success: true,

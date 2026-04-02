@@ -1,35 +1,39 @@
-import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { UserRole } from "@prisma/client"
-import { notificationService } from "@/lib/services/notification.service"
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { UserRole } from ".prisma/hrm-client";
+import { notificationService } from "@/lib/services/notification.service";
 
-const ALLOWED_ROLES: UserRole[] = ["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF"]
+const ALLOWED_ROLES: UserRole[] = ["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF"];
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ id: string; taskId: string }> }
+  { params }: { params: Promise<{ id: string; taskId: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await auth();
+  if (!session?.user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!ALLOWED_ROLES.includes(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { id, taskId } = await params
+  const { id, taskId } = await params;
 
   // Verify task belongs to this employee's checklist
   const task = await prisma.onboardingTask.findUnique({
     where: { id: taskId },
     include: { checklist: { select: { id: true, employeeId: true } } },
-  })
+  });
 
   if (!task || task.checklist.employeeId !== id) {
-    return NextResponse.json({ error: "Task not found" }, { status: 404 })
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
   if (task.status !== "PENDING") {
-    return NextResponse.json({ error: "Task already processed" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Task already processed" },
+      { status: 400 },
+    );
   }
 
   // Mark task DONE
@@ -40,30 +44,30 @@ export async function POST(
       doneAt: new Date(),
       doneBy: session.user.id,
     },
-  })
+  });
 
   // Check if all tasks are DONE or SKIPPED
   const allTasks = await prisma.onboardingTask.findMany({
     where: { checklistId: task.checklist.id },
-  })
+  });
 
   const allCompleted = allTasks.every((t) =>
-    t.id === taskId ? true : t.status === "DONE" || t.status === "SKIPPED"
-  )
+    t.id === taskId ? true : t.status === "DONE" || t.status === "SKIPPED",
+  );
 
   if (allCompleted) {
     // Mark checklist completed
     await prisma.onboardingChecklist.update({
       where: { id: task.checklist.id },
       data: { completedAt: new Date() },
-    })
+    });
 
     // Set employee status to ACTIVE
     const employee = await prisma.employee.update({
       where: { id },
       data: { status: "ACTIVE" },
       select: { fullName: true, employeeCode: true },
-    })
+    });
 
     // Notify HR_MANAGER
     try {
@@ -72,11 +76,11 @@ export async function POST(
         title: "Onboarding hoàn tất",
         message: `${employee.fullName} (${employee.employeeCode}) đã hoàn tất onboarding`,
         link: `/employees/${id}`,
-      })
+      });
     } catch (e) {
-      console.error("Notification error:", e)
+      console.error("Notification error:", e);
     }
   }
 
-  return NextResponse.json(updated)
+  return NextResponse.json(updated);
 }

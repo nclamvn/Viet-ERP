@@ -3,25 +3,28 @@
  * GET - Get all threads the user participates in
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/api/with-auth';
-import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/api/with-auth";
+import { logger } from "@/lib/logger";
 
-import { checkReadEndpointLimit } from '@/lib/rate-limit';
+import { checkReadEndpointLimit } from "@/lib/rate-limit";
 export const GET = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const { searchParams } = new URL(request.url);
-    const contextType = searchParams.get('contextType');
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20') || 20, 100);
+    const { searchParams } = new URL(request.url);
+    const contextType = searchParams.get("contextType");
+    const status = searchParams.get("status");
+    const search = searchParams.get("search");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = Math.min(
+      parseInt(searchParams.get("limit") || "20") || 20,
+      100,
+    );
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -34,21 +37,26 @@ const { searchParams } = new URL(request.url);
       ],
     };
 
-    if (contextType && contextType !== 'all') {
-      where.contextType = contextType as Prisma.ConversationThreadWhereInput['contextType'];
+    if (contextType && contextType !== "all") {
+      where.contextType =
+        contextType as Prisma.ConversationThreadWhereInput["contextType"];
     }
 
-    if (status && status !== 'all') {
-      where.status = status as Prisma.ConversationThreadWhereInput['status'];
+    if (status && status !== "all") {
+      where.status = status as Prisma.ConversationThreadWhereInput["status"];
     }
 
     if (search) {
       where.AND = [
         {
           OR: [
-            { title: { contains: search, mode: 'insensitive' } },
-            { contextTitle: { contains: search, mode: 'insensitive' } },
-            { messages: { some: { content: { contains: search, mode: 'insensitive' } } } },
+            { title: { contains: search, mode: "insensitive" } },
+            { contextTitle: { contains: search, mode: "insensitive" } },
+            {
+              messages: {
+                some: { content: { contains: search, mode: "insensitive" } },
+              },
+            },
           ],
         },
       ];
@@ -71,7 +79,7 @@ const { searchParams } = new URL(request.url);
             take: 5,
           },
           messages: {
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             take: 1,
             include: {
               sender: {
@@ -84,8 +92,8 @@ const { searchParams } = new URL(request.url);
           },
         },
         orderBy: [
-          { lastMessageAt: { sort: 'desc', nulls: 'last' } },
-          { updatedAt: 'desc' },
+          { lastMessageAt: { sort: "desc", nulls: "last" } },
+          { updatedAt: "desc" },
         ],
         skip,
         take: limit,
@@ -126,7 +134,7 @@ const { searchParams } = new URL(request.url);
           unreadCount,
           lastMessage: thread.messages[0] || null,
         };
-      })
+      }),
     );
 
     return NextResponse.json({
@@ -139,10 +147,12 @@ const { searchParams } = new URL(request.url);
       },
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: '/api/discussions/threads/list' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "/api/discussions/threads/list",
+    });
     return NextResponse.json(
-      { error: 'Failed to fetch threads' },
-      { status: 500 }
+      { error: "Failed to fetch threads" },
+      { status: 500 },
     );
   }
 });

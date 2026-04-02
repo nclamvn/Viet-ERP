@@ -6,21 +6,21 @@
  * Business logic for workforce analytics and forecasting
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from ".prisma/hrm-ai-client";
 
 // Types inline to keep file self-contained
 export enum ForecastScenario {
-  BASELINE = 'BASELINE',
-  OPTIMISTIC = 'OPTIMISTIC',
-  PESSIMISTIC = 'PESSIMISTIC',
-  CUSTOM = 'CUSTOM',
+  BASELINE = "BASELINE",
+  OPTIMISTIC = "OPTIMISTIC",
+  PESSIMISTIC = "PESSIMISTIC",
+  CUSTOM = "CUSTOM",
 }
 
 export enum PlanningHorizon {
-  QUARTERLY = 'QUARTERLY',
-  ANNUAL = 'ANNUAL',
-  THREE_YEAR = 'THREE_YEAR',
-  FIVE_YEAR = 'FIVE_YEAR',
+  QUARTERLY = "QUARTERLY",
+  ANNUAL = "ANNUAL",
+  THREE_YEAR = "THREE_YEAR",
+  FIVE_YEAR = "FIVE_YEAR",
 }
 
 export interface HeadcountPlan {
@@ -28,28 +28,28 @@ export interface HeadcountPlan {
   name: string;
   fiscalYear: number;
   horizon: PlanningHorizon;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'ACTIVE' | 'ARCHIVED';
-  
+  status: "DRAFT" | "SUBMITTED" | "APPROVED" | "ACTIVE" | "ARCHIVED";
+
   // Current state
   currentHeadcount: number;
   currentFTE: number;
   currentCost: number;
-  
+
   // Targets
   targetHeadcount: number;
   targetFTE: number;
   targetCost: number;
-  
+
   // Breakdown by department
   departmentPlans: DepartmentPlan[];
-  
+
   // Assumptions
   assumptions: PlanAssumptions;
-  
+
   // Approval
   approvedBy?: string;
   approvedAt?: Date;
-  
+
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -58,19 +58,19 @@ export interface HeadcountPlan {
 export interface DepartmentPlan {
   departmentId: string;
   departmentName: string;
-  
+
   currentHeadcount: number;
   targetHeadcount: number;
-  
+
   plannedHires: number;
   plannedAttrition: number;
   plannedTransfersIn: number;
   plannedTransfersOut: number;
-  
+
   netChange: number;
-  
+
   roles: RolePlan[];
-  
+
   justification?: string;
 }
 
@@ -78,9 +78,9 @@ export interface RolePlan {
   positionId?: string;
   title: string;
   count: number;
-  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  timing: 'Q1' | 'Q2' | 'Q3' | 'Q4';
-  type: 'NEW' | 'REPLACEMENT' | 'CONVERSION';
+  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  timing: "Q1" | "Q2" | "Q3" | "Q4";
+  type: "NEW" | "REPLACEMENT" | "CONVERSION";
   estimatedCost: number;
   justification?: string;
 }
@@ -97,7 +97,7 @@ export interface PlanAssumptions {
 
 export interface WorkforceMetrics {
   asOfDate: Date;
-  
+
   // Headcount
   headcount: {
     total: number;
@@ -105,11 +105,15 @@ export interface WorkforceMetrics {
     partTime: number;
     contractors: number;
     fte: number;
-    byDepartment: { departmentId: string; departmentName: string; count: number }[];
+    byDepartment: {
+      departmentId: string;
+      departmentName: string;
+      count: number;
+    }[];
     byLocation: { locationId: string; locationName: string; count: number }[];
     byGrade: { gradeId: string; gradeName: string; count: number }[];
   };
-  
+
   // Demographics
   demographics: {
     averageAge: number;
@@ -118,17 +122,22 @@ export interface WorkforceMetrics {
     ageDistribution: { range: string; percentage: number }[];
     tenureDistribution: { range: string; percentage: number }[];
   };
-  
+
   // Movement
   movement: {
     hires: { period: string; count: number }[];
-    terminations: { period: string; count: number; voluntary: number; involuntary: number }[];
+    terminations: {
+      period: string;
+      count: number;
+      voluntary: number;
+      involuntary: number;
+    }[];
     attritionRate: number;
     turnoverRate: number;
     retentionRate: number;
     internalMobility: number;
   };
-  
+
   // Cost
   cost: {
     totalLaborCost: number;
@@ -137,7 +146,7 @@ export interface WorkforceMetrics {
     benefitsCostPercent: number;
     laborCostByDepartment: { departmentId: string; cost: number }[];
   };
-  
+
   // Productivity
   productivity: {
     revenuePerEmployee: number;
@@ -153,12 +162,12 @@ export interface AttritionForecast {
   scenario: ForecastScenario;
   horizon: PlanningHorizon;
   generatedAt: Date;
-  
+
   // Overall
   projectedAttrition: number;
   projectedAttritionRate: number;
   confidenceLevel: number;
-  
+
   // By period
   byPeriod: {
     period: string;
@@ -166,12 +175,17 @@ export interface AttritionForecast {
     lowerBound: number;
     upperBound: number;
   }[];
-  
+
   // By segment
-  byDepartment: { departmentId: string; departmentName: string; rate: number; count: number }[];
+  byDepartment: {
+    departmentId: string;
+    departmentName: string;
+    rate: number;
+    count: number;
+  }[];
   byTenure: { range: string; rate: number; count: number }[];
   byPerformance: { rating: string; rate: number; count: number }[];
-  
+
   // Risk factors
   highRiskEmployees: {
     employeeId: string;
@@ -183,10 +197,10 @@ export interface AttritionForecast {
 export interface SkillGapAnalysis {
   analysisId: string;
   asOfDate: Date;
-  
+
   // Overall gap
   overallGapScore: number; // 0-100, higher = bigger gaps
-  
+
   // By skill
   skillGaps: {
     skillId: string;
@@ -196,10 +210,10 @@ export interface SkillGapAnalysis {
     available: number;
     gap: number;
     gapPercent: number;
-    priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+    priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
     mitigationOptions: string[];
   }[];
-  
+
   // By department
   departmentGaps: {
     departmentId: string;
@@ -208,10 +222,10 @@ export interface SkillGapAnalysis {
     highGaps: number;
     totalGapScore: number;
   }[];
-  
+
   // Recommendations
   recommendations: {
-    type: 'HIRE' | 'TRAIN' | 'OUTSOURCE' | 'AUTOMATE';
+    type: "HIRE" | "TRAIN" | "OUTSOURCE" | "AUTOMATE";
     skillId: string;
     description: string;
     estimatedCost: number;
@@ -225,7 +239,7 @@ export interface ScenarioModel {
   name: string;
   description?: string;
   scenario: ForecastScenario;
-  
+
   // Inputs
   inputs: {
     growthRate: number;
@@ -234,7 +248,7 @@ export interface ScenarioModel {
     budgetChange: number;
     productivityGain: number;
   };
-  
+
   // Outputs
   outputs: {
     projectedHeadcount: number[];
@@ -242,7 +256,7 @@ export interface ScenarioModel {
     projectedProductivity: number[];
     gapToTarget: number;
   };
-  
+
   createdBy: string;
   createdAt: Date;
 }
@@ -260,40 +274,58 @@ export class WorkforceService {
 
     // Headcount queries
     const employees = await this.prisma.employee.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
       include: { department: true, position: true },
     });
 
     const total = employees.length;
-    const fullTime = employees.filter(e => e.employmentType === 'FULL_TIME').length;
-    const partTime = employees.filter(e => e.employmentType === 'PART_TIME').length;
-    const contractors = employees.filter(e => e.employmentType === 'CONTRACTOR').length;
+    const fullTime = employees.filter(
+      (e) => e.employmentType === "FULL_TIME",
+    ).length;
+    const partTime = employees.filter(
+      (e) => e.employmentType === "PART_TIME",
+    ).length;
+    const contractors = employees.filter(
+      (e) => e.employmentType === "CONTRACTOR",
+    ).length;
 
     // FTE calculation
-    const fte = fullTime + (partTime * 0.5) + (contractors * 0.8);
+    const fte = fullTime + partTime * 0.5 + contractors * 0.8;
 
     // By department
     const byDepartment = await this.prisma.employee.groupBy({
-      by: ['departmentId'],
-      where: { status: 'ACTIVE' },
+      by: ["departmentId"],
+      where: { status: "ACTIVE" },
       _count: true,
     });
 
     const departments = await this.prisma.department.findMany();
-    const deptMap = new Map(departments.map(d => [d.id, d.name]));
+    const deptMap = new Map(departments.map((d) => [d.id, d.name]));
 
     // Demographics
-    const ages = employees.map(e => {
-      const age = Math.floor((now.getTime() - new Date(e.dateOfBirth || now).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-      return age;
-    }).filter(a => a > 0 && a < 100);
+    const ages = employees
+      .map((e) => {
+        const age = Math.floor(
+          (now.getTime() - new Date(e.dateOfBirth || now).getTime()) /
+            (365.25 * 24 * 60 * 60 * 1000),
+        );
+        return age;
+      })
+      .filter((a) => a > 0 && a < 100);
 
-    const tenures = employees.map(e => {
-      return Math.floor((now.getTime() - new Date(e.hireDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const tenures = employees.map((e) => {
+      return Math.floor(
+        (now.getTime() - new Date(e.hireDate).getTime()) /
+          (365.25 * 24 * 60 * 60 * 1000),
+      );
     });
 
-    const averageAge = ages.length > 0 ? ages.reduce((a, b) => a + b, 0) / ages.length : 0;
-    const averageTenure = tenures.length > 0 ? tenures.reduce((a, b) => a + b, 0) / tenures.length : 0;
+    const averageAge =
+      ages.length > 0 ? ages.reduce((a, b) => a + b, 0) / ages.length : 0;
+    const averageTenure =
+      tenures.length > 0
+        ? tenures.reduce((a, b) => a + b, 0) / tenures.length
+        : 0;
 
     // Movement - hires and terminations
     const hires = await this.prisma.employee.count({
@@ -304,7 +336,7 @@ export class WorkforceService {
 
     const terminations = await this.prisma.employee.count({
       where: {
-        status: 'TERMINATED',
+        status: "TERMINATED",
         terminationDate: { gte: yearStart },
       },
     });
@@ -314,12 +346,13 @@ export class WorkforceService {
 
     // Cost calculations (simplified)
     const totalSalary = await this.prisma.employee.aggregate({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
       _sum: { baseSalary: true },
     });
 
     const totalLaborCost = (totalSalary._sum.baseSalary || 0) * 1.3; // 30% benefits
-    const averageSalary = total > 0 ? (totalSalary._sum.baseSalary || 0) / total : 0;
+    const averageSalary =
+      total > 0 ? (totalSalary._sum.baseSalary || 0) / total : 0;
 
     return {
       asOfDate: now,
@@ -329,9 +362,9 @@ export class WorkforceService {
         partTime,
         contractors,
         fte,
-        byDepartment: byDepartment.map(d => ({
+        byDepartment: byDepartment.map((d) => ({
           departmentId: d.departmentId,
-          departmentName: deptMap.get(d.departmentId) || 'Unknown',
+          departmentName: deptMap.get(d.departmentId) || "Unknown",
           count: d._count,
         })),
         byLocation: [],
@@ -345,8 +378,15 @@ export class WorkforceService {
         tenureDistribution: this.calculateTenureDistribution(tenures),
       },
       movement: {
-        hires: [{ period: 'YTD', count: hires }],
-        terminations: [{ period: 'YTD', count: terminations, voluntary: Math.floor(terminations * 0.7), involuntary: Math.ceil(terminations * 0.3) }],
+        hires: [{ period: "YTD", count: hires }],
+        terminations: [
+          {
+            period: "YTD",
+            count: terminations,
+            voluntary: Math.floor(terminations * 0.7),
+            involuntary: Math.ceil(terminations * 0.3),
+          },
+        ],
         attritionRate: Math.round(attritionRate * 10) / 10,
         turnoverRate: Math.round(attritionRate * 10) / 10,
         retentionRate: Math.round(retentionRate * 10) / 10,
@@ -369,35 +409,51 @@ export class WorkforceService {
     };
   }
 
-  private calculateAgeDistribution(ages: number[]): { range: string; percentage: number }[] {
+  private calculateAgeDistribution(
+    ages: number[],
+  ): { range: string; percentage: number }[] {
     const ranges = [
-      { range: 'Under 25', min: 0, max: 25 },
-      { range: '25-34', min: 25, max: 35 },
-      { range: '35-44', min: 35, max: 45 },
-      { range: '45-54', min: 45, max: 55 },
-      { range: '55+', min: 55, max: 100 },
+      { range: "Under 25", min: 0, max: 25 },
+      { range: "25-34", min: 25, max: 35 },
+      { range: "35-44", min: 35, max: 45 },
+      { range: "45-54", min: 45, max: 55 },
+      { range: "55+", min: 55, max: 100 },
     ];
 
     const total = ages.length;
-    return ranges.map(r => ({
+    return ranges.map((r) => ({
       range: r.range,
-      percentage: total > 0 ? Math.round((ages.filter(a => a >= r.min && a < r.max).length / total) * 100) : 0,
+      percentage:
+        total > 0
+          ? Math.round(
+              (ages.filter((a) => a >= r.min && a < r.max).length / total) *
+                100,
+            )
+          : 0,
     }));
   }
 
-  private calculateTenureDistribution(tenures: number[]): { range: string; percentage: number }[] {
+  private calculateTenureDistribution(
+    tenures: number[],
+  ): { range: string; percentage: number }[] {
     const ranges = [
-      { range: 'Less than 1 year', min: 0, max: 1 },
-      { range: '1-2 years', min: 1, max: 3 },
-      { range: '3-5 years', min: 3, max: 6 },
-      { range: '6-10 years', min: 6, max: 11 },
-      { range: '10+ years', min: 11, max: 100 },
+      { range: "Less than 1 year", min: 0, max: 1 },
+      { range: "1-2 years", min: 1, max: 3 },
+      { range: "3-5 years", min: 3, max: 6 },
+      { range: "6-10 years", min: 6, max: 11 },
+      { range: "10+ years", min: 11, max: 100 },
     ];
 
     const total = tenures.length;
-    return ranges.map(r => ({
+    return ranges.map((r) => ({
       range: r.range,
-      percentage: total > 0 ? Math.round((tenures.filter(t => t >= r.min && t < r.max).length / total) * 100) : 0,
+      percentage:
+        total > 0
+          ? Math.round(
+              (tenures.filter((t) => t >= r.min && t < r.max).length / total) *
+                100,
+            )
+          : 0,
     }));
   }
 
@@ -405,12 +461,15 @@ export class WorkforceService {
   // HEADCOUNT PLANNING
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async createHeadcountPlan(data: {
-    name: string;
-    fiscalYear: number;
-    horizon: PlanningHorizon;
-    assumptions: PlanAssumptions;
-  }, createdBy: string): Promise<HeadcountPlan> {
+  async createHeadcountPlan(
+    data: {
+      name: string;
+      fiscalYear: number;
+      horizon: PlanningHorizon;
+      assumptions: PlanAssumptions;
+    },
+    createdBy: string,
+  ): Promise<HeadcountPlan> {
     const metrics = await this.getCurrentWorkforceMetrics();
 
     const plan = await this.prisma.headcountPlan.create({
@@ -418,7 +477,7 @@ export class WorkforceService {
         name: data.name,
         fiscalYear: data.fiscalYear,
         horizon: data.horizon,
-        status: 'DRAFT',
+        status: "DRAFT",
         currentHeadcount: metrics.headcount.total,
         currentFTE: metrics.headcount.fte,
         currentCost: metrics.cost.totalLaborCost,
@@ -434,10 +493,16 @@ export class WorkforceService {
     return plan as unknown as HeadcountPlan;
   }
 
-  async updateHeadcountPlan(planId: string, data: Partial<HeadcountPlan>): Promise<HeadcountPlan> {
+  async updateHeadcountPlan(
+    planId: string,
+    data: Partial<HeadcountPlan>,
+  ): Promise<HeadcountPlan> {
     // Recalculate totals from department plans if provided
     if (data.departmentPlans) {
-      data.targetHeadcount = data.departmentPlans.reduce((sum, dp) => sum + dp.targetHeadcount, 0);
+      data.targetHeadcount = data.departmentPlans.reduce(
+        (sum, dp) => sum + dp.targetHeadcount,
+        0,
+      );
     }
 
     const plan = await this.prisma.headcountPlan.update({
@@ -455,15 +520,18 @@ export class WorkforceService {
   async submitPlanForApproval(planId: string): Promise<HeadcountPlan> {
     return this.prisma.headcountPlan.update({
       where: { id: planId },
-      data: { status: 'SUBMITTED' },
+      data: { status: "SUBMITTED" },
     }) as unknown as HeadcountPlan;
   }
 
-  async approvePlan(planId: string, approvedBy: string): Promise<HeadcountPlan> {
+  async approvePlan(
+    planId: string,
+    approvedBy: string,
+  ): Promise<HeadcountPlan> {
     return this.prisma.headcountPlan.update({
       where: { id: planId },
       data: {
-        status: 'APPROVED',
+        status: "APPROVED",
         approvedBy,
         approvedAt: new Date(),
       },
@@ -483,7 +551,7 @@ export class WorkforceService {
 
     return this.prisma.headcountPlan.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -493,7 +561,7 @@ export class WorkforceService {
 
   async generateAttritionForecast(
     scenario: ForecastScenario = ForecastScenario.BASELINE,
-    horizon: PlanningHorizon = PlanningHorizon.ANNUAL
+    horizon: PlanningHorizon = PlanningHorizon.ANNUAL,
   ): Promise<AttritionForecast> {
     const metrics = await this.getCurrentWorkforceMetrics();
     const baseRate = metrics.movement.attritionRate;
@@ -514,7 +582,9 @@ export class WorkforceService {
     const totalHeadcount = metrics.headcount.total;
 
     const byPeriod = periods.map((period, index) => {
-      const projected = Math.round(totalHeadcount * (adjustedRate / 100) / periods.length);
+      const projected = Math.round(
+        (totalHeadcount * (adjustedRate / 100)) / periods.length,
+      );
       return {
         period,
         projected,
@@ -537,22 +607,22 @@ export class WorkforceService {
       projectedAttritionRate: adjustedRate,
       confidenceLevel: scenario === ForecastScenario.BASELINE ? 85 : 70,
       byPeriod,
-      byDepartment: metrics.headcount.byDepartment.map(d => ({
+      byDepartment: metrics.headcount.byDepartment.map((d) => ({
         departmentId: d.departmentId,
         departmentName: d.departmentName,
         rate: adjustedRate * (0.8 + Math.random() * 0.4),
         count: Math.round(d.count * (adjustedRate / 100)),
       })),
       byTenure: [
-        { range: 'Less than 1 year', rate: adjustedRate * 1.5, count: 5 },
-        { range: '1-2 years', rate: adjustedRate * 1.2, count: 8 },
-        { range: '3-5 years', rate: adjustedRate, count: 10 },
-        { range: '5+ years', rate: adjustedRate * 0.6, count: 7 },
+        { range: "Less than 1 year", rate: adjustedRate * 1.5, count: 5 },
+        { range: "1-2 years", rate: adjustedRate * 1.2, count: 8 },
+        { range: "3-5 years", rate: adjustedRate, count: 10 },
+        { range: "5+ years", rate: adjustedRate * 0.6, count: 7 },
       ],
       byPerformance: [
-        { rating: 'High Performer', rate: adjustedRate * 0.5, count: 3 },
-        { rating: 'Solid Performer', rate: adjustedRate, count: 15 },
-        { rating: 'Needs Improvement', rate: adjustedRate * 1.5, count: 5 },
+        { rating: "High Performer", rate: adjustedRate * 0.5, count: 3 },
+        { rating: "Solid Performer", rate: adjustedRate, count: 15 },
+        { rating: "Needs Improvement", rate: adjustedRate * 1.5, count: 5 },
       ],
       highRiskEmployees,
     };
@@ -566,25 +636,33 @@ export class WorkforceService {
       case PlanningHorizon.QUARTERLY:
         return [`Q${Math.ceil((now.getMonth() + 1) / 3)} ${year}`];
       case PlanningHorizon.ANNUAL:
-        return ['Q1', 'Q2', 'Q3', 'Q4'].map(q => `${q} ${year}`);
+        return ["Q1", "Q2", "Q3", "Q4"].map((q) => `${q} ${year}`);
       case PlanningHorizon.THREE_YEAR:
-        return [year, year + 1, year + 2].map(y => `FY${y}`);
+        return [year, year + 1, year + 2].map((y) => `FY${y}`);
       case PlanningHorizon.FIVE_YEAR:
-        return [year, year + 1, year + 2, year + 3, year + 4].map(y => `FY${y}`);
+        return [year, year + 1, year + 2, year + 3, year + 4].map(
+          (y) => `FY${y}`,
+        );
     }
   }
 
-  private async identifyHighRiskEmployees(): Promise<{ employeeId: string; riskScore: number; riskFactors: string[] }[]> {
+  private async identifyHighRiskEmployees(): Promise<
+    { employeeId: string; riskScore: number; riskFactors: string[] }[]
+  > {
     // Simplified - would use ML model
     const employees = await this.prisma.employee.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
       take: 10,
     });
 
-    return employees.slice(0, 5).map(e => ({
+    return employees.slice(0, 5).map((e) => ({
       employeeId: e.id,
       riskScore: 60 + Math.round(Math.random() * 30),
-      riskFactors: ['Low engagement score', 'No promotion in 3+ years', 'Below market compensation'],
+      riskFactors: [
+        "Low engagement score",
+        "No promotion in 3+ years",
+        "Below market compensation",
+      ],
     }));
   }
 
@@ -600,18 +678,69 @@ export class WorkforceService {
 
     // Get available skills from career profiles
     const profiles = await this.prisma.careerProfile.findMany();
-    const allSkills = profiles.flatMap(p => (p.skills as any[]) || []);
+    const allSkills = profiles.flatMap((p) => (p.skills as any[]) || []);
 
     // Calculate gaps (simplified)
     const skillGaps = [
-      { skillId: '1', skillName: 'Cloud Architecture', category: 'Technical', required: 20, available: 12, gap: 8, gapPercent: 40, priority: 'CRITICAL' as const, mitigationOptions: ['Hire', 'Train', 'Partner'] },
-      { skillId: '2', skillName: 'Data Science', category: 'Technical', required: 15, available: 8, gap: 7, gapPercent: 47, priority: 'HIGH' as const, mitigationOptions: ['Hire', 'Train'] },
-      { skillId: '3', skillName: 'Project Management', category: 'Management', required: 30, available: 25, gap: 5, gapPercent: 17, priority: 'MEDIUM' as const, mitigationOptions: ['Train', 'Promote'] },
-      { skillId: '4', skillName: 'Cybersecurity', category: 'Technical', required: 10, available: 5, gap: 5, gapPercent: 50, priority: 'CRITICAL' as const, mitigationOptions: ['Hire', 'Outsource'] },
-      { skillId: '5', skillName: 'Change Management', category: 'Leadership', required: 12, available: 10, gap: 2, gapPercent: 17, priority: 'LOW' as const, mitigationOptions: ['Train'] },
+      {
+        skillId: "1",
+        skillName: "Cloud Architecture",
+        category: "Technical",
+        required: 20,
+        available: 12,
+        gap: 8,
+        gapPercent: 40,
+        priority: "CRITICAL" as const,
+        mitigationOptions: ["Hire", "Train", "Partner"],
+      },
+      {
+        skillId: "2",
+        skillName: "Data Science",
+        category: "Technical",
+        required: 15,
+        available: 8,
+        gap: 7,
+        gapPercent: 47,
+        priority: "HIGH" as const,
+        mitigationOptions: ["Hire", "Train"],
+      },
+      {
+        skillId: "3",
+        skillName: "Project Management",
+        category: "Management",
+        required: 30,
+        available: 25,
+        gap: 5,
+        gapPercent: 17,
+        priority: "MEDIUM" as const,
+        mitigationOptions: ["Train", "Promote"],
+      },
+      {
+        skillId: "4",
+        skillName: "Cybersecurity",
+        category: "Technical",
+        required: 10,
+        available: 5,
+        gap: 5,
+        gapPercent: 50,
+        priority: "CRITICAL" as const,
+        mitigationOptions: ["Hire", "Outsource"],
+      },
+      {
+        skillId: "5",
+        skillName: "Change Management",
+        category: "Leadership",
+        required: 12,
+        available: 10,
+        gap: 2,
+        gapPercent: 17,
+        priority: "LOW" as const,
+        mitigationOptions: ["Train"],
+      },
     ];
 
-    const overallGapScore = skillGaps.reduce((sum, g) => sum + g.gapPercent, 0) / skillGaps.length;
+    const overallGapScore =
+      skillGaps.reduce((sum, g) => sum + g.gapPercent, 0) / skillGaps.length;
 
     return {
       analysisId: `SKG-${Date.now()}`,
@@ -619,14 +748,21 @@ export class WorkforceService {
       overallGapScore: Math.round(overallGapScore),
       skillGaps,
       departmentGaps: [],
-      recommendations: skillGaps.filter(g => g.priority === 'CRITICAL' || g.priority === 'HIGH').map((g, i) => ({
-        type: g.mitigationOptions[0] as 'HIRE' | 'TRAIN' | 'OUTSOURCE' | 'AUTOMATE',
-        skillId: g.skillId,
-        description: `Address ${g.skillName} gap through ${g.mitigationOptions[0].toLowerCase()}ing`,
-        estimatedCost: g.gap * 5000000, // 5M VND per person
-        timeToAddress: g.priority === 'CRITICAL' ? '1-3 months' : '3-6 months',
-        priority: i + 1,
-      })),
+      recommendations: skillGaps
+        .filter((g) => g.priority === "CRITICAL" || g.priority === "HIGH")
+        .map((g, i) => ({
+          type: g.mitigationOptions[0] as
+            | "HIRE"
+            | "TRAIN"
+            | "OUTSOURCE"
+            | "AUTOMATE",
+          skillId: g.skillId,
+          description: `Address ${g.skillName} gap through ${g.mitigationOptions[0].toLowerCase()}ing`,
+          estimatedCost: g.gap * 5000000, // 5M VND per person
+          timeToAddress:
+            g.priority === "CRITICAL" ? "1-3 months" : "3-6 months",
+          priority: i + 1,
+        })),
     };
   }
 
@@ -634,12 +770,15 @@ export class WorkforceService {
   // SCENARIO MODELING
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  async createScenarioModel(data: {
-    name: string;
-    description?: string;
-    scenario: ForecastScenario;
-    inputs: ScenarioModel['inputs'];
-  }, createdBy: string): Promise<ScenarioModel> {
+  async createScenarioModel(
+    data: {
+      name: string;
+      description?: string;
+      scenario: ForecastScenario;
+      inputs: ScenarioModel["inputs"];
+    },
+    createdBy: string,
+  ): Promise<ScenarioModel> {
     const metrics = await this.getCurrentWorkforceMetrics();
     const currentHeadcount = metrics.headcount.total;
     const currentCost = metrics.cost.totalLaborCost;
@@ -662,7 +801,8 @@ export class WorkforceService {
       // Apply budget change
       cost = cost * (1 + data.inputs.budgetChange / 100 / 12);
       // Apply productivity gain
-      productivity = productivity * (1 + data.inputs.productivityGain / 100 / 12);
+      productivity =
+        productivity * (1 + data.inputs.productivityGain / 100 / 12);
 
       projectedHeadcount.push(Math.round(hc));
       projectedCost.push(Math.round(cost));
@@ -694,7 +834,7 @@ export class WorkforceService {
 
     return this.prisma.scenarioModel.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -713,15 +853,15 @@ export class WorkforceService {
       models: models as unknown as ScenarioModel[],
       comparison: [
         {
-          metric: 'Final Headcount',
-          values: models.map(m => ({
+          metric: "Final Headcount",
+          values: models.map((m) => ({
             modelId: m.id,
             value: (m.outputs as any).projectedHeadcount?.slice(-1)[0] || 0,
           })),
         },
         {
-          metric: 'Final Cost',
-          values: models.map(m => ({
+          metric: "Final Cost",
+          values: models.map((m) => ({
             modelId: m.id,
             value: (m.outputs as any).projectedCost?.slice(-1)[0] || 0,
           })),
@@ -746,7 +886,7 @@ export class WorkforceService {
       this.generateAttritionForecast(),
       this.performSkillGapAnalysis(),
       this.prisma.headcountPlan.findMany({
-        where: { status: { in: ['ACTIVE', 'APPROVED'] } },
+        where: { status: { in: ["ACTIVE", "APPROVED"] } },
       }),
     ]);
 
@@ -755,17 +895,17 @@ export class WorkforceService {
     // Generate alerts
     if (metrics.movement.attritionRate > 15) {
       alerts.push({
-        type: 'ATTRITION',
+        type: "ATTRITION",
         message: `Attrition rate (${metrics.movement.attritionRate}%) exceeds threshold`,
-        severity: 'WARNING',
+        severity: "WARNING",
       });
     }
 
     if (skillGaps.overallGapScore > 30) {
       alerts.push({
-        type: 'SKILL_GAP',
-        message: `Critical skill gaps identified in ${skillGaps.skillGaps.filter(g => g.priority === 'CRITICAL').length} areas`,
-        severity: 'CRITICAL',
+        type: "SKILL_GAP",
+        message: `Critical skill gaps identified in ${skillGaps.skillGaps.filter((g) => g.priority === "CRITICAL").length} areas`,
+        severity: "CRITICAL",
       });
     }
 

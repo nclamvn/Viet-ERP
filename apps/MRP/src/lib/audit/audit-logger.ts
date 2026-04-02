@@ -1,13 +1,13 @@
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
-import { getClientIp, getRequestId, getRoute } from '@/lib/request-context';
-import { logger } from '@/lib/logger';
+import { prisma } from "@/lib/prisma";
+import { Prisma } from ".prisma/mrp-client";
+import { getClientIp, getRequestId, getRoute } from "@/lib/request-context";
+import { logger } from "@/lib/logger";
 
 interface FieldChange {
   field: string;
   oldValue: unknown;
   newValue: unknown;
-  displayName?: string;  // Human-readable field name
+  displayName?: string; // Human-readable field name
 }
 
 interface AuditLogInput {
@@ -61,7 +61,10 @@ export class AuditLogger {
         userId: input.userId,
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
-        metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : Prisma.JsonNull,
+        metadata:
+          Object.keys(mergedMetadata).length > 0
+            ? mergedMetadata
+            : Prisma.JsonNull,
       },
     });
 
@@ -77,15 +80,15 @@ export class AuditLogger {
     entityName: string,
     userId: string,
     newData?: Record<string, unknown>,
-    context?: { userRole?: string; ipAddress?: string; userAgent?: string }
+    context?: { userRole?: string; ipAddress?: string; userAgent?: string },
   ): Promise<string> {
     return this.log({
       entityType,
       entityId,
       entityName,
-      action: 'CREATE',
+      action: "CREATE",
       newValues: newData as Prisma.InputJsonValue,
-      summary: `Created ${entityType.toLowerCase().replace('_', ' ')} "${entityName}"`,
+      summary: `Created ${entityType.toLowerCase().replace("_", " ")} "${entityName}"`,
       userId,
       ...context,
     });
@@ -101,7 +104,7 @@ export class AuditLogger {
     userId: string,
     oldData: Record<string, unknown>,
     newData: Record<string, unknown>,
-    context?: { userRole?: string; ipAddress?: string; userAgent?: string }
+    context?: { userRole?: string; ipAddress?: string; userAgent?: string },
   ): Promise<string | null> {
     const fieldChanges = this.calculateFieldChanges(oldData, newData);
 
@@ -114,7 +117,7 @@ export class AuditLogger {
       entityType,
       entityId,
       entityName,
-      action: 'UPDATE',
+      action: "UPDATE",
       oldValues: oldData as Prisma.InputJsonValue,
       newValues: newData as Prisma.InputJsonValue,
       summary: this.generateUpdateSummary(entityType, entityName, fieldChanges),
@@ -133,15 +136,15 @@ export class AuditLogger {
     entityName: string,
     userId: string,
     deletedData?: Record<string, unknown>,
-    context?: { userRole?: string; ipAddress?: string; userAgent?: string }
+    context?: { userRole?: string; ipAddress?: string; userAgent?: string },
   ): Promise<string> {
     return this.log({
       entityType,
       entityId,
       entityName,
-      action: 'DELETE',
+      action: "DELETE",
       oldValues: deletedData as Prisma.InputJsonValue,
-      summary: `Deleted ${entityType.toLowerCase().replace('_', ' ')} "${entityName}"`,
+      summary: `Deleted ${entityType.toLowerCase().replace("_", " ")} "${entityName}"`,
       userId,
       ...context,
     });
@@ -157,19 +160,21 @@ export class AuditLogger {
     userId: string,
     oldStatus: string,
     newStatus: string,
-    context?: { userRole?: string; ipAddress?: string; userAgent?: string }
+    context?: { userRole?: string; ipAddress?: string; userAgent?: string },
   ): Promise<string> {
     return this.log({
       entityType,
       entityId,
       entityName,
-      action: 'STATUS_CHANGE',
+      action: "STATUS_CHANGE",
       oldValues: { status: oldStatus },
       newValues: { status: newStatus },
       summary: `Changed status of "${entityName}" from "${oldStatus}" to "${newStatus}"`,
       userId,
       metadata: {
-        fieldChanges: [{ field: 'status', oldValue: oldStatus, newValue: newStatus }]
+        fieldChanges: [
+          { field: "status", oldValue: oldStatus, newValue: newStatus },
+        ],
       },
       ...context,
     });
@@ -183,14 +188,19 @@ export class AuditLogger {
     entityId: string,
     entityName: string,
     userId: string,
-    context?: { userRole?: string; ipAddress?: string; userAgent?: string; notes?: string }
+    context?: {
+      userRole?: string;
+      ipAddress?: string;
+      userAgent?: string;
+      notes?: string;
+    },
   ): Promise<string> {
     return this.log({
       entityType,
       entityId,
       entityName,
-      action: 'APPROVE',
-      summary: `Approved ${entityType.toLowerCase().replace('_', ' ')} "${entityName}"`,
+      action: "APPROVE",
+      summary: `Approved ${entityType.toLowerCase().replace("_", " ")} "${entityName}"`,
       userId,
       metadata: context?.notes ? { notes: context.notes } : undefined,
       ...context,
@@ -206,14 +216,14 @@ export class AuditLogger {
     entityName: string,
     userId: string,
     reason?: string,
-    context?: { userRole?: string; ipAddress?: string; userAgent?: string }
+    context?: { userRole?: string; ipAddress?: string; userAgent?: string },
   ): Promise<string> {
     return this.log({
       entityType,
       entityId,
       entityName,
-      action: 'REJECT',
-      summary: `Rejected ${entityType.toLowerCase().replace('_', ' ')} "${entityName}"${reason ? `: ${reason}` : ''}`,
+      action: "REJECT",
+      summary: `Rejected ${entityType.toLowerCase().replace("_", " ")} "${entityName}"${reason ? `: ${reason}` : ""}`,
       userId,
       metadata: reason ? { reason } : undefined,
       ...context,
@@ -225,13 +235,21 @@ export class AuditLogger {
    */
   private calculateFieldChanges(
     oldData: Record<string, any>,
-    newData: Record<string, any>
+    newData: Record<string, any>,
   ): FieldChange[] {
     const changes: FieldChange[] = [];
-    const allKeys = Array.from(new Set([...Object.keys(oldData), ...Object.keys(newData)]));
+    const allKeys = Array.from(
+      new Set([...Object.keys(oldData), ...Object.keys(newData)]),
+    );
 
     // Fields to ignore
-    const ignoreFields = ['id', 'createdAt', 'updatedAt', 'version', 'deletedAt'];
+    const ignoreFields = [
+      "id",
+      "createdAt",
+      "updatedAt",
+      "version",
+      "deletedAt",
+    ];
 
     for (const key of allKeys) {
       if (ignoreFields.includes(key)) continue;
@@ -259,7 +277,7 @@ export class AuditLogger {
   private sanitizeValue(value: unknown): unknown {
     if (value === null || value === undefined) return null;
     if (value instanceof Date) return value.toISOString();
-    if (typeof value === 'object') {
+    if (typeof value === "object") {
       try {
         return JSON.stringify(value);
       } catch {
@@ -274,9 +292,9 @@ export class AuditLogger {
    */
   private toDisplayName(field: string): string {
     return field
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (str) => str.toUpperCase())
+      .replace(/_/g, " ")
       .trim();
   }
 
@@ -284,27 +302,27 @@ export class AuditLogger {
    * Generate summary for an audit log entry
    */
   private generateSummary(input: AuditLogInput): string {
-    const entity = input.entityType.toLowerCase().replace('_', ' ');
+    const entity = input.entityType.toLowerCase().replace("_", " ");
     const title = input.entityName || input.entityId;
 
     switch (input.action.toUpperCase()) {
-      case 'CREATE':
+      case "CREATE":
         return `Created ${entity} "${title}"`;
-      case 'UPDATE':
+      case "UPDATE":
         return `Updated ${entity} "${title}"`;
-      case 'DELETE':
+      case "DELETE":
         return `Deleted ${entity} "${title}"`;
-      case 'STATUS_CHANGE':
+      case "STATUS_CHANGE":
         return `Changed status of ${entity} "${title}"`;
-      case 'APPROVE':
+      case "APPROVE":
         return `Approved ${entity} "${title}"`;
-      case 'REJECT':
+      case "REJECT":
         return `Rejected ${entity} "${title}"`;
-      case 'VIEW':
+      case "VIEW":
         return `Viewed ${entity} "${title}"`;
-      case 'EXPORT':
+      case "EXPORT":
         return `Exported ${entity} "${title}"`;
-      case 'IMPORT':
+      case "IMPORT":
         return `Imported ${entity} "${title}"`;
       default:
         return `${input.action} on ${entity} "${title}"`;
@@ -317,9 +335,9 @@ export class AuditLogger {
   private generateUpdateSummary(
     entityType: string,
     entityName: string,
-    changes: FieldChange[]
+    changes: FieldChange[],
   ): string {
-    const entity = entityType.toLowerCase().replace('_', ' ');
+    const entity = entityType.toLowerCase().replace("_", " ");
 
     if (changes.length === 0) {
       return `Updated ${entity} "${entityName}"`;
@@ -327,12 +345,14 @@ export class AuditLogger {
 
     if (changes.length === 1) {
       const change = changes[0];
-      const oldVal = change.oldValue === null ? '(empty)' : String(change.oldValue);
-      const newVal = change.newValue === null ? '(empty)' : String(change.newValue);
+      const oldVal =
+        change.oldValue === null ? "(empty)" : String(change.oldValue);
+      const newVal =
+        change.newValue === null ? "(empty)" : String(change.newValue);
       return `Updated ${change.displayName || change.field} of "${entityName}": "${oldVal}" → "${newVal}"`;
     }
 
-    const fieldNames = changes.map(c => c.displayName || c.field).join(', ');
+    const fieldNames = changes.map((c) => c.displayName || c.field).join(", ");
     return `Updated ${changes.length} fields of "${entityName}": ${fieldNames}`;
   }
 
@@ -342,14 +362,14 @@ export class AuditLogger {
   async getLogsForEntity(
     entityType: string,
     entityId: string,
-    options?: { limit?: number; cursor?: string }
+    options?: { limit?: number; cursor?: string },
   ) {
     const logs = await prisma.auditLog.findMany({
       where: { entityType, entityId },
       take: (options?.limit || 50) + 1,
       cursor: options?.cursor ? { id: options.cursor } : undefined,
       skip: options?.cursor ? 1 : 0,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       // Note: user and conversationLinks relations removed (not in schema)
     });
 
@@ -372,7 +392,7 @@ export function logApi(
   req: Request,
   status: number,
   userId?: string,
-  error?: unknown
+  error?: unknown,
 ): void {
   const payload: ApiLog = {
     requestId: getRequestId(req),
@@ -380,12 +400,14 @@ export function logApi(
     method: req.method,
     status,
     timestamp: new Date().toISOString(),
-    userId: userId || 'anon',
+    userId: userId || "anon",
     ip: getClientIp(req),
-    ...(error ? { error: error instanceof Error ? error.message : String(error) } : {}),
+    ...(error
+      ? { error: error instanceof Error ? error.message : String(error) }
+      : {}),
   };
 
-  logger.info('API audit log', payload);
+  logger.info("API audit log", payload);
 }
 
 export const auditLogger = new AuditLogger();

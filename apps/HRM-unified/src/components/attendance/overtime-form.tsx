@@ -1,17 +1,17 @@
 // src/components/attendance/overtime-form.tsx
 // Overtime request form
 
-"use client"
+"use client";
 
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { format } from "date-fns"
-import { CalendarIcon, Loader2 } from "lucide-react"
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { CalendarIcon, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Form,
   FormControl,
@@ -20,30 +20,37 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { overtimeRequestSchema, type OvertimeRequestFormData } from "@/lib/validations/attendance"
-import { DAY_TYPE_LABELS, OT_MULTIPLIERS, NIGHT_BONUS } from "@/constants/attendance"
-import type { OvertimeRequest, Employee } from "@prisma/client"
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import {
+  overtimeRequestSchema,
+  type OvertimeRequestFormData,
+} from "@/lib/validations/attendance";
+import {
+  DAY_TYPE_LABELS,
+  OT_MULTIPLIERS,
+  NIGHT_BONUS,
+} from "@/constants/attendance";
+import type { OvertimeRequest, Employee } from ".prisma/hrm-unified-client";
 
 interface OvertimeFormProps {
-  initialData?: OvertimeRequest
-  employees?: Pick<Employee, "id" | "employeeCode" | "fullName">[]
-  currentEmployeeId?: string
-  onSubmit: (data: OvertimeRequestFormData) => Promise<void>
-  isLoading?: boolean
+  initialData?: OvertimeRequest;
+  employees?: Pick<Employee, "id" | "employeeCode" | "fullName">[];
+  currentEmployeeId?: string;
+  onSubmit: (data: OvertimeRequestFormData) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export function OvertimeForm({
@@ -58,25 +65,36 @@ export function OvertimeForm({
     defaultValues: {
       employeeId: initialData?.employeeId || currentEmployeeId || "",
       date: initialData?.date ? new Date(initialData.date) : new Date(),
-      startTime: initialData?.startTime ? new Date(initialData.startTime) : new Date(),
-      endTime: initialData?.endTime ? new Date(initialData.endTime) : new Date(),
+      startTime: initialData?.startTime
+        ? new Date(initialData.startTime)
+        : new Date(),
+      endTime: initialData?.endTime
+        ? new Date(initialData.endTime)
+        : new Date(),
       dayType: initialData?.dayType || "NORMAL",
       reason: initialData?.reason || "",
       attachmentUrl: initialData?.attachmentUrl || null,
       notes: initialData?.notes || null,
     },
-  })
+  });
 
-  const selectedDayType = form.watch("dayType")
+  const selectedDayType = form.watch("dayType");
 
   const getMultiplierText = () => {
-    const base = OT_MULTIPLIERS[selectedDayType === "HOLIDAY" ? "HOLIDAY" : selectedDayType === "WEEKEND" ? "WEEKEND" : "WEEKDAY"]
-    return `${Math.round(base * 100)}%${selectedDayType !== "HOLIDAY" ? ` (+ ${Math.round(NIGHT_BONUS * 100)}% nếu ca đêm)` : ""}`
-  }
+    const base =
+      OT_MULTIPLIERS[
+        selectedDayType === "HOLIDAY"
+          ? "HOLIDAY"
+          : selectedDayType === "WEEKEND"
+            ? "WEEKEND"
+            : "WEEKDAY"
+      ];
+    return `${Math.round(base * 100)}%${selectedDayType !== "HOLIDAY" ? ` (+ ${Math.round(NIGHT_BONUS * 100)}% nếu ca đêm)` : ""}`;
+  };
 
   const handleFormSubmit = form.handleSubmit(async (data) => {
-    await onSubmit(data as OvertimeRequestFormData)
-  })
+    await onSubmit(data as OvertimeRequestFormData);
+  });
 
   return (
     <Form {...form}>
@@ -88,7 +106,10 @@ export function OvertimeForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Nhân viên *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn nhân viên" />
@@ -121,7 +142,7 @@ export function OvertimeForm({
                       variant="outline"
                       className={cn(
                         "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
+                        !field.value && "text-muted-foreground",
                       )}
                     >
                       {field.value ? (
@@ -157,12 +178,16 @@ export function OvertimeForm({
                 <FormControl>
                   <Input
                     type="time"
-                    value={field.value ? format(field.value as Date, "HH:mm") : ""}
+                    value={
+                      field.value ? format(field.value as Date, "HH:mm") : ""
+                    }
                     onChange={(e) => {
-                      const [hours, minutes] = e.target.value.split(":").map(Number)
-                      const date = new Date(form.getValues("date") as Date)
-                      date.setHours(hours, minutes, 0, 0)
-                      field.onChange(date)
+                      const [hours, minutes] = e.target.value
+                        .split(":")
+                        .map(Number);
+                      const date = new Date(form.getValues("date") as Date);
+                      date.setHours(hours, minutes, 0, 0);
+                      field.onChange(date);
                     }}
                   />
                 </FormControl>
@@ -180,12 +205,16 @@ export function OvertimeForm({
                 <FormControl>
                   <Input
                     type="time"
-                    value={field.value ? format(field.value as Date, "HH:mm") : ""}
+                    value={
+                      field.value ? format(field.value as Date, "HH:mm") : ""
+                    }
                     onChange={(e) => {
-                      const [hours, minutes] = e.target.value.split(":").map(Number)
-                      const date = new Date(form.getValues("date") as Date)
-                      date.setHours(hours, minutes, 0, 0)
-                      field.onChange(date)
+                      const [hours, minutes] = e.target.value
+                        .split(":")
+                        .map(Number);
+                      const date = new Date(form.getValues("date") as Date);
+                      date.setHours(hours, minutes, 0, 0);
+                      field.onChange(date);
                     }}
                   />
                 </FormControl>
@@ -270,5 +299,5 @@ export function OvertimeForm({
         </div>
       </form>
     </Form>
-  )
+  );
 }

@@ -1,16 +1,16 @@
-import { prisma } from "@/lib/prisma"
-import type { AuditAction, Prisma } from "@prisma/client"
+import { prisma } from "@/lib/prisma";
+import type { AuditAction, Prisma } from ".prisma/hrm-client";
 
 export interface AuditEntry {
-  action: AuditAction
-  actorId: string
-  actorName: string
-  actorRole: string
-  targetType: string
-  targetId: string
-  targetName: string
-  metadata?: Record<string, unknown>
-  ip?: string
+  action: AuditAction;
+  actorId: string;
+  actorName: string;
+  actorRole: string;
+  targetType: string;
+  targetId: string;
+  targetName: string;
+  metadata?: Record<string, unknown>;
+  ip?: string;
 }
 
 export async function writeAudit(entry: AuditEntry): Promise<void> {
@@ -24,12 +24,14 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
         actorName: entry.actorName,
         actorRole: entry.actorRole,
         targetName: entry.targetName,
-        newData: entry.metadata ? (entry.metadata as Prisma.InputJsonObject) : undefined,
+        newData: entry.metadata
+          ? (entry.metadata as Prisma.InputJsonObject)
+          : undefined,
         ipAddress: entry.ip,
       },
-    })
+    });
   } catch (err) {
-    console.error("[writeAudit] Failed:", err)
+    console.error("[writeAudit] Failed:", err);
     // Audit failure must not block business operations
   }
 }

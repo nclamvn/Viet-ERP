@@ -3,7 +3,7 @@
 // Shared types to eliminate 'any' usage across the codebase
 // =============================================================================
 
-import { Prisma } from '@prisma/client';
+import { Prisma } from ".prisma/mrp-client";
 
 // =============================================================================
 // BASE TYPES
@@ -11,8 +11,16 @@ import { Prisma } from '@prisma/client';
 
 export type ID = string;
 export type DateString = string;
-export type JSONValue = string | number | boolean | null | JSONObject | JSONArray;
-export interface JSONObject { [key: string]: JSONValue }
+export type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JSONObject
+  | JSONArray;
+export interface JSONObject {
+  [key: string]: JSONValue;
+}
 export type JSONArray = JSONValue[];
 
 // =============================================================================
@@ -38,7 +46,7 @@ export interface PaginationParams {
   page: number;
   pageSize: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
   search?: string;
 }
 
@@ -72,7 +80,7 @@ export interface User {
   updatedAt: Date;
 }
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'OPERATOR' | 'VIEWER' | 'GUEST';
+export type UserRole = "ADMIN" | "MANAGER" | "OPERATOR" | "VIEWER" | "GUEST";
 
 export interface Session {
   user: User;
@@ -116,8 +124,14 @@ export interface Part {
   updatedAt: Date;
 }
 
-export type PartStatus = 'DEVELOPMENT' | 'PROTOTYPE' | 'ACTIVE' | 'PHASE_OUT' | 'OBSOLETE' | 'EOL';
-export type MakeOrBuy = 'MAKE' | 'BUY' | 'BOTH';
+export type PartStatus =
+  | "DEVELOPMENT"
+  | "PROTOTYPE"
+  | "ACTIVE"
+  | "PHASE_OUT"
+  | "OBSOLETE"
+  | "EOL";
+export type MakeOrBuy = "MAKE" | "BUY" | "BOTH";
 
 export interface Inventory {
   id: string;
@@ -134,7 +148,7 @@ export interface Inventory {
   warehouse?: Warehouse;
 }
 
-import type { WarehouseType } from '@/types';
+import type { WarehouseType } from "@/types";
 export type { WarehouseType };
 
 export interface Warehouse {
@@ -198,17 +212,17 @@ export interface SalesOrder {
   lines?: SalesOrderLine[];
 }
 
-export type SalesOrderStatus = 
-  | 'DRAFT' 
-  | 'PENDING' 
-  | 'CONFIRMED' 
-  | 'IN_PROGRESS' 
-  | 'SHIPPED' 
-  | 'DELIVERED' 
-  | 'COMPLETED' 
-  | 'CANCELLED';
+export type SalesOrderStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "CONFIRMED"
+  | "IN_PROGRESS"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED";
 
-export type Priority = 'low' | 'normal' | 'high' | 'urgent';
+export type Priority = "low" | "normal" | "high" | "urgent";
 
 export interface SalesOrderLine {
   id: string;
@@ -240,14 +254,14 @@ export interface WorkOrder {
   operations?: WorkOrderOperation[];
 }
 
-export type WorkOrderStatus = 
-  | 'DRAFT' 
-  | 'RELEASED' 
-  | 'IN_PROGRESS' 
-  | 'ON_HOLD' 
-  | 'COMPLETED' 
-  | 'CLOSED' 
-  | 'CANCELLED';
+export type WorkOrderStatus =
+  | "DRAFT"
+  | "RELEASED"
+  | "IN_PROGRESS"
+  | "ON_HOLD"
+  | "COMPLETED"
+  | "CLOSED"
+  | "CANCELLED";
 
 export interface WorkOrderOperation {
   id: string;
@@ -260,7 +274,11 @@ export interface WorkOrderOperation {
   status: OperationStatus;
 }
 
-export type OperationStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
+export type OperationStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "SKIPPED";
 
 export interface BOMLine {
   id: string;
@@ -294,16 +312,16 @@ export interface PurchaseOrder {
   lines?: PurchaseOrderLine[];
 }
 
-export type PurchaseOrderStatus = 
-  | 'DRAFT' 
-  | 'PENDING' 
-  | 'APPROVED' 
-  | 'SENT' 
-  | 'CONFIRMED' 
-  | 'PARTIAL' 
-  | 'RECEIVED' 
-  | 'CLOSED' 
-  | 'CANCELLED';
+export type PurchaseOrderStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "SENT"
+  | "CONFIRMED"
+  | "PARTIAL"
+  | "RECEIVED"
+  | "CLOSED"
+  | "CANCELLED";
 
 export interface PurchaseOrderLine {
   id: string;
@@ -330,7 +348,7 @@ export interface MRPRun {
   suggestions?: MRPSuggestion[];
 }
 
-export type MRPRunStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type MRPRunStatus = "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
 export interface MRPParameters {
   startDate: string;
@@ -355,15 +373,19 @@ export interface MRPSuggestion {
   part?: Part;
 }
 
-export type MRPSuggestionType = 
-  | 'PURCHASE' 
-  | 'MANUFACTURE' 
-  | 'RESCHEDULE_IN' 
-  | 'RESCHEDULE_OUT' 
-  | 'CANCEL' 
-  | 'EXPEDITE';
+export type MRPSuggestionType =
+  | "PURCHASE"
+  | "MANUFACTURE"
+  | "RESCHEDULE_IN"
+  | "RESCHEDULE_OUT"
+  | "CANCEL"
+  | "EXPEDITE";
 
-export type MRPSuggestionStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'PROCESSED';
+export type MRPSuggestionStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "PROCESSED";
 
 // =============================================================================
 // QUALITY TYPES
@@ -387,11 +409,11 @@ export interface NCR {
   part?: Part;
 }
 
-export type NCRType = 'Receiving' | 'In-Process' | 'Final' | 'Customer';
-export type NCRSource = 'supplier' | 'production' | 'customer';
-export type NCRStatus = 'open' | 'in_progress' | 'pending_review' | 'closed';
-export type NCRSeverity = 'minor' | 'major' | 'critical';
-export type NCRDisposition = 'Scrap' | 'Rework' | 'Return' | 'Use-as-is';
+export type NCRType = "Receiving" | "In-Process" | "Final" | "Customer";
+export type NCRSource = "supplier" | "production" | "customer";
+export type NCRStatus = "open" | "in_progress" | "pending_review" | "closed";
+export type NCRSeverity = "minor" | "major" | "critical";
+export type NCRDisposition = "Scrap" | "Rework" | "Return" | "Use-as-is";
 
 export interface QualityMeasurement {
   id: string;
@@ -472,7 +494,7 @@ export interface TableColumn<T = unknown> {
   header: string;
   sortable?: boolean;
   width?: string | number;
-  align?: 'left' | 'center' | 'right';
+  align?: "left" | "center" | "right";
   render?: (value: unknown, row: T) => React.ReactNode;
 }
 
@@ -480,7 +502,7 @@ export interface TableState {
   page: number;
   pageSize: number;
   sortBy?: string;
-  sortOrder: 'asc' | 'desc';
+  sortOrder: "asc" | "desc";
   search: string;
   filters: Record<string, unknown>;
 }
@@ -488,7 +510,15 @@ export interface TableState {
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'email' | 'password' | 'select' | 'textarea' | 'checkbox' | 'date';
+  type:
+    | "text"
+    | "number"
+    | "email"
+    | "password"
+    | "select"
+    | "textarea"
+    | "checkbox"
+    | "date";
   required?: boolean;
   placeholder?: string;
   options?: SelectOption[];
@@ -517,13 +547,13 @@ export interface AppEvent {
   timestamp: Date;
 }
 
-export type EventType = 
-  | 'CREATE' 
-  | 'UPDATE' 
-  | 'DELETE' 
-  | 'STATUS_CHANGE' 
-  | 'ALERT' 
-  | 'SYSTEM';
+export type EventType =
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "STATUS_CHANGE"
+  | "ALERT"
+  | "SYSTEM";
 
 export interface Notification {
   id: string;
@@ -536,12 +566,15 @@ export interface Notification {
   createdAt: Date;
 }
 
-export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'alert';
+export type NotificationType =
+  | "info"
+  | "success"
+  | "warning"
+  | "error"
+  | "alert";
 
 // =============================================================================
 // EXPORT
 // =============================================================================
 
-export type {
-  Prisma,
-};
+export type { Prisma };

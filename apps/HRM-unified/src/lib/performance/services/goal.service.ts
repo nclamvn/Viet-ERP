@@ -1,57 +1,57 @@
 // src/lib/performance/services/goal.service.ts
 // Goal Service - OKR and Goal Management
 
-import { db } from '@/lib/db'
+import { db } from "@/lib/db";
 import {
   GoalType,
   GoalStatus,
   GoalPriority,
-  Prisma
-} from '@prisma/client'
+  Prisma,
+} from ".prisma/hrm-unified-client";
 
 // Types
 export interface CreateGoalInput {
-  title: string
-  description?: string
-  goalType: GoalType
-  category?: string
-  ownerId?: string
-  departmentId?: string
-  parentGoalId?: string
-  startDate: Date
-  endDate: Date
-  targetValue?: number
-  unit?: string
-  weight?: number
-  priority?: GoalPriority
-  reviewCycleId?: string
+  title: string;
+  description?: string;
+  goalType: GoalType;
+  category?: string;
+  ownerId?: string;
+  departmentId?: string;
+  parentGoalId?: string;
+  startDate: Date;
+  endDate: Date;
+  targetValue?: number;
+  unit?: string;
+  weight?: number;
+  priority?: GoalPriority;
+  reviewCycleId?: string;
 }
 
 export interface CreateKeyResultInput {
-  title: string
-  description?: string
-  targetValue: number
-  unit?: string
-  weight?: number
-  dueDate?: Date
-  order?: number
+  title: string;
+  description?: string;
+  targetValue: number;
+  unit?: string;
+  weight?: number;
+  dueDate?: Date;
+  order?: number;
 }
 
 export interface UpdateProgressInput {
-  currentValue?: number
-  progress?: number
-  notes?: string
+  currentValue?: number;
+  progress?: number;
+  notes?: string;
 }
 
 export interface GoalFilters {
-  goalType?: GoalType[]
-  status?: GoalStatus[]
-  priority?: GoalPriority[]
-  ownerId?: string
-  departmentId?: string
-  reviewCycleId?: string
-  parentGoalId?: string
-  search?: string
+  goalType?: GoalType[];
+  status?: GoalStatus[];
+  priority?: GoalPriority[];
+  ownerId?: string;
+  departmentId?: string;
+  reviewCycleId?: string;
+  parentGoalId?: string;
+  search?: string;
 }
 
 export class GoalService {
@@ -67,10 +67,10 @@ export class GoalService {
     if (input.parentGoalId) {
       const parentGoal = await db.goal.findFirst({
         where: { id: input.parentGoalId, tenantId: this.tenantId },
-      })
+      });
 
       if (!parentGoal) {
-        throw new Error('Parent goal not found')
+        throw new Error("Parent goal not found");
       }
     }
 
@@ -100,7 +100,7 @@ export class GoalService {
         parentGoal: { select: { id: true, title: true } },
         createdBy: { select: { id: true, name: true } },
       },
-    })
+    });
   }
 
   /**
@@ -118,78 +118,82 @@ export class GoalService {
         parentGoal: { select: { id: true, title: true } },
         childGoals: {
           select: { id: true, title: true, progress: true, status: true },
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: "asc" },
         },
         keyResults: {
-          orderBy: { order: 'asc' },
+          orderBy: { order: "asc" },
         },
         createdBy: { select: { id: true, name: true } },
         updates: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 10,
           include: {
             updatedBy: { select: { id: true, name: true } },
           },
         },
       },
-    })
+    });
 
     if (!goal) {
-      throw new Error('Goal not found')
+      throw new Error("Goal not found");
     }
 
-    return goal
+    return goal;
   }
 
   /**
    * List goals
    */
-  async list(filters: GoalFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: GoalFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.GoalWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (filters.goalType?.length) {
-      where.goalType = { in: filters.goalType }
+      where.goalType = { in: filters.goalType };
     }
 
     if (filters.status?.length) {
-      where.status = { in: filters.status }
+      where.status = { in: filters.status };
     }
 
     if (filters.priority?.length) {
-      where.priority = { in: filters.priority }
+      where.priority = { in: filters.priority };
     }
 
     if (filters.ownerId) {
-      where.ownerId = filters.ownerId
+      where.ownerId = filters.ownerId;
     }
 
     if (filters.departmentId) {
-      where.departmentId = filters.departmentId
+      where.departmentId = filters.departmentId;
     }
 
     if (filters.reviewCycleId) {
-      where.reviewCycleId = filters.reviewCycleId
+      where.reviewCycleId = filters.reviewCycleId;
     }
 
     if (filters.parentGoalId) {
-      where.parentGoalId = filters.parentGoalId
+      where.parentGoalId = filters.parentGoalId;
     }
 
     if (filters.search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ]
+        { title: { contains: filters.search, mode: "insensitive" } },
+        { description: { contains: filters.search, mode: "insensitive" } },
+      ];
     }
 
     const [goals, total] = await Promise.all([
       db.goal.findMany({
         where,
-        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
         skip,
         take: pageSize,
         include: {
@@ -199,7 +203,7 @@ export class GoalService {
         },
       }),
       db.goal.count({ where }),
-    ])
+    ]);
 
     return {
       data: goals,
@@ -207,7 +211,7 @@ export class GoalService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -218,20 +222,20 @@ export class GoalService {
       tenantId: this.tenantId,
       ownerId: employeeId,
       status: { not: GoalStatus.CANCELLED },
-    }
+    };
 
     if (reviewCycleId) {
-      where.reviewCycleId = reviewCycleId
+      where.reviewCycleId = reviewCycleId;
     }
 
     return db.goal.findMany({
       where,
-      orderBy: [{ priority: 'desc' }, { startDate: 'asc' }],
+      orderBy: [{ priority: "desc" }, { startDate: "asc" }],
       include: {
-        keyResults: { orderBy: { order: 'asc' } },
+        keyResults: { orderBy: { order: "asc" } },
         parentGoal: { select: { id: true, title: true, goalType: true } },
       },
-    })
+    });
   }
 
   /**
@@ -243,24 +247,24 @@ export class GoalService {
       departmentId,
       goalType: GoalType.DEPARTMENT,
       status: { not: GoalStatus.CANCELLED },
-    }
+    };
 
     if (reviewCycleId) {
-      where.reviewCycleId = reviewCycleId
+      where.reviewCycleId = reviewCycleId;
     }
 
     return db.goal.findMany({
       where,
-      orderBy: { priority: 'desc' },
+      orderBy: { priority: "desc" },
       include: {
         childGoals: {
           include: {
             owner: { select: { id: true, fullName: true } },
           },
         },
-        keyResults: { orderBy: { order: 'asc' } },
+        keyResults: { orderBy: { order: "asc" } },
       },
-    })
+    });
   }
 
   /**
@@ -269,10 +273,10 @@ export class GoalService {
   async update(id: string, input: Partial<CreateGoalInput>) {
     const goal = await db.goal.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!goal) {
-      throw new Error('Goal not found')
+      throw new Error("Goal not found");
     }
 
     return db.goal.update({
@@ -292,7 +296,7 @@ export class GoalService {
         weight: input.weight,
         priority: input.priority,
       },
-    })
+    });
   }
 
   /**
@@ -302,7 +306,7 @@ export class GoalService {
     return db.goal.update({
       where: { id },
       data: { status: GoalStatus.ACTIVE },
-    })
+    });
   }
 
   /**
@@ -316,7 +320,7 @@ export class GoalService {
         score,
         progress: 100,
       },
-    })
+    });
   }
 
   /**
@@ -326,7 +330,7 @@ export class GoalService {
     return db.goal.update({
       where: { id },
       data: { status: GoalStatus.CANCELLED },
-    })
+    });
   }
 
   /**
@@ -336,7 +340,7 @@ export class GoalService {
     return db.goal.update({
       where: { id },
       data: { status: GoalStatus.ON_HOLD },
-    })
+    });
   }
 
   /**
@@ -345,10 +349,10 @@ export class GoalService {
   async updateProgress(id: string, userId: string, input: UpdateProgressInput) {
     const goal = await db.goal.findFirst({
       where: { id, tenantId: this.tenantId },
-    })
+    });
 
     if (!goal) {
-      throw new Error('Goal not found')
+      throw new Error("Goal not found");
     }
 
     // Create update record
@@ -362,7 +366,7 @@ export class GoalService {
         notes: input.notes,
         updatedById: userId,
       },
-    })
+    });
 
     // Update goal
     return db.goal.update({
@@ -371,7 +375,7 @@ export class GoalService {
         currentValue: input.currentValue,
         progress: input.progress,
       },
-    })
+    });
   }
 
   /**
@@ -381,22 +385,22 @@ export class GoalService {
     const goal = await db.goal.findFirst({
       where: { id, tenantId: this.tenantId },
       include: { _count: { select: { childGoals: true } } },
-    })
+    });
 
     if (!goal) {
-      throw new Error('Goal not found')
+      throw new Error("Goal not found");
     }
 
     if (goal._count.childGoals > 0) {
-      throw new Error('Cannot delete goal with child goals')
+      throw new Error("Cannot delete goal with child goals");
     }
 
     if (goal.status === GoalStatus.ACTIVE) {
-      throw new Error('Cannot delete active goal. Cancel it first.')
+      throw new Error("Cannot delete active goal. Cancel it first.");
     }
 
-    await db.goal.delete({ where: { id } })
-    return { success: true }
+    await db.goal.delete({ where: { id } });
+    return { success: true };
   }
 
   // ===== KEY RESULTS =====
@@ -407,19 +411,19 @@ export class GoalService {
   async addKeyResult(goalId: string, input: CreateKeyResultInput) {
     const goal = await db.goal.findFirst({
       where: { id: goalId, tenantId: this.tenantId },
-    })
+    });
 
     if (!goal) {
-      throw new Error('Goal not found')
+      throw new Error("Goal not found");
     }
 
     // Get max order
     const lastKR = await db.keyResult.findFirst({
       where: { goalId },
-      orderBy: { order: 'desc' },
-    })
+      orderBy: { order: "desc" },
+    });
 
-    const order = input.order ?? (lastKR ? lastKR.order + 1 : 0)
+    const order = input.order ?? (lastKR ? lastKR.order + 1 : 0);
 
     return db.keyResult.create({
       data: {
@@ -432,13 +436,16 @@ export class GoalService {
         dueDate: input.dueDate,
         order,
       },
-    })
+    });
   }
 
   /**
    * Update key result
    */
-  async updateKeyResult(keyResultId: string, input: Partial<CreateKeyResultInput>) {
+  async updateKeyResult(
+    keyResultId: string,
+    input: Partial<CreateKeyResultInput>,
+  ) {
     return db.keyResult.update({
       where: { id: keyResultId },
       data: {
@@ -450,19 +457,24 @@ export class GoalService {
         dueDate: input.dueDate,
         order: input.order,
       },
-    })
+    });
   }
 
   /**
    * Update key result progress
    */
-  async updateKeyResultProgress(keyResultId: string, userId: string, currentValue: number, notes?: string) {
+  async updateKeyResultProgress(
+    keyResultId: string,
+    userId: string,
+    currentValue: number,
+    notes?: string,
+  ) {
     const kr = await db.keyResult.findUnique({
       where: { id: keyResultId },
-    })
+    });
 
     if (!kr) {
-      throw new Error('Key result not found')
+      throw new Error("Key result not found");
     }
 
     // Create update record
@@ -474,15 +486,16 @@ export class GoalService {
         notes,
         updatedById: userId,
       },
-    })
+    });
 
     // Calculate progress
-    const targetValue = Number(kr.targetValue)
-    const progress = targetValue > 0
-      ? Math.min(100, Math.round((currentValue / targetValue) * 100))
-      : 0
+    const targetValue = Number(kr.targetValue);
+    const progress =
+      targetValue > 0
+        ? Math.min(100, Math.round((currentValue / targetValue) * 100))
+        : 0;
 
-    const completedAt = progress >= 100 ? new Date() : null
+    const completedAt = progress >= 100 ? new Date() : null;
 
     // Update key result
     const updated = await db.keyResult.update({
@@ -492,12 +505,12 @@ export class GoalService {
         progress,
         completedAt,
       },
-    })
+    });
 
     // Recalculate goal progress
-    await this.recalculateGoalProgress(kr.goalId)
+    await this.recalculateGoalProgress(kr.goalId);
 
-    return updated
+    return updated;
   }
 
   /**
@@ -506,18 +519,18 @@ export class GoalService {
   async deleteKeyResult(keyResultId: string) {
     const kr = await db.keyResult.findUnique({
       where: { id: keyResultId },
-    })
+    });
 
     if (!kr) {
-      throw new Error('Key result not found')
+      throw new Error("Key result not found");
     }
 
-    await db.keyResult.delete({ where: { id: keyResultId } })
+    await db.keyResult.delete({ where: { id: keyResultId } });
 
     // Recalculate goal progress
-    await this.recalculateGoalProgress(kr.goalId)
+    await this.recalculateGoalProgress(kr.goalId);
 
-    return { success: true }
+    return { success: true };
   }
 
   /**
@@ -526,25 +539,29 @@ export class GoalService {
   private async recalculateGoalProgress(goalId: string) {
     const keyResults = await db.keyResult.findMany({
       where: { goalId },
-    })
+    });
 
     if (keyResults.length === 0) {
-      return
+      return;
     }
 
     // Weighted average progress
-    const totalWeight = keyResults.reduce((sum, kr) => sum + Number(kr.weight), 0)
+    const totalWeight = keyResults.reduce(
+      (sum, kr) => sum + Number(kr.weight),
+      0,
+    );
     const weightedProgress = keyResults.reduce(
-      (sum, kr) => sum + (kr.progress * Number(kr.weight)),
-      0
-    )
+      (sum, kr) => sum + kr.progress * Number(kr.weight),
+      0,
+    );
 
-    const progress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0
+    const progress =
+      totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
 
     await db.goal.update({
       where: { id: goalId },
       data: { progress },
-    })
+    });
   }
 
   // ===== STATISTICS =====
@@ -555,23 +572,23 @@ export class GoalService {
   async getStats(reviewCycleId?: string) {
     const where: Prisma.GoalWhereInput = {
       tenantId: this.tenantId,
-    }
+    };
 
     if (reviewCycleId) {
-      where.reviewCycleId = reviewCycleId
+      where.reviewCycleId = reviewCycleId;
     }
 
     const [total, byStatus, byType, avgProgress] = await Promise.all([
       db.goal.count({ where }),
 
       db.goal.groupBy({
-        by: ['status'],
+        by: ["status"],
         where,
         _count: true,
       }),
 
       db.goal.groupBy({
-        by: ['goalType'],
+        by: ["goalType"],
         where,
         _count: true,
       }),
@@ -580,21 +597,21 @@ export class GoalService {
         where: { ...where, status: GoalStatus.ACTIVE },
         _avg: { progress: true },
       }),
-    ])
+    ]);
 
     return {
       total,
-      byStatus: byStatus.map(s => ({ status: s.status, count: s._count })),
-      byType: byType.map(t => ({ type: t.goalType, count: t._count })),
+      byStatus: byStatus.map((s) => ({ status: s.status, count: s._count })),
+      byType: byType.map((t) => ({ type: t.goalType, count: t._count })),
       averageProgress: avgProgress._avg.progress || 0,
-    }
+    };
   }
 
   /**
    * Get goals needing attention (behind schedule)
    */
   async getAtRiskGoals() {
-    const now = new Date()
+    const now = new Date();
 
     return db.goal.findMany({
       where: {
@@ -603,13 +620,13 @@ export class GoalService {
         endDate: { gt: now },
         progress: { lt: 50 }, // Less than 50% progress
       },
-      orderBy: { endDate: 'asc' },
+      orderBy: { endDate: "asc" },
       include: {
         owner: { select: { id: true, fullName: true } },
         department: { select: { id: true, name: true } },
       },
       take: 20,
-    })
+    });
   }
 
   /**
@@ -620,10 +637,10 @@ export class GoalService {
       tenantId: this.tenantId,
       parentGoalId: null, // Top-level goals only
       status: { not: GoalStatus.CANCELLED },
-    }
+    };
 
     if (reviewCycleId) {
-      where.reviewCycleId = reviewCycleId
+      where.reviewCycleId = reviewCycleId;
     }
 
     // Get company goals with full hierarchy
@@ -643,13 +660,13 @@ export class GoalService {
           },
         },
       },
-    })
+    });
 
-    return companyGoals
+    return companyGoals;
   }
 }
 
 // Factory function
 export function createGoalService(tenantId: string): GoalService {
-  return new GoalService(tenantId)
+  return new GoalService(tenantId);
 }

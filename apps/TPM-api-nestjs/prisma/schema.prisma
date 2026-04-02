@@ -2,11 +2,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/tpm-nestjs-client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ═══════════════════════════════════════════════════════════════

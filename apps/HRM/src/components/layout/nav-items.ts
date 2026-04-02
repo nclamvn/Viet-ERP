@@ -1,16 +1,23 @@
-import type { UserRole } from "@prisma/client"
+import type { UserRole } from ".prisma/hrm-client";
 
 export interface NavItem {
-  label: string
-  href: string
-  icon: string
-  roles: UserRole[]
-  group: "main" | "hr" | "performance" | "finance" | "reports" | "tools" | "bottom"
+  label: string;
+  href: string;
+  icon: string;
+  roles: UserRole[];
+  group:
+    | "main"
+    | "hr"
+    | "performance"
+    | "finance"
+    | "reports"
+    | "tools"
+    | "bottom";
 }
 
 export interface NavGroup {
-  label: string | null
-  items: NavItem[]
+  label: string | null;
+  items: NavItem[];
 }
 
 export const navItems: NavItem[] = [
@@ -66,7 +73,13 @@ export const navItems: NavItem[] = [
     href: "/kpi",
     icon: "Target",
     group: "performance",
-    roles: ["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF", "DEPT_MANAGER", "EMPLOYEE"],
+    roles: [
+      "SUPER_ADMIN",
+      "HR_MANAGER",
+      "HR_STAFF",
+      "DEPT_MANAGER",
+      "EMPLOYEE",
+    ],
   },
   {
     label: "Chấm Công",
@@ -133,12 +146,7 @@ export const navItems: NavItem[] = [
     href: "/reports",
     icon: "FileText",
     group: "reports",
-    roles: [
-      "SUPER_ADMIN",
-      "HR_MANAGER",
-      "HR_STAFF",
-      "DEPT_MANAGER",
-    ],
+    roles: ["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF", "DEPT_MANAGER"],
   },
   {
     label: "Báo Cáo TH",
@@ -214,7 +222,7 @@ export const navItems: NavItem[] = [
     group: "bottom",
     roles: ["SUPER_ADMIN"],
   },
-]
+];
 
 const GROUP_ORDER: Array<{ key: NavItem["group"]; label: string | null }> = [
   { key: "main", label: null },
@@ -224,19 +232,17 @@ const GROUP_ORDER: Array<{ key: NavItem["group"]; label: string | null }> = [
   { key: "reports", label: "Báo cáo" },
   { key: "tools", label: "Công cụ" },
   { key: "bottom", label: null },
-]
+];
 
 export function getGroupedNavItems(role: UserRole): NavGroup[] {
-  return GROUP_ORDER
-    .map(({ key, label }) => ({
-      label,
-      items: navItems.filter(
-        (item) => item.group === key && item.roles.includes(role)
-      ),
-    }))
-    .filter((group) => group.items.length > 0)
+  return GROUP_ORDER.map(({ key, label }) => ({
+    label,
+    items: navItems.filter(
+      (item) => item.group === key && item.roles.includes(role),
+    ),
+  })).filter((group) => group.items.length > 0);
 }
 
 export function getNavItemsForRole(role: UserRole): NavItem[] {
-  return navItems.filter((item) => item.roles.includes(role))
+  return navItems.filter((item) => item.roles.includes(role));
 }

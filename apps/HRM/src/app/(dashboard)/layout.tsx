@@ -1,32 +1,32 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useSession } from "next-auth/react"
-import { redirect } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Topbar } from "@/components/layout/topbar"
-import { ErrorBoundary } from "@/components/ui/error-boundary"
-import type { UserRole } from "@prisma/client"
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Topbar } from "@/components/layout/topbar";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import type { UserRole } from ".prisma/hrm-client";
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const { data: session, status } = useSession()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const { data: session, status } = useSession();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-slate-300 border-t-slate-600 rounded-full" />
       </div>
-    )
+    );
   }
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
 
   return (
@@ -49,5 +49,5 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
-  )
+  );
 }

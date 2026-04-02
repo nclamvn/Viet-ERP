@@ -1,15 +1,15 @@
 // src/components/attendance/shift-form.tsx
 // Shift create/edit form
 
-"use client"
+"use client";
 
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2 } from "lucide-react"
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
@@ -18,25 +18,29 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { shiftSchema, type ShiftFormData } from "@/lib/validations/shift"
-import { SHIFT_TYPE_LABELS, SHIFT_TYPE_COLORS } from "@/constants/attendance"
-import type { Shift } from "@prisma/client"
+} from "@/components/ui/select";
+import { shiftSchema, type ShiftFormData } from "@/lib/validations/shift";
+import { SHIFT_TYPE_LABELS, SHIFT_TYPE_COLORS } from "@/constants/attendance";
+import type { Shift } from ".prisma/hrm-ai-client";
 
 interface ShiftFormProps {
-  initialData?: Shift
-  onSubmit: (data: ShiftFormData) => Promise<void>
-  isLoading?: boolean
+  initialData?: Shift;
+  onSubmit: (data: ShiftFormData) => Promise<void>;
+  isLoading?: boolean;
 }
 
-export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) {
+export function ShiftForm({
+  initialData,
+  onSubmit,
+  isLoading,
+}: ShiftFormProps) {
   const form = useForm({
     resolver: zodResolver(shiftSchema),
     defaultValues: {
@@ -48,7 +52,9 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
       breakStartTime: initialData?.breakStartTime || "12:00",
       breakEndTime: initialData?.breakEndTime || "13:00",
       breakMinutes: initialData?.breakMinutes ?? 60,
-      workHoursPerDay: initialData?.workHoursPerDay ? Number(initialData.workHoursPerDay) : 8,
+      workHoursPerDay: initialData?.workHoursPerDay
+        ? Number(initialData.workHoursPerDay)
+        : 8,
       lateGrace: initialData?.lateGrace ?? 15,
       earlyGrace: initialData?.earlyGrace ?? 15,
       otStartAfter: initialData?.otStartAfter ?? 30,
@@ -58,11 +64,11 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
       color: initialData?.color || "#3B82F6",
       isActive: initialData?.isActive ?? true,
     },
-  })
+  });
 
   const handleFormSubmit = form.handleSubmit(async (data) => {
-    await onSubmit(data as ShiftFormData)
-  })
+    await onSubmit(data as ShiftFormData);
+  });
 
   return (
     <Form {...form}>
@@ -104,7 +110,10 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Loại ca</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn loại ca" />
@@ -116,7 +125,9 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
                         <div className="flex items-center gap-2">
                           <div
                             className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: SHIFT_TYPE_COLORS[value] }}
+                            style={{
+                              backgroundColor: SHIFT_TYPE_COLORS[value],
+                            }}
                           />
                           {label}
                         </div>
@@ -218,7 +229,9 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
                     min={0}
                     max={120}
                     {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value) || 0)
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -240,7 +253,9 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
                   max={24}
                   step={0.5}
                   {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    field.onChange(parseFloat(e.target.value) || 0)
+                  }
                 />
               </FormControl>
               <FormDescription>Số giờ công chuẩn mỗi ngày</FormDescription>
@@ -262,7 +277,9 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
                     min={0}
                     max={60}
                     {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value) || 0)
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -282,7 +299,9 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
                     min={0}
                     max={60}
                     {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value) || 0)
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -302,7 +321,9 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
                     min={0}
                     max={120}
                     {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value) || 0)
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -318,12 +339,13 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <FormLabel className="text-base">Ca qua đêm</FormLabel>
-                <FormDescription>
-                  Ca làm việc kéo dài qua 00:00
-                </FormDescription>
+                <FormDescription>Ca làm việc kéo dài qua 00:00</FormDescription>
               </div>
               <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
               </FormControl>
             </FormItem>
           )}
@@ -335,13 +357,18 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Trạng thái hoạt động</FormLabel>
+                <FormLabel className="text-base">
+                  Trạng thái hoạt động
+                </FormLabel>
                 <FormDescription>
                   Ca làm việc có thể được gán cho nhân viên
                 </FormDescription>
               </div>
               <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
               </FormControl>
             </FormItem>
           )}
@@ -355,5 +382,5 @@ export function ShiftForm({ initialData, onSubmit, isLoading }: ShiftFormProps) 
         </div>
       </form>
     </Form>
-  )
+  );
 }

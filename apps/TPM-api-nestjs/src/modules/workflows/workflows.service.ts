@@ -14,7 +14,7 @@ import {
 import { UpdateApprovalRuleDto } from './dto/update-approval-rule.dto';
 import { WorkflowQueryDto } from './dto/workflow-query.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma, ApprovalRuleType, Channel } from '@prisma/client';
+import { Prisma, ApprovalRuleType, Channel } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class WorkflowsService {

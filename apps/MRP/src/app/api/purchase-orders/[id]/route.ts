@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { z } from 'zod';
+import { NextRequest } from "next/server";
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
 import {
   withPermission,
   successResponse,
@@ -9,10 +9,17 @@ import {
   notFoundResponse,
   validationErrorResponse,
   AuthUser,
-} from '@/lib/api/with-permission';
-import { generateInspectionNumber } from '@/lib/quality/inspection-engine';
-import { auditUpdate, auditStatusChange, auditDelete } from '@/lib/audit/route-audit';
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+} from "@/lib/api/with-permission";
+import { generateInspectionNumber } from "@/lib/quality/inspection-engine";
+import {
+  auditUpdate,
+  auditStatusChange,
+  auditDelete,
+} from "@/lib/audit/route-audit";
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 
 // =============================================================================
 // VALIDATION
@@ -21,8 +28,15 @@ import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limi
 // Schema for PO line item
 const POLineSchema = z.object({
   partId: z.string().min(1, "Part ID là bắt buộc"),
-  quantity: z.number().int().min(1, "Số lượng phải >= 1").max(999999, "Số lượng quá lớn"),
-  unitPrice: z.number().min(0, "Đơn giá phải >= 0").max(999999999, "Đơn giá quá lớn"),
+  quantity: z
+    .number()
+    .int()
+    .min(1, "Số lượng phải >= 1")
+    .max(999999, "Số lượng quá lớn"),
+  unitPrice: z
+    .number()
+    .min(0, "Đơn giá phải >= 0")
+    .max(999999999, "Đơn giá quá lớn"),
 });
 
 const updatePOSchema = z.object({
@@ -30,7 +44,19 @@ const updatePOSchema = z.object({
   supplierId: z.string().optional(),
   orderDate: z.string().or(z.date()).optional(),
   expectedDate: z.string().or(z.date()).optional(),
-  status: z.enum(['draft', 'pending', 'pending_approval', 'approved', 'rejected', 'confirmed', 'in_progress', 'received', 'cancelled']).optional(),
+  status: z
+    .enum([
+      "draft",
+      "pending",
+      "pending_approval",
+      "approved",
+      "rejected",
+      "confirmed",
+      "in_progress",
+      "received",
+      "cancelled",
+    ])
+    .optional(),
   currency: z.string().optional(), // Added: allow currency update
   notes: z.string().optional().nullable(),
   lines: z.array(POLineSchema).optional(),
@@ -42,14 +68,14 @@ const updatePOSchema = z.object({
 
 async function getHandler(
   request: NextRequest,
-  { params, user }: { params?: Record<string, string>; user: AuthUser }
+  { params, user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   // Rate limiting
   const rateLimitResult = await checkReadEndpointLimit(request);
   if (rateLimitResult) return rateLimitResult;
 
   const id = params?.id;
-  if (!id) return errorResponse('ID không hợp lệ', 400);
+  if (!id) return errorResponse("ID không hợp lệ", 400);
 
   const order = await prisma.purchaseOrder.findUnique({
     where: { id },
@@ -57,12 +83,12 @@ async function getHandler(
       supplier: true,
       lines: {
         include: { part: true },
-        orderBy: { lineNumber: 'asc' },
+        orderBy: { lineNumber: "asc" },
       },
     },
   });
 
-  if (!order) return notFoundResponse('Đơn mua hàng');
+  if (!order) return notFoundResponse("Đơn mua hàng");
   return successResponse(order);
 }
 
@@ -72,39 +98,48 @@ async function getHandler(
 
 async function putHandler(
   request: NextRequest,
-  { params, user }: { params?: Record<string, string>; user: AuthUser }
+  { params, user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   // Rate limiting
   const rateLimitResult = await checkWriteEndpointLimit(request);
   if (rateLimitResult) return rateLimitResult;
 
   const id = params?.id;
-  if (!id) return errorResponse('ID không hợp lệ', 400);
+  if (!id) return errorResponse("ID không hợp lệ", 400);
 
   const existing = await prisma.purchaseOrder.findUnique({
     where: { id },
     include: { lines: true },
   });
-  if (!existing) return notFoundResponse('Đơn mua hàng');
+  if (!existing) return notFoundResponse("Đơn mua hàng");
 
   // Allow status change to "received" from "confirmed"/"in_progress"
   // But block general edits on already received/cancelled POs
-  if (!['draft', 'pending', 'pending_approval', 'rejected', 'confirmed', 'in_progress'].includes(existing.status)) {
-    return errorResponse('Không thể chỉnh sửa PO ở trạng thái này', 400);
+  if (
+    ![
+      "draft",
+      "pending",
+      "pending_approval",
+      "rejected",
+      "confirmed",
+      "in_progress",
+    ].includes(existing.status)
+  ) {
+    return errorResponse("Không thể chỉnh sửa PO ở trạng thái này", 400);
   }
 
   let body;
   try {
     body = await request.json();
   } catch {
-    return errorResponse('Invalid JSON body', 400);
+    return errorResponse("Invalid JSON body", 400);
   }
 
   const validation = updatePOSchema.safeParse(body);
   if (!validation.success) {
     const errors: Record<string, string[]> = {};
     validation.error.issues.forEach((err) => {
-      const path = err.path.join('.');
+      const path = err.path.join(".");
       if (!errors[path]) errors[path] = [];
       errors[path].push(err.message);
     });
@@ -113,8 +148,16 @@ async function putHandler(
 
   // Block direct status manipulation to approval workflow states via PUT
   // These must go through /submit, /approve, /reject, /cancel routes
-  if (validation.data.status && ['pending_approval', 'approved', 'rejected'].includes(validation.data.status)) {
-    return errorResponse('Sử dụng API workflow (/submit, /approve, /reject) để thay đổi trạng thái duyệt.', 400);
+  if (
+    validation.data.status &&
+    ["pending_approval", "approved", "rejected"].includes(
+      validation.data.status,
+    )
+  ) {
+    return errorResponse(
+      "Sử dụng API workflow (/submit, /approve, /reject) để thay đổi trạng thái duyệt.",
+      400,
+    );
   }
 
   const { lines, ...headerData } = validation.data;
@@ -124,16 +167,18 @@ async function putHandler(
     const expectedDate = new Date(body.expectedUpdatedAt);
     if (existing.updatedAt.getTime() !== expectedDate.getTime()) {
       return errorResponse(
-        'Dữ liệu đã bị thay đổi bởi người dùng khác. Vui lòng tải lại và thử lại.',
-        409
+        "Dữ liệu đã bị thay đổi bởi người dùng khác. Vui lòng tải lại và thử lại.",
+        409,
       );
     }
   }
 
   // Build header update data
   const updateData: Prisma.PurchaseOrderUpdateInput = { ...headerData };
-  if (headerData.orderDate) updateData.orderDate = new Date(headerData.orderDate);
-  if (headerData.expectedDate) updateData.expectedDate = new Date(headerData.expectedDate);
+  if (headerData.orderDate)
+    updateData.orderDate = new Date(headerData.orderDate);
+  if (headerData.expectedDate)
+    updateData.expectedDate = new Date(headerData.expectedDate);
 
   // Validate parts exist if lines provided
   if (lines && lines.length > 0) {
@@ -145,39 +190,47 @@ async function putHandler(
     const foundPartIds = new Set(parts.map((p) => p.id));
     const missingParts = partIds.filter((pid) => !foundPartIds.has(pid));
     if (missingParts.length > 0) {
-      return errorResponse(`Parts không tồn tại: ${missingParts.join(", ")}`, 400);
+      return errorResponse(
+        `Parts không tồn tại: ${missingParts.join(", ")}`,
+        400,
+      );
     }
 
     // Calculate new total amount
-    const totalAmount = lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+    const totalAmount = lines.reduce(
+      (sum, line) => sum + line.quantity * line.unitPrice,
+      0,
+    );
     updateData.totalAmount = totalAmount;
   }
 
   // === Pre-compute receiving data before transaction (if PO is being received) ===
   const isBeingReceived =
-    validation.data.status === 'received' && existing.status !== 'received';
+    validation.data.status === "received" && existing.status !== "received";
 
-  let receivingWarehouse: Awaited<ReturnType<typeof prisma.warehouse.findFirst>> = null;
-  let inspectionNumbers: Record<string, string> = {};
+  let receivingWarehouse: Awaited<
+    ReturnType<typeof prisma.warehouse.findFirst>
+  > = null;
+  const inspectionNumbers: Record<string, string> = {};
 
   if (isBeingReceived) {
     // Find RECEIVING warehouse (pre-transaction reads)
     receivingWarehouse = await prisma.warehouse.findFirst({
-      where: { type: 'RECEIVING' },
+      where: { type: "RECEIVING" },
     });
     if (!receivingWarehouse) {
       receivingWarehouse = await prisma.warehouse.findFirst({
-        where: { status: 'active' },
-        orderBy: { createdAt: 'asc' },
+        where: { status: "active" },
+        orderBy: { createdAt: "asc" },
       });
     }
     if (!receivingWarehouse) {
       receivingWarehouse = await prisma.warehouse.create({
         data: {
-          code: 'WH-RECEIVING',
-          name: 'Receiving Area',
-          type: 'RECEIVING',
-          status: 'active',
+          code: "WH-RECEIVING",
+          name: "Receiving Area",
+          type: "RECEIVING",
+          status: "active",
         },
       });
     }
@@ -186,10 +239,11 @@ async function putHandler(
     const poLines = existing.lines;
     for (const line of poLines) {
       const existingInspection = await prisma.inspection.findFirst({
-        where: { poLineId: line.id, type: 'RECEIVING' },
+        where: { poLineId: line.id, type: "RECEIVING" },
       });
       if (!existingInspection) {
-        inspectionNumbers[line.id] = await generateInspectionNumber('RECEIVING');
+        inspectionNumbers[line.id] =
+          await generateInspectionNumber("RECEIVING");
       }
     }
   }
@@ -208,24 +262,25 @@ async function putHandler(
       where: { id },
       data: {
         ...updateData,
-        ...(lines && lines.length > 0 && {
-          lines: {
-            create: lines.map((line, index) => ({
-              lineNumber: index + 1,
-              partId: line.partId,
-              quantity: line.quantity,
-              unitPrice: line.unitPrice,
-              lineTotal: line.quantity * line.unitPrice,
-            })),
-          },
-        }),
+        ...(lines &&
+          lines.length > 0 && {
+            lines: {
+              create: lines.map((line, index) => ({
+                lineNumber: index + 1,
+                partId: line.partId,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                lineTotal: line.quantity * line.unitPrice,
+              })),
+            },
+          }),
       },
       include: {
         supplier: true,
         lines: {
           include: { part: true },
-          orderBy: { lineNumber: 'asc' },
-        }
+          orderBy: { lineNumber: "asc" },
+        },
       },
     });
 
@@ -242,12 +297,16 @@ async function putHandler(
           where: { id: line.id },
           data: {
             receivedQty: line.quantity,
-            status: 'received',
+            status: "received",
           },
         });
 
         const existingInventory = await tx.inventory.findFirst({
-          where: { partId: line.partId, warehouseId: receivingWarehouse.id, locationCode: 'RECEIVING' },
+          where: {
+            partId: line.partId,
+            warehouseId: receivingWarehouse.id,
+            locationCode: "RECEIVING",
+          },
         });
 
         if (existingInventory) {
@@ -265,7 +324,7 @@ async function putHandler(
               warehouseId: receivingWarehouse.id,
               quantity: line.quantity,
               reservedQty: 0,
-              locationCode: 'RECEIVING',
+              locationCode: "RECEIVING",
             },
           });
         }
@@ -275,11 +334,11 @@ async function putHandler(
           data: {
             lotNumber: `PO-RCV-${existing.poNumber}-${line.lineNumber || Date.now()}`,
             partId: line.partId,
-            transactionType: 'PO_RECEIVED',
+            transactionType: "PO_RECEIVED",
             quantity: line.quantity,
             previousQty: existingInventory?.quantity ?? 0,
             newQty: (existingInventory?.quantity ?? 0) + line.quantity,
-            userId: user.id || 'system',
+            userId: user.id || "system",
             notes: `Nhận hàng từ PO: ${existing.poNumber}`,
           },
         });
@@ -287,20 +346,22 @@ async function putHandler(
         // Auto-create receiving inspection
         // Use pre-computed number if available (old lines), otherwise generate new one
         const existingInspection = await tx.inspection.findFirst({
-          where: { poLineId: line.id, type: 'RECEIVING' },
+          where: { poLineId: line.id, type: "RECEIVING" },
         });
         if (!existingInspection) {
-          const inspNumber = inspectionNumbers[line.id] || await generateInspectionNumber('RECEIVING');
+          const inspNumber =
+            inspectionNumbers[line.id] ||
+            (await generateInspectionNumber("RECEIVING"));
           await tx.inspection.create({
             data: {
               inspectionNumber: inspNumber,
-              type: 'RECEIVING',
-              status: 'pending',
+              type: "RECEIVING",
+              status: "pending",
               partId: line.partId,
               poLineId: line.id,
               quantityReceived: line.quantity,
               quantityInspected: 0,
-              inspectedBy: user.id || 'system',
+              inspectedBy: user.id || "system",
               lotNumber: `LOT-${existing.poNumber}-${line.lineNumber || 1}`,
             },
           });
@@ -313,9 +374,23 @@ async function putHandler(
 
   // Audit trail (fire-and-forget, outside transaction)
   if (validation.data.status && validation.data.status !== existing.status) {
-    auditStatusChange(request, { id: user.id, name: user.name, email: user.email }, "PurchaseOrder", id!, existing.status, validation.data.status);
+    auditStatusChange(
+      request,
+      { id: user.id, name: user.name, email: user.email },
+      "PurchaseOrder",
+      id!,
+      existing.status,
+      validation.data.status,
+    );
   } else {
-    auditUpdate(request, { id: user.id, name: user.name, email: user.email }, "PurchaseOrder", id!, existing as unknown as Record<string, unknown>, headerData as Record<string, unknown>);
+    auditUpdate(
+      request,
+      { id: user.id, name: user.name, email: user.email },
+      "PurchaseOrder",
+      id!,
+      existing as unknown as Record<string, unknown>,
+      headerData as Record<string, unknown>,
+    );
   }
 
   return successResponse(order);
@@ -327,34 +402,47 @@ async function putHandler(
 
 async function deleteHandler(
   request: NextRequest,
-  { params, user }: { params?: Record<string, string>; user: AuthUser }
+  { params, user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   // Rate limiting
   const rateLimitResult = await checkWriteEndpointLimit(request);
   if (rateLimitResult) return rateLimitResult;
 
   const id = params?.id;
-  if (!id) return errorResponse('ID không hợp lệ', 400);
+  if (!id) return errorResponse("ID không hợp lệ", 400);
 
   const existing = await prisma.purchaseOrder.findUnique({ where: { id } });
-  if (!existing) return notFoundResponse('Đơn mua hàng');
+  if (!existing) return notFoundResponse("Đơn mua hàng");
 
-  if (existing.status === 'draft') {
+  if (existing.status === "draft") {
     await prisma.purchaseOrder.delete({ where: { id } });
-    auditDelete(request, { id: user.id, name: user.name, email: user.email }, "PurchaseOrder", id!, { poNumber: existing.poNumber });
+    auditDelete(
+      request,
+      { id: user.id, name: user.name, email: user.email },
+      "PurchaseOrder",
+      id!,
+      { poNumber: existing.poNumber },
+    );
     return successResponse({ deleted: true, id });
   }
 
-  if (['received', 'cancelled'].includes(existing.status)) {
-    return errorResponse('Không thể hủy PO đã nhận hàng hoặc đã hủy', 400);
+  if (["received", "cancelled"].includes(existing.status)) {
+    return errorResponse("Không thể hủy PO đã nhận hàng hoặc đã hủy", 400);
   }
 
   await prisma.purchaseOrder.update({
     where: { id },
-    data: { status: 'cancelled' },
+    data: { status: "cancelled" },
   });
 
-  auditStatusChange(request, { id: user.id, name: user.name, email: user.email }, "PurchaseOrder", id!, existing.status, "cancelled");
+  auditStatusChange(
+    request,
+    { id: user.id, name: user.name, email: user.email },
+    "PurchaseOrder",
+    id!,
+    existing.status,
+    "cancelled",
+  );
 
   return successResponse({ cancelled: true, id });
 }
@@ -363,6 +451,8 @@ async function deleteHandler(
 // EXPORTS
 // =============================================================================
 
-export const GET = withPermission(getHandler, { read: 'purchasing:view' });
-export const PUT = withPermission(putHandler, { update: 'orders:edit' });
-export const DELETE = withPermission(deleteHandler, { delete: 'orders:delete' });
+export const GET = withPermission(getHandler, { read: "purchasing:view" });
+export const PUT = withPermission(putHandler, { update: "orders:edit" });
+export const DELETE = withPermission(deleteHandler, {
+  delete: "orders:delete",
+});

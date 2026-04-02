@@ -1,6 +1,6 @@
 // Pegging Engine - Demand-Supply traceability
 import { prisma } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
+import { Decimal } from "decimal.js";
 
 export interface PeggingResult {
   partId: string;
@@ -56,7 +56,7 @@ export interface DemandSource {
 export async function generatePegging(
   partId: string,
   siteId?: string,
-  horizon: number = 90
+  horizon: number = 90,
 ): Promise<PeggingResult> {
   const endDate = new Date();
   endDate.setDate(endDate.getDate() + horizon);
@@ -74,7 +74,7 @@ export async function generatePegging(
   // Calculate on-hand
   const onHand = part.inventory.reduce(
     (sum, inv) => sum + inv.quantity - inv.reservedQty,
-    0
+    0,
   );
 
   // Get all demands
@@ -128,7 +128,7 @@ export async function generatePegging(
 async function collectDemands(
   partId: string,
   siteId: string | undefined,
-  endDate: Date
+  endDate: Date,
 ): Promise<DemandPeg[]> {
   const demands: DemandPeg[] = [];
 
@@ -211,7 +211,7 @@ async function collectDemands(
 async function collectSupplies(
   partId: string,
   siteId: string | undefined,
-  endDate: Date
+  endDate: Date,
 ): Promise<SupplyPeg[]> {
   const supplies: SupplyPeg[] = [];
 
@@ -278,7 +278,7 @@ async function collectSupplies(
  */
 function performPegging(
   demands: DemandPeg[],
-  supplies: SupplyPeg[]
+  supplies: SupplyPeg[],
 ): DemandPeg[] {
   for (const demand of demands) {
     let remainingDemand = demand.quantity;
@@ -328,7 +328,7 @@ export async function savePeggingRecords(
   partId: string,
   demands: DemandPeg[],
   supplies: SupplyPeg[],
-  mrpRunId?: string
+  mrpRunId?: string,
 ): Promise<void> {
   // Delete old pegging for this part
   await prisma.peggingRecord.deleteMany({
@@ -339,7 +339,8 @@ export async function savePeggingRecords(
   for (const demand of demands) {
     for (const source of demand.peggedFrom) {
       const supply = supplies.find(
-        (s) => s.supplyId === source.supplyId && s.supplyType === source.supplyType
+        (s) =>
+          s.supplyId === source.supplyId && s.supplyType === source.supplyType,
       );
 
       await prisma.peggingRecord.create({
@@ -367,7 +368,7 @@ export async function savePeggingRecords(
  */
 export async function getDemandPegging(
   demandType: string,
-  demandId: string
+  demandId: string,
 ): Promise<{
   demand: { type: string; id: string; partId: string; qty: number; date: Date };
   supplies: Array<{ type: string; id: string; qty: number; date: Date }>;
@@ -406,7 +407,7 @@ export async function getDemandPegging(
  */
 export async function getSupplyPegging(
   supplyType: string,
-  supplyId: string
+  supplyId: string,
 ): Promise<{
   supply: { type: string; id: string; partId: string; qty: number; date: Date };
   demands: Array<{ type: string; id: string; qty: number; date: Date }>;

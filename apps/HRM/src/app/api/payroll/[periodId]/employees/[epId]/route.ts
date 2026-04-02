@@ -1,25 +1,30 @@
-import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { UserRole } from "@prisma/client"
-import { calculatePayroll } from "@/lib/calculators/payroll"
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { UserRole } from ".prisma/hrm-client";
+import { calculatePayroll } from "@/lib/calculators/payroll";
 
-const PAYROLL_ROLES: UserRole[] = ["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF", "ACCOUNTANT"]
+const PAYROLL_ROLES: UserRole[] = [
+  "SUPER_ADMIN",
+  "HR_MANAGER",
+  "HR_STAFF",
+  "ACCOUNTANT",
+];
 
 // GET /api/payroll/[periodId]/employees/[epId] — Employee payroll detail
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ periodId: string; epId: string }> }
+  { params }: { params: Promise<{ periodId: string; epId: string }> },
 ) {
-  const session = await auth()
+  const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!PAYROLL_ROLES.includes(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { epId } = await params
+  const { epId } = await params;
 
   const ep = await prisma.employeePayroll.findUnique({
     where: { id: epId },
@@ -36,56 +41,63 @@ export async function GET(
       items: { orderBy: { createdAt: "asc" } },
       period: { select: { status: true } },
     },
-  })
+  });
 
   if (!ep) {
-    return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 })
+    return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: ep })
+  return NextResponse.json({ data: ep });
 }
 
 // PUT /api/payroll/[periodId]/employees/[epId] — Update + auto recalculate
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ periodId: string; epId: string }> }
+  { params }: { params: Promise<{ periodId: string; epId: string }> },
 ) {
-  const session = await auth()
+  const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!["SUPER_ADMIN", "HR_MANAGER", "HR_STAFF"].includes(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { periodId, epId } = await params
+  const { periodId, epId } = await params;
 
   const period = await prisma.payrollPeriod.findUnique({
     where: { id: periodId },
     select: { status: true },
-  })
+  });
   if (!period) {
-    return NextResponse.json({ error: "Không tìm thấy bảng lương" }, { status: 404 })
+    return NextResponse.json(
+      { error: "Không tìm thấy bảng lương" },
+      { status: 404 },
+    );
   }
   if (period.status !== "DRAFT") {
-    return NextResponse.json({ error: "Bảng lương đã duyệt, không thể chỉnh sửa" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Bảng lương đã duyệt, không thể chỉnh sửa" },
+      { status: 400 },
+    );
   }
 
-  const body = await request.json()
-  const { actualDays, standardDays, advanceDeduction, notes } = body
+  const body = await request.json();
+  const { actualDays, standardDays, advanceDeduction, notes } = body;
 
   // Update allowed fields
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateData: Record<string, any> = {}
-  if (actualDays !== undefined) updateData.actualDays = actualDays
-  if (standardDays !== undefined) updateData.standardDays = standardDays
-  if (advanceDeduction !== undefined) updateData.advanceDeduction = advanceDeduction
-  if (notes !== undefined) updateData.notes = notes
+  const updateData: Record<string, any> = {};
+  if (actualDays !== undefined) updateData.actualDays = actualDays;
+  if (standardDays !== undefined) updateData.standardDays = standardDays;
+  if (advanceDeduction !== undefined)
+    updateData.advanceDeduction = advanceDeduction;
+  if (notes !== undefined) updateData.notes = notes;
 
   await prisma.employeePayroll.update({
     where: { id: epId },
     data: updateData,
-  })
+  });
 
   // Recalculate
   const ep = await prisma.employeePayroll.findUnique({
@@ -94,17 +106,17 @@ export async function PUT(
       items: true,
       employee: { select: { status: true } },
     },
-  })
+  });
   if (!ep) {
-    return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 })
+    return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 });
   }
 
-  const itemSums: Record<string, number> = {}
+  const itemSums: Record<string, number> = {};
   for (const item of ep.items) {
-    itemSums[item.type] = (itemSums[item.type] || 0) + Number(item.amount)
+    itemSums[item.type] = (itemSums[item.type] || 0) + Number(item.amount);
   }
 
-  const isProbation = ep.employee.status === "PROBATION"
+  const isProbation = ep.employee.status === "PROBATION";
 
   const result = calculatePayroll({
     baseSalary: Number(ep.baseSalary),
@@ -127,7 +139,7 @@ export async function PUT(
     advanceDeduction: Number(ep.advanceDeduction),
     dependentCount: ep.dependentCount,
     isProbation,
-  })
+  });
 
   const updated = await prisma.employeePayroll.update({
     where: { id: epId },
@@ -151,7 +163,7 @@ export async function PUT(
       bhtnldEmployer: result.bhtnldEmployer,
       totalEmployerIns: result.totalEmployerIns,
     },
-  })
+  });
 
-  return NextResponse.json({ data: updated })
+  return NextResponse.json({ data: updated });
 }

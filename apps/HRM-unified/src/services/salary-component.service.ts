@@ -1,18 +1,22 @@
 // src/services/salary-component.service.ts
 // Salary Component Service
 
-import { db } from '@/lib/db'
-import type { Prisma, PayrollComponentCategory, PayrollItemType } from '@prisma/client'
-import type { PaginatedResponse } from '@/types'
-import { DEFAULT_SALARY_COMPONENTS } from '@/lib/payroll/constants'
+import { db } from "@/lib/db";
+import type {
+  Prisma,
+  PayrollComponentCategory,
+  PayrollItemType,
+} from ".prisma/hrm-unified-client";
+import type { PaginatedResponse } from "@/types";
+import { DEFAULT_SALARY_COMPONENTS } from "@/lib/payroll/constants";
 
 export interface SalaryComponentFilters {
-  search?: string
-  category?: PayrollComponentCategory
-  itemType?: PayrollItemType
-  isActive?: boolean
-  page?: number
-  pageSize?: number
+  search?: string;
+  category?: PayrollComponentCategory;
+  itemType?: PayrollItemType;
+  isActive?: boolean;
+  page?: number;
+  pageSize?: number;
 }
 
 export const salaryComponentService = {
@@ -25,32 +29,39 @@ export const salaryComponentService = {
    */
   async findAll(
     tenantId: string,
-    filters: SalaryComponentFilters = {}
+    filters: SalaryComponentFilters = {},
   ): Promise<PaginatedResponse<Prisma.SalaryComponentGetPayload<object>>> {
-    const { search, category, itemType, isActive, page = 1, pageSize = 50 } = filters
+    const {
+      search,
+      category,
+      itemType,
+      isActive,
+      page = 1,
+      pageSize = 50,
+    } = filters;
 
     const where: Prisma.SalaryComponentWhereInput = {
       tenantId,
       ...(search && {
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { code: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search, mode: "insensitive" } },
+          { code: { contains: search, mode: "insensitive" } },
         ],
       }),
       ...(category && { category }),
       ...(itemType && { itemType }),
       ...(isActive !== undefined && { isActive }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.salaryComponent.findMany({
         where,
-        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       db.salaryComponent.count({ where }),
-    ])
+    ]);
 
     return {
       data,
@@ -60,7 +71,7 @@ export const salaryComponentService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
 
   /**
@@ -69,7 +80,7 @@ export const salaryComponentService = {
   async findById(tenantId: string, id: string) {
     return db.salaryComponent.findFirst({
       where: { id, tenantId },
-    })
+    });
   },
 
   /**
@@ -78,7 +89,7 @@ export const salaryComponentService = {
   async findByCode(tenantId: string, code: string) {
     return db.salaryComponent.findFirst({
       where: { tenantId, code },
-    })
+    });
   },
 
   /**
@@ -87,8 +98,8 @@ export const salaryComponentService = {
   async getActiveComponents(tenantId: string) {
     return db.salaryComponent.findMany({
       where: { tenantId, isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    })
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
   },
 
   /**
@@ -97,8 +108,8 @@ export const salaryComponentService = {
   async getByType(tenantId: string, itemType: PayrollItemType) {
     return db.salaryComponent.findMany({
       where: { tenantId, itemType, isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    })
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
   },
 
   /**
@@ -107,8 +118,8 @@ export const salaryComponentService = {
   async getByCategory(tenantId: string, category: PayrollComponentCategory) {
     return db.salaryComponent.findMany({
       where: { tenantId, category, isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    })
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
   },
 
   /**
@@ -116,12 +127,12 @@ export const salaryComponentService = {
    */
   async create(
     tenantId: string,
-    data: Omit<Prisma.SalaryComponentCreateInput, 'tenant'>
+    data: Omit<Prisma.SalaryComponentCreateInput, "tenant">,
   ) {
     // Check for duplicate code
-    const existing = await this.findByCode(tenantId, data.code as string)
+    const existing = await this.findByCode(tenantId, data.code as string);
     if (existing) {
-      throw new Error(`Mã thành phần lương "${data.code}" đã tồn tại`)
+      throw new Error(`Mã thành phần lương "${data.code}" đã tồn tại`);
     }
 
     return db.salaryComponent.create({
@@ -129,7 +140,7 @@ export const salaryComponentService = {
         ...data,
         tenant: { connect: { id: tenantId } },
       },
-    })
+    });
   },
 
   /**
@@ -138,43 +149,50 @@ export const salaryComponentService = {
   async update(
     tenantId: string,
     id: string,
-    data: Omit<Prisma.SalaryComponentUpdateInput, 'tenant'>
+    data: Omit<Prisma.SalaryComponentUpdateInput, "tenant">,
   ) {
     const component = await db.salaryComponent.findFirst({
       where: { id, tenantId },
-    })
+    });
 
     if (!component) {
-      throw new Error('Thành phần lương không tồn tại')
+      throw new Error("Thành phần lương không tồn tại");
     }
 
     if (component.isSystem) {
       // Only allow updating certain fields for system components
-      const allowedFields = ['isActive', 'defaultAmount', 'description', 'sortOrder']
-      const updateData: Prisma.SalaryComponentUpdateInput = {}
+      const allowedFields = [
+        "isActive",
+        "defaultAmount",
+        "description",
+        "sortOrder",
+      ];
+      const updateData: Prisma.SalaryComponentUpdateInput = {};
       for (const field of allowedFields) {
         if (field in data) {
-          (updateData as Record<string, unknown>)[field] = (data as Record<string, unknown>)[field]
+          (updateData as Record<string, unknown>)[field] = (
+            data as Record<string, unknown>
+          )[field];
         }
       }
       return db.salaryComponent.update({
         where: { id },
         data: updateData,
-      })
+      });
     }
 
     // Check for duplicate code if code is being changed
     if (data.code && data.code !== component.code) {
-      const existing = await this.findByCode(tenantId, data.code as string)
+      const existing = await this.findByCode(tenantId, data.code as string);
       if (existing) {
-        throw new Error(`Mã thành phần lương "${data.code}" đã tồn tại`)
+        throw new Error(`Mã thành phần lương "${data.code}" đã tồn tại`);
       }
     }
 
     return db.salaryComponent.update({
       where: { id },
       data,
-    })
+    });
   },
 
   /**
@@ -188,23 +206,25 @@ export const salaryComponentService = {
           select: { payrollItems: true },
         },
       },
-    })
+    });
 
     if (!component) {
-      throw new Error('Thành phần lương không tồn tại')
+      throw new Error("Thành phần lương không tồn tại");
     }
 
     if (component.isSystem) {
-      throw new Error('Không thể xóa thành phần lương hệ thống')
+      throw new Error("Không thể xóa thành phần lương hệ thống");
     }
 
     if (component._count.payrollItems > 0) {
-      throw new Error('Không thể xóa thành phần lương đã được sử dụng trong bảng lương')
+      throw new Error(
+        "Không thể xóa thành phần lương đã được sử dụng trong bảng lương",
+      );
     }
 
     return db.salaryComponent.delete({
       where: { id },
-    })
+    });
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -217,10 +237,10 @@ export const salaryComponentService = {
   async seedDefaultComponents(tenantId: string) {
     const existing = await db.salaryComponent.count({
       where: { tenantId },
-    })
+    });
 
     if (existing > 0) {
-      return { created: 0, message: 'Đã có thành phần lương' }
+      return { created: 0, message: "Đã có thành phần lương" };
     }
 
     const components = DEFAULT_SALARY_COMPONENTS.map((comp) => ({
@@ -234,13 +254,16 @@ export const salaryComponentService = {
       isSystem: comp.isSystem,
       sortOrder: comp.sortOrder,
       isActive: true,
-    }))
+    }));
 
     await db.salaryComponent.createMany({
       data: components,
-    })
+    });
 
-    return { created: components.length, message: `Đã tạo ${components.length} thành phần lương` }
+    return {
+      created: components.length,
+      message: `Đã tạo ${components.length} thành phần lương`,
+    };
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -251,20 +274,20 @@ export const salaryComponentService = {
    * Get earnings components
    */
   async getEarnings(tenantId: string) {
-    return this.getByType(tenantId, 'EARNING')
+    return this.getByType(tenantId, "EARNING");
   },
 
   /**
    * Get deduction components
    */
   async getDeductions(tenantId: string) {
-    return this.getByType(tenantId, 'DEDUCTION')
+    return this.getByType(tenantId, "DEDUCTION");
   },
 
   /**
    * Get employer cost components
    */
   async getEmployerCosts(tenantId: string) {
-    return this.getByType(tenantId, 'EMPLOYER_COST')
+    return this.getByType(tenantId, "EMPLOYER_COST");
   },
-}
+};

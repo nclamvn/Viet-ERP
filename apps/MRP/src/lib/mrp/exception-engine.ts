@@ -1,6 +1,6 @@
 // Exception Engine - MRP Exception Detection and Management
 import { prisma } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
+import { Decimal } from "decimal.js";
 
 export type ExceptionType =
   | "RESCHEDULE_IN"
@@ -42,7 +42,7 @@ export interface ExceptionSummary {
  * Detect MRP exceptions
  */
 export async function detectExceptions(
-  mrpRunId?: string
+  mrpRunId?: string,
 ): Promise<DetectedExceptionData[]> {
   const exceptions: DetectedExceptionData[] = [];
 
@@ -108,7 +108,7 @@ async function detectPastDuePurchaseOrders(): Promise<DetectedExceptionData[]> {
       if (openQty > 0) {
         const daysLate = Math.floor(
           (today.getTime() - (po.expectedDate?.getTime() || 0)) /
-          (1000 * 60 * 60 * 24)
+            (1000 * 60 * 60 * 24),
         );
 
         exceptions.push({
@@ -148,7 +148,7 @@ async function detectShortages(): Promise<DetectedExceptionData[]> {
   for (const part of parts) {
     const totalOnHand = part.inventory.reduce(
       (sum, inv) => sum + inv.quantity - inv.reservedQty,
-      0
+      0,
     );
 
     // Check safety stock
@@ -180,7 +180,9 @@ async function detectShortages(): Promise<DetectedExceptionData[]> {
 /**
  * Detect reschedule opportunities
  */
-async function detectRescheduleOpportunities(): Promise<DetectedExceptionData[]> {
+async function detectRescheduleOpportunities(): Promise<
+  DetectedExceptionData[]
+> {
   const exceptions: DetectedExceptionData[] = [];
 
   // Get planning settings
@@ -209,7 +211,7 @@ async function detectRescheduleOpportunities(): Promise<DetectedExceptionData[]>
 
   for (const order of plannedOrders) {
     const daysUntilDue = Math.floor(
-      (order.dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (order.dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     // If due date is far in the future, suggest rescheduling out
@@ -234,7 +236,7 @@ async function detectRescheduleOpportunities(): Promise<DetectedExceptionData[]>
  * Get exception summary
  */
 export async function getExceptionSummary(
-  siteId?: string
+  siteId?: string,
 ): Promise<ExceptionSummary> {
   const where = {
     status: "OPEN",
@@ -283,10 +285,7 @@ export async function getExceptions(options: {
     include: {
       part: true,
     },
-    orderBy: [
-      { severity: "desc" },
-      { createdAt: "desc" },
-    ],
+    orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
     take: options.limit || 100,
   });
 }
@@ -297,7 +296,7 @@ export async function getExceptions(options: {
 export async function resolveException(
   exceptionId: string,
   resolution: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   await prisma.mRPException.update({
     where: { id: exceptionId },
@@ -315,7 +314,7 @@ export async function resolveException(
  */
 export async function acknowledgeException(
   exceptionId: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   await prisma.mRPException.update({
     where: { id: exceptionId },
@@ -332,7 +331,7 @@ export async function acknowledgeException(
 export async function ignoreException(
   exceptionId: string,
   userId: string,
-  reason?: string
+  reason?: string,
 ): Promise<void> {
   await prisma.mRPException.update({
     where: { id: exceptionId },
@@ -348,7 +347,9 @@ export async function ignoreException(
 /**
  * Clear old resolved exceptions
  */
-export async function clearOldExceptions(daysOld: number = 30): Promise<number> {
+export async function clearOldExceptions(
+  daysOld: number = 30,
+): Promise<number> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 

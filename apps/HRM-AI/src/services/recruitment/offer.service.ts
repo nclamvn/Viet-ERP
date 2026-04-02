@@ -1,12 +1,12 @@
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
-import type { JobType, WorkMode } from '@prisma/client'
-import { audit } from '@/lib/recruitment/utils'
-import { emailService } from '@/services/email.service'
-import type { AuditContext } from '@/types/audit'
+import { db } from "@/lib/db";
+import { Prisma } from ".prisma/hrm-ai-client";
+import type { JobType, WorkMode } from ".prisma/hrm-ai-client";
+import { audit } from "@/lib/recruitment/utils";
+import { emailService } from "@/services/email.service";
+import type { AuditContext } from "@/types/audit";
 
 export async function generateOfferCode(tenantId: string): Promise<string> {
-  const year = new Date().getFullYear()
+  const year = new Date().getFullYear();
   const count = await db.offer.count({
     where: {
       tenantId,
@@ -15,31 +15,31 @@ export async function generateOfferCode(tenantId: string): Promise<string> {
         lt: new Date(year + 1, 0, 1),
       },
     },
-  })
-  return `OFFER-${year}-${String(count + 1).padStart(4, '0')}`
+  });
+  return `OFFER-${year}-${String(count + 1).padStart(4, "0")}`;
 }
 
 export async function createOffer(
   tenantId: string,
   data: {
-    applicationId: string
-    position: string
-    departmentId: string
-    reportingToId?: string
-    jobType: string
-    workMode: string
-    location?: string
-    baseSalary: number
-    allowances?: { name: string; amount: number }[]
-    bonus?: string
-    benefits?: string
-    startDate: Date
-    probationMonths?: number
-    expiresAt: Date
+    applicationId: string;
+    position: string;
+    departmentId: string;
+    reportingToId?: string;
+    jobType: string;
+    workMode: string;
+    location?: string;
+    baseSalary: number;
+    allowances?: { name: string; amount: number }[];
+    bonus?: string;
+    benefits?: string;
+    startDate: Date;
+    probationMonths?: number;
+    expiresAt: Date;
   },
-  ctx: AuditContext
+  ctx: AuditContext,
 ) {
-  const offerCode = await generateOfferCode(tenantId)
+  const offerCode = await generateOfferCode(tenantId);
 
   const offer = await db.offer.create({
     data: {
@@ -59,34 +59,39 @@ export async function createOffer(
       startDate: data.startDate,
       probationMonths: data.probationMonths || 2,
       expiresAt: data.expiresAt,
-      status: 'DRAFT',
+      status: "DRAFT",
     },
     include: {
       application: { include: { candidate: true } },
       department: true,
     },
-  })
+  });
 
-  await audit.create(ctx, 'Offer', offer.id, `${offer.offerCode} - ${offer.position}`)
+  await audit.create(
+    ctx,
+    "Offer",
+    offer.id,
+    `${offer.offerCode} - ${offer.position}`,
+  );
 
-  return offer
+  return offer;
 }
 
 export async function getOffers(
   tenantId: string,
   filters?: {
-    status?: string
-    applicationId?: string
-    departmentId?: string
+    status?: string;
+    applicationId?: string;
+    departmentId?: string;
   },
   page = 1,
-  limit = 20
+  limit = 20,
 ) {
-  const where: Record<string, unknown> = { tenantId }
+  const where: Record<string, unknown> = { tenantId };
 
-  if (filters?.status) where.status = filters.status
-  if (filters?.applicationId) where.applicationId = filters.applicationId
-  if (filters?.departmentId) where.departmentId = filters.departmentId
+  if (filters?.status) where.status = filters.status;
+  if (filters?.applicationId) where.applicationId = filters.applicationId;
+  if (filters?.departmentId) where.departmentId = filters.departmentId;
 
   const [offers, total] = await Promise.all([
     db.offer.findMany({
@@ -100,14 +105,14 @@ export async function getOffers(
         },
         department: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
     }),
     db.offer.count({ where }),
-  ])
+  ]);
 
-  return { offers, total, page, limit }
+  return { offers, total, page, limit };
 }
 
 export async function getOfferById(id: string, tenantId: string) {
@@ -125,105 +130,114 @@ export async function getOfferById(id: string, tenantId: string) {
       sentBy: { select: { id: true, name: true } },
       approvedBy: { select: { id: true, name: true } },
     },
-  })
+  });
 }
 
 export async function approveOffer(
   id: string,
   tenantId: string,
   userId: string,
-  ctx: AuditContext
+  ctx: AuditContext,
 ) {
   const offer = await db.offer.findFirst({
-    where: { id, tenantId, status: 'PENDING_APPROVAL' },
-  })
+    where: { id, tenantId, status: "PENDING_APPROVAL" },
+  });
 
-  if (!offer) return null
+  if (!offer) return null;
 
   const updated = await db.offer.update({
     where: { id },
     data: {
-      status: 'APPROVED',
+      status: "APPROVED",
       approvedById: userId,
       approvedAt: new Date(),
     },
-  })
+  });
 
-  await audit.approve(ctx, 'Offer', id, offer.offerCode)
+  await audit.approve(ctx, "Offer", id, offer.offerCode);
 
-  return updated
+  return updated;
 }
 
 export async function sendOffer(
   id: string,
   tenantId: string,
   userId: string,
-  ctx: AuditContext
+  ctx: AuditContext,
 ) {
   const offer = await db.offer.findFirst({
-    where: { id, tenantId, status: 'APPROVED' },
+    where: { id, tenantId, status: "APPROVED" },
     include: {
       application: { include: { candidate: true } },
       department: true,
     },
-  })
+  });
 
-  if (!offer) return null
+  if (!offer) return null;
 
   const updated = await db.offer.update({
     where: { id },
     data: {
-      status: 'SENT',
+      status: "SENT",
       sentAt: new Date(),
       sentById: userId,
     },
-  })
+  });
 
   await db.application.update({
     where: { id: offer.applicationId },
-    data: { status: 'OFFER' },
-  })
+    data: { status: "OFFER" },
+  });
 
   try {
-    await emailService.queueEmail(tenantId, offer.application.candidate.email, 'offer_letter', {
-      candidateName: offer.application.candidate.fullName,
-      position: offer.position,
-      department: offer.department.name,
-      baseSalary: new Intl.NumberFormat('vi-VN').format(Number(offer.baseSalary)),
-      startDate: offer.startDate.toLocaleDateString('vi-VN'),
-      expiresAt: offer.expiresAt.toLocaleDateString('vi-VN'),
-    })
+    await emailService.queueEmail(
+      tenantId,
+      offer.application.candidate.email,
+      "offer_letter",
+      {
+        candidateName: offer.application.candidate.fullName,
+        position: offer.position,
+        department: offer.department.name,
+        baseSalary: new Intl.NumberFormat("vi-VN").format(
+          Number(offer.baseSalary),
+        ),
+        startDate: offer.startDate.toLocaleDateString("vi-VN"),
+        expiresAt: offer.expiresAt.toLocaleDateString("vi-VN"),
+      },
+    );
   } catch (e) {
-    console.error('Failed to queue offer email:', e)
+    console.error("Failed to queue offer email:", e);
   }
 
   await db.applicationActivity.create({
     data: {
       applicationId: offer.applicationId,
-      action: 'offer_sent',
+      action: "offer_sent",
       description: `Đã gửi offer letter (${offer.offerCode})`,
       performedById: userId,
     },
-  })
+  });
 
-  await audit.update(ctx, 'Offer', id, { status: { old: 'APPROVED', new: 'SENT' } })
+  await audit.update(ctx, "Offer", id, {
+    status: { old: "APPROVED", new: "SENT" },
+  });
 
-  return updated
+  return updated;
 }
 
 export async function respondToOffer(
   id: string,
   tenantId: string,
   accepted: boolean,
-  note?: string
+  note?: string,
 ) {
   const offer = await db.offer.findFirst({
-    where: { id, tenantId, status: 'SENT' },
-  })
+    where: { id, tenantId, status: "SENT" },
+  });
 
-  if (!offer) return null
+  if (!offer) return null;
 
-  const newStatus = accepted ? 'ACCEPTED' : 'DECLINED'
+  const newStatus = accepted ? "ACCEPTED" : "DECLINED";
 
   const updated = await db.offer.update({
     where: { id },
@@ -232,33 +246,35 @@ export async function respondToOffer(
       respondedAt: new Date(),
       responseNote: note,
     },
-  })
+  });
 
   if (accepted) {
     await db.application.update({
       where: { id: offer.applicationId },
-      data: { status: 'HIRED', hiredAt: new Date() },
-    })
+      data: { status: "HIRED", hiredAt: new Date() },
+    });
 
     const application = await db.application.findUnique({
       where: { id: offer.applicationId },
-    })
+    });
 
     if (application) {
       await db.jobRequisition.update({
         where: { id: application.requisitionId },
         data: { filledCount: { increment: 1 } },
-      })
+      });
     }
   }
 
   await db.applicationActivity.create({
     data: {
       applicationId: offer.applicationId,
-      action: accepted ? 'offer_accepted' : 'offer_declined',
-      description: accepted ? 'Ứng viên đã chấp nhận offer' : 'Ứng viên đã từ chối offer',
+      action: accepted ? "offer_accepted" : "offer_declined",
+      description: accepted
+        ? "Ứng viên đã chấp nhận offer"
+        : "Ứng viên đã từ chối offer",
     },
-  })
+  });
 
-  return updated
+  return updated;
 }

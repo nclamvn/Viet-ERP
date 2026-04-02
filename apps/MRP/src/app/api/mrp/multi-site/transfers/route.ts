@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
+import { Decimal } from "decimal.js";
 import { logger } from "@/lib/logger";
 
 const transferLineSchema = z.object({
@@ -10,23 +10,26 @@ const transferLineSchema = z.object({
 });
 
 const transferPostSchema = z.object({
-  fromSiteId: z.string().min(1, 'fromSiteId là bắt buộc'),
-  toSiteId: z.string().min(1, 'toSiteId là bắt buộc'),
+  fromSiteId: z.string().min(1, "fromSiteId là bắt buộc"),
+  toSiteId: z.string().min(1, "toSiteId là bắt buộc"),
   requestDate: z.string().optional(),
-  lines: z.array(transferLineSchema).min(1, 'Cần ít nhất một dòng chuyển kho'),
+  lines: z.array(transferLineSchema).min(1, "Cần ít nhất một dòng chuyển kho"),
   notes: z.string().optional(),
 });
 
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
-import { withAuth } from '@/lib/api/with-auth';
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
+import { withAuth } from "@/lib/api/with-auth";
 // GET /api/mrp/multi-site/transfers - Get transfer orders
 export const GET = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const searchParams = request.nextUrl.searchParams;
+    const searchParams = request.nextUrl.searchParams;
     const fromSiteId = searchParams.get("fromSiteId") || undefined;
     const toSiteId = searchParams.get("toSiteId") || undefined;
     const status = searchParams.get("status") || undefined;
@@ -53,27 +56,33 @@ const searchParams = request.nextUrl.searchParams;
 
     return NextResponse.json(transfers);
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'GET /api/mrp/multi-site/transfers' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "GET /api/mrp/multi-site/transfers",
+    });
     return NextResponse.json(
       { error: "Failed to get transfer orders" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
 
 // POST /api/mrp/multi-site/transfers - Create a transfer order
 export const POST = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const body = await request.json();
+    const body = await request.json();
     const parsed = transferPostSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: 'Dữ liệu không hợp lệ', errors: parsed.error.issues },
-        { status: 400 }
+        {
+          success: false,
+          error: "Dữ liệu không hợp lệ",
+          errors: parsed.error.issues,
+        },
+        { status: 400 },
       );
     }
     const { fromSiteId, toSiteId, requestDate, lines, notes } = parsed.data;
@@ -122,28 +131,30 @@ const body = await request.json();
       transfer,
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'POST /api/mrp/multi-site/transfers' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "POST /api/mrp/multi-site/transfers",
+    });
     return NextResponse.json(
       { error: "Failed to create transfer order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
 
 // PUT /api/mrp/multi-site/transfers - Update transfer order status
 export const PUT = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const body = await request.json();
+    const body = await request.json();
     const { transferId, action, lineUpdates } = body;
 
     if (!transferId || !action) {
       return NextResponse.json(
         { error: "transferId and action are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -155,7 +166,7 @@ const body = await request.json();
     if (!transfer) {
       return NextResponse.json(
         { error: "Transfer order not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -198,7 +209,7 @@ const body = await request.json();
       default:
         return NextResponse.json(
           { error: "Invalid action. Use: approve, ship, receive, or cancel" },
-          { status: 400 }
+          { status: 400 },
         );
     }
 
@@ -223,10 +234,12 @@ const body = await request.json();
       transfer: updated,
     });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'PUT /api/mrp/multi-site/transfers' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "PUT /api/mrp/multi-site/transfers",
+    });
     return NextResponse.json(
       { error: "Failed to update transfer order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

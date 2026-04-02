@@ -17,148 +17,14 @@ datasource db {
 }
 
 // ============================================================
-// 1. MASTER DATA — Danh mục nền tảng
+// ENUMS
 // ============================================================
-
-/// 1.1 Công ty
-model Company {
-  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code      String   @unique @db.VarChar(10)
-  name      String   @db.VarChar(200)
-  legalName String?  @map("legal_name") @db.VarChar(500)
-  taxCode   String?  @map("tax_code") @db.VarChar(20)
-  currency  String   @default("VND") @db.VarChar(3)
-  country   String   @default("Vietnam") @db.VarChar(50)
-  domain    String   @default("Manufacturing") @db.VarChar(50)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
-
-  boms       Bom[]
-  workOrders WorkOrder[]
-  warehouses Warehouse[]
-
-  @@map("companies")
-}
-
-/// 1.2 Nhóm vật tư (Item Groups) — cấu trúc cây
-model ItemGroup {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name        String    @unique @db.VarChar(200)
-  parentGroup String?   @map("parent_group") @db.VarChar(200)
-  isGroup     Boolean   @default(false) @map("is_group")
-  level       Int       @default(0)
-  sortOrder   Int       @default(0) @map("sort_order")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz
-  larkRecordId String?  @map("lark_record_id") @db.VarChar(50)
-  larkSyncedAt DateTime? @map("lark_synced_at") @db.Timestamptz
-
-  items Item[]
-
-  @@map("item_groups")
-}
-
-/// 1.3 Đơn vị tính (UOM)
-model Uom {
-  id     String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code   String  @unique @db.VarChar(20)
-  nameVi String? @map("name_vi") @db.VarChar(100)
-  nameEn String? @map("name_en") @db.VarChar(100)
-
-  items    Item[]
-  bomItems BomItem[]
-
-  @@map("uom")
-}
-
-/// 1.4 Vật tư / Sản phẩm (Items) — NVL + BTP + TP
-model Item {
-  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  itemCode String @unique @map("item_code") @db.VarChar(50)
-  itemName String @map("item_name") @db.VarChar(500)
-
-  itemGroup String    @map("item_group") @db.VarChar(200)
-  group     ItemGroup @relation(fields: [itemGroup], references: [name])
-
-  uomCode String @map("uom") @db.VarChar(20)
-  uomRef  Uom    @relation(fields: [uomCode], references: [code])
-
-  description String? @db.Text
-
-  itemType               ItemType @default(raw_material) @map("item_type")
-  maintainStock          Boolean  @default(true) @map("maintain_stock")
-  includeInManufacturing Boolean  @default(true) @map("include_in_manufacturing")
-
-  valuationRate Decimal @default(0) @map("valuation_rate") @db.Decimal(15, 2)
-  standardRate  Decimal @default(0) @map("standard_rate") @db.Decimal(15, 2)
-
-  defaultWarehouse String? @map("default_warehouse") @db.Uuid
-
-  erpCode String? @map("erp_code") @db.VarChar(100)
-  erpRef  String? @map("erp_ref") @db.VarChar(100)
-
-  materialGrade   String?  @map("material_grade") @db.VarChar(50)
-  thicknessMm     Decimal? @map("thickness_mm") @db.Decimal(8, 2)
-  outerDiameterMm Decimal? @map("outer_diameter_mm") @db.Decimal(8, 2)
-  widthMm         Decimal? @map("width_mm") @db.Decimal(8, 2)
-  heightMm        Decimal? @map("height_mm") @db.Decimal(8, 2)
-  lengthMm        Decimal? @map("length_mm") @db.Decimal(10, 2)
-  weightPerMeter  Decimal? @map("weight_per_meter") @db.Decimal(10, 4)
-  weightPerUnit   Decimal? @map("weight_per_unit") @db.Decimal(10, 4)
-
-  hsCode          String? @map("hs_code") @db.VarChar(20)
-  countryOfOrigin String  @default("Vietnam") @map("country_of_origin") @db.VarChar(50)
-
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz
-  larkRecordId String?   @map("lark_record_id") @db.VarChar(50)
-  larkSyncedAt DateTime? @map("lark_synced_at") @db.Timestamptz
-
-  stockLedgers StockLedger[]
-  boms         Bom[]
-  bomItems     BomItem[]
-  workOrders   WorkOrder[]
-  quotations   Quotation[]
-
-  @@index([itemCode], map: "idx_items_code")
-  @@index([itemGroup], map: "idx_items_group")
-  @@index([itemType], map: "idx_items_type")
-  @@index([erpCode], map: "idx_items_erp_code")
-  @@map("items")
-}
 
 enum ItemType {
   raw_material
   sub_assembly
   finished_good
   consumable
-}
-
-// ============================================================
-// 2. WAREHOUSE — Quản lý kho
-// ============================================================
-
-model Warehouse {
-  id              String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name            String        @unique @db.VarChar(200)
-  code            String?       @db.VarChar(20)
-  parentWarehouse String?       @map("parent_warehouse") @db.Uuid
-  parent          Warehouse?    @relation("WarehouseTree", fields: [parentWarehouse], references: [id])
-  children        Warehouse[]   @relation("WarehouseTree")
-  isGroup         Boolean       @default(false) @map("is_group")
-  companyId       String?       @map("company_id") @db.Uuid
-  company         Company?      @relation(fields: [companyId], references: [id])
-  warehouseType   WarehouseType @default(storage) @map("warehouse_type")
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime      @default(now()) @map("updated_at") @db.Timestamptz
-  larkRecordId    String?       @map("lark_record_id") @db.VarChar(50)
-
-  stockLedgers StockLedger[]
-  woSource     WorkOrder[]   @relation("WoSourceWarehouse")
-  woWip        WorkOrder[]   @relation("WoWipWarehouse")
-  woTarget     WorkOrder[]   @relation("WoTargetWarehouse")
-
-  @@map("warehouses")
 }
 
 enum WarehouseType {
@@ -169,31 +35,249 @@ enum WarehouseType {
   scrap
 }
 
-/// Tồn kho — Stock Ledger (sổ kho)
+enum WorkOrderStatus {
+  draft
+  submitted
+  in_progress
+  completed
+  cancelled
+}
+
+enum JobCardStatus {
+  open
+  in_progress
+  completed
+  cancelled
+}
+
+enum CustomerStatus {
+  lead
+  prospect
+  active
+  dormant
+  churned
+}
+
+enum PricingProfile {
+  ballymore
+  new_customer
+  dario_homy
+  richmond
+}
+
+enum QuotationStatus {
+  draft
+  sent
+  negotiating
+  won
+  lost
+  expired
+}
+
+enum PurchaseRequestStatus {
+  draft
+  submitted
+  approved
+  ordered
+  received
+  cancelled
+}
+
+enum PurchaseRequestItemStatus {
+  pending
+  ordered
+  received
+  cancelled
+}
+
+enum SyncDirection {
+  to_lark
+  from_lark
+}
+
+enum SyncStatus {
+  success
+  failed
+  pending
+}
+
+// ============================================================
+// 1. MASTER DATA — Danh mục nền tảng
+// ============================================================
+
+/// Công ty
+model Company {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code      String   @unique @db.VarChar(10)
+  name      String   @db.VarChar(200)
+  legalName String?  @map("legal_name") @db.VarChar(500)
+  taxCode   String?  @map("tax_code") @db.VarChar(20)
+  currency  String   @default("VND") @db.VarChar(3)
+  country   String   @default("Vietnam") @db.VarChar(50)
+  domain    String   @default("Manufacturing") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  warehouses Warehouse[]
+  boms       Bom[]
+  workOrders WorkOrder[]
+
+  @@map("companies")
+}
+
+/// Nhóm vật tư (Item Groups) - Cấu trúc cây
+model ItemGroup {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String   @unique @db.VarChar(200)
+  parentGroup String?  @map("parent_group") @db.VarChar(200)
+  isGroup     Boolean  @default(false) @map("is_group")
+  level       Int      @default(0)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Lark Base sync
+  larkRecordId String?   @map("lark_record_id") @db.VarChar(50)
+  larkSyncedAt DateTime? @map("lark_synced_at") @db.Timestamptz
+
+  // Relations
+  items Item[]
+
+  @@map("item_groups")
+}
+
+/// Đơn vị tính (UOM)
+model Uom {
+  id     String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code   String  @unique @db.VarChar(20)
+  nameVi String? @map("name_vi") @db.VarChar(100)
+  nameEn String? @map("name_en") @db.VarChar(100)
+
+  // Relations
+  items    Item[]
+  bomItems BomItem[]
+
+  @@map("uom")
+}
+
+/// Vật tư / Sản phẩm (Items) - Bảng chính
+model Item {
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  itemCode String @unique @map("item_code") @db.VarChar(50)
+  itemName String @map("item_name") @db.VarChar(500)
+
+  // Relations to lookup tables
+  itemGroupName String    @map("item_group") @db.VarChar(200)
+  itemGroup     ItemGroup @relation(fields: [itemGroupName], references: [name])
+  uomCode       String    @map("uom") @db.VarChar(20)
+  uomRef        Uom       @relation(fields: [uomCode], references: [code])
+
+  description String? @db.Text
+
+  // Phân loại
+  itemType             ItemType @default(raw_material) @map("item_type")
+  maintainStock        Boolean  @default(true) @map("maintain_stock")
+  includeInManufacturing Boolean @default(true) @map("include_in_manufacturing")
+
+  // Giá
+  valuationRate Decimal @default(0) @map("valuation_rate") @db.Decimal(15, 2)
+  standardRate  Decimal @default(0) @map("standard_rate") @db.Decimal(15, 2)
+
+  // Kho mặc định
+  defaultWarehouse String? @map("default_warehouse") @db.Uuid
+
+  // ERP cũ (MISA) mapping
+  erpCode String? @map("erp_code") @db.VarChar(100)
+  erpRef  String? @map("erp_ref") @db.VarChar(100)
+
+  // Thông số kỹ thuật (cho NVL thép)
+  materialGrade    String?  @map("material_grade") @db.VarChar(50)
+  thicknessMm      Decimal? @map("thickness_mm") @db.Decimal(8, 2)
+  outerDiameterMm  Decimal? @map("outer_diameter_mm") @db.Decimal(8, 2)
+  widthMm          Decimal? @map("width_mm") @db.Decimal(8, 2)
+  heightMm         Decimal? @map("height_mm") @db.Decimal(8, 2)
+  lengthMm         Decimal? @map("length_mm") @db.Decimal(10, 2)
+  weightPerMeter   Decimal? @map("weight_per_meter") @db.Decimal(10, 4)
+  weightPerUnit    Decimal? @map("weight_per_unit") @db.Decimal(10, 4)
+
+  // Metadata
+  hsCode          String? @map("hs_code") @db.VarChar(20)
+  countryOfOrigin String  @default("Vietnam") @map("country_of_origin") @db.VarChar(50)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Lark Base sync
+  larkRecordId String?   @map("lark_record_id") @db.VarChar(50)
+  larkSyncedAt DateTime? @map("lark_synced_at") @db.Timestamptz
+
+  // Reverse relations
+  stockLedgerEntries StockLedger[]
+  boms               Bom[]
+  bomItems           BomItem[]
+  workOrders         WorkOrder[]
+  quotations         Quotation[]
+
+  @@index([itemCode], map: "idx_items_code")
+  @@index([itemGroupName], map: "idx_items_group")
+  @@index([itemType], map: "idx_items_type")
+  @@index([erpCode], map: "idx_items_erp_code")
+  @@map("items")
+}
+
+// ============================================================
+// 2. WAREHOUSE — Quản lý kho
+// ============================================================
+
+/// Kho hàng
+model Warehouse {
+  id              String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String        @unique @db.VarChar(200)
+  code            String?       @db.VarChar(20)
+  parentWarehouseId String?     @map("parent_warehouse") @db.Uuid
+  parentWarehouse Warehouse?    @relation("WarehouseHierarchy", fields: [parentWarehouseId], references: [id])
+  childWarehouses Warehouse[]   @relation("WarehouseHierarchy")
+  isGroup         Boolean       @default(false) @map("is_group")
+  companyId       String?       @map("company_id") @db.Uuid
+  company         Company?      @relation(fields: [companyId], references: [id])
+  warehouseType   WarehouseType @default(storage) @map("warehouse_type")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  larkRecordId    String?       @map("lark_record_id") @db.VarChar(50)
+
+  // Reverse relations
+  stockLedgerEntries StockLedger[]
+  sourceWorkOrders   WorkOrder[]   @relation("SourceWarehouse")
+  wipWorkOrders      WorkOrder[]   @relation("WipWarehouse")
+  targetWorkOrders   WorkOrder[]   @relation("TargetWarehouse")
+
+  @@map("warehouses")
+}
+
+/// Tồn kho - Sổ cái
 model StockLedger {
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  itemId        String    @map("item_id") @db.Uuid
-  item          Item      @relation(fields: [itemId], references: [id])
-  warehouseId   String    @map("warehouse_id") @db.Uuid
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  itemId        String   @map("item_id") @db.Uuid
+  item          Item     @relation(fields: [itemId], references: [id])
+  warehouseId   String   @map("warehouse_id") @db.Uuid
   warehouse     Warehouse @relation(fields: [warehouseId], references: [id])
-  postingDate   DateTime  @default(dbgenerated("CURRENT_DATE")) @map("posting_date") @db.Date
-  postingTime   DateTime  @default(dbgenerated("CURRENT_TIME")) @map("posting_time") @db.Time()
-  qtyChange     Decimal   @map("qty_change") @db.Decimal(15, 4)
-  valuationRate Decimal?  @map("valuation_rate") @db.Decimal(15, 2)
-  voucherType   String?   @map("voucher_type") @db.VarChar(50)
-  voucherNo     String?   @map("voucher_no") @db.VarChar(50)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  postingDate   DateTime @default(dbgenerated("CURRENT_DATE")) @map("posting_date") @db.Date
+  postingTime   DateTime @default(dbgenerated("CURRENT_TIME")) @map("posting_time") @db.Time
+  qtyChange     Decimal  @map("qty_change") @db.Decimal(15, 4)
+  valuationRate Decimal? @map("valuation_rate") @db.Decimal(15, 2)
+  voucherType   String?  @map("voucher_type") @db.VarChar(50)
+  voucherNo     String?  @map("voucher_no") @db.VarChar(50)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("stock_ledger")
 }
-
-// NOTE: stock_balance is a PostgreSQL VIEW — use prisma.$queryRaw
 
 // ============================================================
 // 3. MANUFACTURING — Sản xuất
 // ============================================================
 
-/// 3.1 Workstations (Trạm sản xuất)
+/// Trạm sản xuất (Workstations)
 model Workstation {
   id                 String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name               String   @unique @db.VarChar(200)
@@ -202,8 +286,9 @@ model Workstation {
   productionCapacity Int      @default(1) @map("production_capacity")
   isActive           Boolean  @default(true) @map("is_active")
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  // Relations
   operations    Operation[]
   bomOperations BomOperation[]
   jobCards      JobCard[]
@@ -211,53 +296,56 @@ model Workstation {
   @@map("workstations")
 }
 
-/// 3.2 Operations (Công đoạn)
+/// Công đoạn (Operations)
 model Operation {
-  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name            String       @unique @db.VarChar(200)
-  workstationId   String?      @map("workstation_id") @db.Uuid
+  id              String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String      @unique @db.VarChar(200)
+  workstationId   String?     @map("workstation_id") @db.Uuid
   workstation     Workstation? @relation(fields: [workstationId], references: [id])
-  defaultTimeMins Int          @default(0) @map("default_time_mins")
-  description     String?      @db.Text
-  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime     @default(now()) @map("updated_at") @db.Timestamptz
+  defaultTimeMins Int         @default(0) @map("default_time_mins")
+  description     String?     @db.Text
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  // Relations
   bomOperations BomOperation[]
   jobCards      JobCard[]
 
   @@map("operations")
 }
 
-/// 3.3 BOM (Bill of Materials)
+/// BOM (Bill of Materials)
 model Bom {
-  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  bomNo          String    @unique @map("bom_no") @db.VarChar(30)
-  itemId         String    @map("item_id") @db.Uuid
-  item           Item      @relation(fields: [itemId], references: [id])
-  quantity       Decimal   @default(1) @db.Decimal(10, 4)
-  isActive       Boolean   @default(true) @map("is_active")
-  isDefault      Boolean   @default(false) @map("is_default")
-  withOperations Boolean   @default(true) @map("with_operations")
+  id                String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  bomNo             String   @unique @map("bom_no") @db.VarChar(30)
+  itemId            String   @map("item_id") @db.Uuid
+  item              Item     @relation(fields: [itemId], references: [id])
+  quantity          Decimal  @default(1) @db.Decimal(10, 4)
+  isActive          Boolean  @default(true) @map("is_active")
+  isDefault         Boolean  @default(false) @map("is_default")
+  withOperations    Boolean  @default(true) @map("with_operations")
 
+  // Tính toán
   totalMaterialCost  Decimal @default(0) @map("total_material_cost") @db.Decimal(15, 2)
   totalOperationCost Decimal @default(0) @map("total_operation_cost") @db.Decimal(15, 2)
   totalCost          Decimal @default(0) @map("total_cost") @db.Decimal(15, 2)
 
-  companyId    String?   @map("company_id") @db.Uuid
-  company      Company?  @relation(fields: [companyId], references: [id])
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz
-  submittedAt  DateTime? @map("submitted_at") @db.Timestamptz
-  larkRecordId String?   @map("lark_record_id") @db.VarChar(50)
+  companyId   String?   @map("company_id") @db.Uuid
+  company     Company?  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz
+  larkRecordId String?  @map("lark_record_id") @db.VarChar(50)
 
-  bomItems      BomItem[]
+  // Relations
+  bomItems    BomItem[]
   bomOperations BomOperation[]
-  workOrders    WorkOrder[]
+  workOrders  WorkOrder[]
 
   @@map("bom")
 }
 
-/// 3.4 BOM Items (NVL trong BOM)
+/// BOM Items (NVL trong BOM)
 model BomItem {
   id        String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   bomId     String  @map("bom_id") @db.Uuid
@@ -276,56 +364,60 @@ model BomItem {
   @@map("bom_items")
 }
 
-/// 3.5 BOM Operations (Công đoạn trong BOM)
+/// BOM Operations (Công đoạn trong BOM)
 model BomOperation {
-  id            String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  bomId         String       @map("bom_id") @db.Uuid
-  bom           Bom          @relation(fields: [bomId], references: [id], onDelete: Cascade)
-  operationId   String       @map("operation_id") @db.Uuid
-  operation     Operation    @relation(fields: [operationId], references: [id])
-  workstationId String?      @map("workstation_id") @db.Uuid
-  workstation   Workstation? @relation(fields: [workstationId], references: [id])
-  timeInMins    Decimal      @default(0) @map("time_in_mins") @db.Decimal(10, 2)
-  hourRate      Decimal      @default(0) @map("hour_rate") @db.Decimal(12, 2)
-  operatingCost Decimal      @default(0) @map("operating_cost") @db.Decimal(15, 2)
-  sortOrder     Int          @default(0) @map("sort_order")
+  id             String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  bomId          String      @map("bom_id") @db.Uuid
+  bom            Bom         @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  operationId    String      @map("operation_id") @db.Uuid
+  operation      Operation   @relation(fields: [operationId], references: [id])
+  workstationId  String?     @map("workstation_id") @db.Uuid
+  workstation    Workstation? @relation(fields: [workstationId], references: [id])
+  timeInMins     Decimal     @default(0) @map("time_in_mins") @db.Decimal(10, 2)
+  hourRate       Decimal     @default(0) @map("hour_rate") @db.Decimal(12, 2)
+  operatingCost  Decimal     @default(0) @map("operating_cost") @db.Decimal(15, 2)
+  sortOrder      Int         @default(0) @map("sort_order")
 
   @@map("bom_operations")
 }
 
-/// 3.6 Work Orders (Lệnh sản xuất)
+/// Lệnh sản xuất (Work Orders)
 model WorkOrder {
-  id           String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  woNo         String          @unique @map("wo_no") @db.VarChar(30)
-  bomId        String          @map("bom_id") @db.Uuid
-  bom          Bom             @relation(fields: [bomId], references: [id])
-  itemId       String          @map("item_id") @db.Uuid
-  item         Item            @relation(fields: [itemId], references: [id])
-  qtyToProduce Decimal         @map("qty_to_produce") @db.Decimal(10, 4)
-  qtyProduced  Decimal         @default(0) @map("qty_produced") @db.Decimal(10, 4)
-  status       WorkOrderStatus @default(draft)
+  id             String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  woNo           String          @unique @map("wo_no") @db.VarChar(30)
+  bomId          String          @map("bom_id") @db.Uuid
+  bom            Bom             @relation(fields: [bomId], references: [id])
+  itemId         String          @map("item_id") @db.Uuid
+  item           Item            @relation(fields: [itemId], references: [id])
+  qtyToProduce   Decimal         @map("qty_to_produce") @db.Decimal(10, 4)
+  qtyProduced    Decimal         @default(0) @map("qty_produced") @db.Decimal(10, 4)
+
+  status WorkOrderStatus @default(draft)
 
   plannedStart DateTime? @map("planned_start") @db.Date
   plannedEnd   DateTime? @map("planned_end") @db.Date
   actualStart  DateTime? @map("actual_start") @db.Timestamptz
   actualEnd    DateTime? @map("actual_end") @db.Timestamptz
 
+  // Kho
   sourceWarehouseId String?    @map("source_warehouse_id") @db.Uuid
-  sourceWarehouse   Warehouse? @relation("WoSourceWarehouse", fields: [sourceWarehouseId], references: [id])
+  sourceWarehouse   Warehouse? @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id])
   wipWarehouseId    String?    @map("wip_warehouse_id") @db.Uuid
-  wipWarehouse      Warehouse? @relation("WoWipWarehouse", fields: [wipWarehouseId], references: [id])
+  wipWarehouse      Warehouse? @relation("WipWarehouse", fields: [wipWarehouseId], references: [id])
   targetWarehouseId String?    @map("target_warehouse_id") @db.Uuid
-  targetWarehouse   Warehouse? @relation("WoTargetWarehouse", fields: [targetWarehouseId], references: [id])
+  targetWarehouse   Warehouse? @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id])
 
+  // Đơn hàng liên kết
   salesOrderRef String? @map("sales_order_ref") @db.VarChar(50)
   customerName  String? @map("customer_name") @db.VarChar(200)
 
-  companyId    String?  @map("company_id") @db.Uuid
-  company      Company? @relation(fields: [companyId], references: [id])
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz
-  larkRecordId String?  @map("lark_record_id") @db.VarChar(50)
+  companyId    String?   @map("company_id") @db.Uuid
+  company      Company?  @relation(fields: [companyId], references: [id])
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  larkRecordId String?   @map("lark_record_id") @db.VarChar(50)
 
+  // Relations
   jobCards JobCard[]
 
   @@index([status], map: "idx_wo_status")
@@ -333,226 +425,206 @@ model WorkOrder {
   @@map("work_orders")
 }
 
-enum WorkOrderStatus {
-  draft
-  submitted
-  in_progress
-  completed
-  cancelled
-}
-
-/// 3.7 Job Cards (Phiếu công việc)
+/// Phiếu công việc (Job Cards)
 model JobCard {
-  id            String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  jobNo         String        @unique @map("job_no") @db.VarChar(30)
-  workOrderId   String        @map("work_order_id") @db.Uuid
-  workOrder     WorkOrder     @relation(fields: [workOrderId], references: [id])
-  operationId   String        @map("operation_id") @db.Uuid
-  operation     Operation     @relation(fields: [operationId], references: [id])
-  workstationId String?       @map("workstation_id") @db.Uuid
-  workstation   Workstation?  @relation(fields: [workstationId], references: [id])
-  qtyToProduce  Decimal?      @map("qty_to_produce") @db.Decimal(10, 4)
-  qtyCompleted  Decimal       @default(0) @map("qty_completed") @db.Decimal(10, 4)
-  status        JobCardStatus @default(open)
-  startedAt     DateTime?     @map("started_at") @db.Timestamptz
-  completedAt   DateTime?     @map("completed_at") @db.Timestamptz
-  timeInMins    Decimal       @default(0) @map("time_in_mins") @db.Decimal(10, 2)
-  workerName    String?       @map("worker_name") @db.VarChar(200)
-  remarks       String?       @db.Text
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime      @default(now()) @map("updated_at") @db.Timestamptz
+  id             String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  jobNo          String        @unique @map("job_no") @db.VarChar(30)
+  workOrderId    String        @map("work_order_id") @db.Uuid
+  workOrder      WorkOrder     @relation(fields: [workOrderId], references: [id])
+  operationId    String        @map("operation_id") @db.Uuid
+  operation      Operation     @relation(fields: [operationId], references: [id])
+  workstationId  String?       @map("workstation_id") @db.Uuid
+  workstation    Workstation?  @relation(fields: [workstationId], references: [id])
+
+  qtyToProduce Decimal? @map("qty_to_produce") @db.Decimal(10, 4)
+  qtyCompleted Decimal  @default(0) @map("qty_completed") @db.Decimal(10, 4)
+
+  status JobCardStatus @default(open)
+
+  startedAt   DateTime? @map("started_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  timeInMins  Decimal   @default(0) @map("time_in_mins") @db.Decimal(10, 2)
+
+  workerName String? @map("worker_name") @db.VarChar(200)
+  remarks    String? @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("job_cards")
-}
-
-enum JobCardStatus {
-  open
-  in_progress
-  completed
-  cancelled
 }
 
 // ============================================================
 // 4. CRM — Quản lý khách hàng
 // ============================================================
 
+/// Khách hàng
 model Customer {
-  id             String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  code           String         @unique @db.VarChar(20)
-  name           String         @db.VarChar(500)
-  country        String?        @db.VarChar(50)
-  currency       String         @default("USD") @db.VarChar(3)
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code     String @unique @db.VarChar(20)
+  name     String @db.VarChar(500)
+  country  String? @db.VarChar(50)
+  currency String  @default("USD") @db.VarChar(3)
+
+  // Pricing profile
   pricingProfile PricingProfile @default(new_customer) @map("pricing_profile")
   overheadPct    Decimal        @default(20) @map("overhead_pct") @db.Decimal(5, 2)
   profitPct      Decimal        @default(10) @map("profit_pct") @db.Decimal(5, 2)
-  primaryContact String?        @map("primary_contact") @db.VarChar(200)
-  email          String?        @db.VarChar(200)
-  phone          String?        @db.VarChar(50)
-  status         CustomerStatus @default(active)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime       @default(now()) @map("updated_at") @db.Timestamptz
-  larkRecordId   String?        @map("lark_record_id") @db.VarChar(50)
 
+  // Contacts
+  primaryContact String? @map("primary_contact") @db.VarChar(200)
+  email          String? @db.VarChar(200)
+  phone          String? @db.VarChar(50)
+
+  // Pipeline
+  status CustomerStatus @default(active)
+
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  larkRecordId String?   @map("lark_record_id") @db.VarChar(50)
+
+  // Relations
   contacts       Contact[]
   quotations     Quotation[]
-  costingHistory CostingHistory[]
+  costingHistories CostingHistory[]
 
   @@map("customers")
 }
 
-enum PricingProfile {
-  ballymore
-  new_customer
-  dario_homy
-  richmond
-}
-
-enum CustomerStatus {
-  lead
-  prospect
-  active
-  dormant
-  churned
-}
-
+/// Liên hệ
 model Contact {
-  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  customerId String?   @map("customer_id") @db.Uuid
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  customerId String?  @map("customer_id") @db.Uuid
   customer   Customer? @relation(fields: [customerId], references: [id])
-  fullName   String    @map("full_name") @db.VarChar(200)
-  title      String?   @db.VarChar(100)
-  email      String?   @db.VarChar(200)
-  phone      String?   @db.VarChar(50)
-  isPrimary  Boolean   @default(false) @map("is_primary")
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  fullName   String   @map("full_name") @db.VarChar(200)
+  title      String?  @db.VarChar(100)
+  email      String?  @db.VarChar(200)
+  phone      String?  @db.VarChar(50)
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("contacts")
 }
 
-/// Deals / Quotations
+/// Báo giá (Quotations)
 model Quotation {
-  id              String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  quoteNo         String          @unique @map("quote_no") @db.VarChar(30)
-  customerId      String?         @map("customer_id") @db.Uuid
-  customer        Customer?       @relation(fields: [customerId], references: [id])
-  itemId          String?         @map("item_id") @db.Uuid
-  item            Item?           @relation(fields: [itemId], references: [id])
-  itemDescription String?         @map("item_description") @db.Text
-  quantity        Decimal?        @db.Decimal(10, 2)
-  weightPerUnit   Decimal?        @map("weight_per_unit") @db.Decimal(10, 4)
-  totalWeight     Decimal?        @map("total_weight") @db.Decimal(12, 4)
-  productionCostVnd Decimal?      @map("production_cost_vnd") @db.Decimal(15, 2)
-  sellPriceVnd    Decimal?        @map("sell_price_vnd") @db.Decimal(15, 2)
-  sellPriceUsd    Decimal?        @map("sell_price_usd") @db.Decimal(12, 2)
-  pricePerKgVnd   Decimal?        @map("price_per_kg_vnd") @db.Decimal(12, 2)
-  pricePerKgUsd   Decimal?        @map("price_per_kg_usd") @db.Decimal(10, 2)
-  status          QuotationStatus @default(draft)
-  validUntil      DateTime?       @map("valid_until") @db.Date
-  notes           String?         @db.Text
-  costBreakdown   Json?           @map("cost_breakdown") @db.JsonB
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime        @default(now()) @map("updated_at") @db.Timestamptz
-  larkRecordId    String?         @map("lark_record_id") @db.VarChar(50)
+  id         String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  quoteNo    String  @unique @map("quote_no") @db.VarChar(30)
+  customerId String? @map("customer_id") @db.Uuid
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  // Sản phẩm
+  itemId          String?  @map("item_id") @db.Uuid
+  item            Item?    @relation(fields: [itemId], references: [id])
+  itemDescription String?  @map("item_description") @db.Text
+  quantity        Decimal? @db.Decimal(10, 2)
+  weightPerUnit   Decimal? @map("weight_per_unit") @db.Decimal(10, 4)
+  totalWeight     Decimal? @map("total_weight") @db.Decimal(12, 4)
+
+  // Giá
+  productionCostVnd Decimal? @map("production_cost_vnd") @db.Decimal(15, 2)
+  sellPriceVnd      Decimal? @map("sell_price_vnd") @db.Decimal(15, 2)
+  sellPriceUsd      Decimal? @map("sell_price_usd") @db.Decimal(12, 2)
+  pricePerKgVnd     Decimal? @map("price_per_kg_vnd") @db.Decimal(12, 2)
+  pricePerKgUsd     Decimal? @map("price_per_kg_usd") @db.Decimal(10, 2)
+
+  // Trạng thái
+  status QuotationStatus @default(draft)
+
+  validUntil    DateTime? @map("valid_until") @db.Date
+  notes         String?   @db.Text
+  costBreakdown Json?     @map("cost_breakdown") @db.JsonB
+
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  larkRecordId String?   @map("lark_record_id") @db.VarChar(50)
 
   @@map("quotations")
-}
-
-enum QuotationStatus {
-  draft
-  sent
-  negotiating
-  won
-  lost
-  expired
 }
 
 // ============================================================
 // 5. PURCHASING — Mua hàng
 // ============================================================
 
+/// Yêu cầu mua hàng
 model PurchaseRequest {
-  id           String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  prNo         String                @unique @map("pr_no") @db.VarChar(30)
-  requestedBy  String?               @map("requested_by") @db.VarChar(100)
-  approvedBy   String?               @map("approved_by") @db.VarChar(100)
-  status       PurchaseRequestStatus @default(draft)
+  id          String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  prNo        String                 @unique @map("pr_no") @db.VarChar(30)
+  requestedBy String?                @map("requested_by") @db.VarChar(100)
+  approvedBy  String?                @map("approved_by") @db.VarChar(100)
+  status      PurchaseRequestStatus  @default(draft)
   workOrderRef String?               @map("work_order_ref") @db.VarChar(50)
   requiredDate DateTime?             @map("required_date") @db.Date
   remarks      String?               @db.Text
   createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime              @default(now()) @map("updated_at") @db.Timestamptz
+  updatedAt    DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   larkRecordId String?               @map("lark_record_id") @db.VarChar(50)
 
+  // Relations
   items PurchaseRequestItem[]
 
   @@map("purchase_requests")
 }
 
-enum PurchaseRequestStatus {
-  draft
-  submitted
-  approved
-  ordered
-  received
-  cancelled
-}
-
+/// Chi tiết yêu cầu mua hàng
 model PurchaseRequestItem {
-  id           String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  prId         String                    @map("pr_id") @db.Uuid
-  pr           PurchaseRequest           @relation(fields: [prId], references: [id], onDelete: Cascade)
-  itemId       String?                   @map("item_id") @db.Uuid
-  itemCode     String?                   @map("item_code") @db.VarChar(50)
-  itemName     String?                   @map("item_name") @db.VarChar(500)
-  qty          Decimal                   @db.Decimal(15, 4)
-  uom          String?                   @db.VarChar(20)
-  requiredDate DateTime?                 @map("required_date") @db.Date
-  status       PurchaseRequestItemStatus @default(pending)
-  supplier     String?                   @db.VarChar(200)
-  poNumber     String?                   @map("po_number") @db.VarChar(50)
-  remarks      String?                   @db.Text
+  id           String                     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  prId         String                     @map("pr_id") @db.Uuid
+  pr           PurchaseRequest            @relation(fields: [prId], references: [id], onDelete: Cascade)
+  itemId       String?                    @map("item_id") @db.Uuid
+  itemCode     String?                    @map("item_code") @db.VarChar(50)
+  itemName     String?                    @map("item_name") @db.VarChar(500)
+  qty          Decimal                    @db.Decimal(15, 4)
+  uom          String?                    @db.VarChar(20)
+  requiredDate DateTime?                  @map("required_date") @db.Date
+  status       PurchaseRequestItemStatus  @default(pending)
+  supplier     String?                    @db.VarChar(200)
+  poNumber     String?                    @map("po_number") @db.VarChar(50)
+  remarks      String?                    @db.Text
 
   @@map("purchase_request_items")
-}
-
-enum PurchaseRequestItemStatus {
-  pending
-  ordered
-  received
-  cancelled
 }
 
 // ============================================================
 // 6. COSTING — Lịch sử tính giá (AI Copilot output)
 // ============================================================
 
+/// Lịch sử tính giá
 model CostingHistory {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  projectName     String?   @map("project_name") @db.VarChar(200)
-  customerId      String?   @map("customer_id") @db.Uuid
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  projectName     String?  @map("project_name") @db.VarChar(200)
+  customerId      String?  @map("customer_id") @db.Uuid
   customer        Customer? @relation(fields: [customerId], references: [id])
-  itemDescription String?   @map("item_description") @db.Text
-  drawingFilePath String?   @map("drawing_file_path") @db.Text
-  totalWeightKg   Decimal?  @map("total_weight_kg") @db.Decimal(12, 4)
+  itemDescription String?  @map("item_description") @db.Text
+
+  // Input
+  drawingFilePath String?  @map("drawing_file_path") @db.Text
+  totalWeightKg   Decimal? @map("total_weight_kg") @db.Decimal(12, 4)
   quantity        Int?
-  surfaceFinish   String?   @map("surface_finish") @db.VarChar(30)
-  materialCost    Decimal?  @map("material_cost") @db.Decimal(15, 2)
-  fabricationCost Decimal?  @map("fabrication_cost") @db.Decimal(15, 2)
-  surfaceCost     Decimal?  @map("surface_cost") @db.Decimal(15, 2)
+  surfaceFinish   String?  @map("surface_finish") @db.VarChar(30)
+
+  // Output
+  materialCost     Decimal? @map("material_cost") @db.Decimal(15, 2)
+  fabricationCost  Decimal? @map("fabrication_cost") @db.Decimal(15, 2)
+  surfaceCost      Decimal? @map("surface_cost") @db.Decimal(15, 2)
   packagingFobCost Decimal? @map("packaging_fob_cost") @db.Decimal(15, 2)
-  productionCost  Decimal?  @map("production_cost") @db.Decimal(15, 2)
-  overhead        Decimal?  @db.Decimal(15, 2)
-  profit          Decimal?  @db.Decimal(15, 2)
-  sellPriceVnd    Decimal?  @map("sell_price_vnd") @db.Decimal(15, 2)
-  sellPriceUsd    Decimal?  @map("sell_price_usd") @db.Decimal(12, 2)
-  pricePerKg      Decimal?  @map("price_per_kg") @db.Decimal(10, 2)
-  bomData         Json?     @map("bom_data") @db.JsonB
-  costBreakdown   Json?     @map("cost_breakdown") @db.JsonB
-  pricingProfile  String?   @map("pricing_profile") @db.VarChar(30)
-  exchangeRate    Decimal   @default(24500) @map("exchange_rate") @db.Decimal(10, 2)
-  calculatedBy    String    @default("ai_copilot") @map("calculated_by") @db.VarChar(50)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  larkRecordId    String?   @map("lark_record_id") @db.VarChar(50)
+  productionCost   Decimal? @map("production_cost") @db.Decimal(15, 2)
+  overhead         Decimal? @db.Decimal(15, 2)
+  profit           Decimal? @db.Decimal(15, 2)
+  sellPriceVnd     Decimal? @map("sell_price_vnd") @db.Decimal(15, 2)
+  sellPriceUsd     Decimal? @map("sell_price_usd") @db.Decimal(12, 2)
+  pricePerKg       Decimal? @map("price_per_kg") @db.Decimal(10, 2)
+
+  // Full breakdown
+  bomData       Json? @map("bom_data") @db.JsonB
+  costBreakdown Json? @map("cost_breakdown") @db.JsonB
+
+  // Pricing profile used
+  pricingProfile String?  @map("pricing_profile") @db.VarChar(30)
+  exchangeRate   Decimal  @default(24500) @map("exchange_rate") @db.Decimal(10, 2)
+
+  calculatedBy String   @default("ai_copilot") @map("calculated_by") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  larkRecordId String?  @map("lark_record_id") @db.VarChar(50)
 
   @@map("costing_history")
 }
@@ -561,6 +633,7 @@ model CostingHistory {
 // 7. LARK SYNC — Bảng theo dõi đồng bộ
 // ============================================================
 
+/// Log đồng bộ Lark
 model LarkSyncLog {
   id           String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   tableName    String        @map("table_name") @db.VarChar(100)
@@ -574,15 +647,4 @@ model LarkSyncLog {
 
   @@index([tableName, recordId], map: "idx_sync_table")
   @@map("lark_sync_log")
-}
-
-enum SyncDirection {
-  to_lark
-  from_lark
-}
-
-enum SyncStatus {
-  success
-  failed
-  pending
 }

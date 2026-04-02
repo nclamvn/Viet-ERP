@@ -2,8 +2,8 @@
 // Optimized Prisma client with connection pooling and performance settings
 
 import "@/lib/env";
-import { PrismaClient } from "@prisma/client";
-import { logger } from '@/lib/logger';
+import { PrismaClient } from ".prisma/mrp-client";
+import { logger } from "@/lib/logger";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -16,16 +16,7 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient(): PrismaClient {
   return new PrismaClient({
     // Logging configuration
-    log: process.env.NODE_ENV === "development"
-      ? [
-          { level: "query", emit: "event" },
-          { level: "error", emit: "stdout" },
-          { level: "warn", emit: "stdout" },
-        ]
-      : ["error"],
-
-    // Error formatting
-    errorFormat: process.env.NODE_ENV === "development" ? "pretty" : "minimal",
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 }
 
@@ -37,7 +28,9 @@ if (process.env.NODE_ENV === "development") {
   // @ts-expect-error - Prisma event typing
   prisma.$on("query", (e: { query: string; duration: number }) => {
     if (e.duration > 100) {
-      logger.warn(`[Prisma] Slow query (${e.duration}ms): ${e.query.substring(0, 200)}`);
+      logger.warn(
+        `[Prisma] Slow query (${e.duration}ms): ${e.query.substring(0, 200)}`,
+      );
     }
   });
 }
@@ -99,10 +92,13 @@ export function cursorPaginate(cursor?: string, pageSize: number = 50) {
  */
 export async function queryWithTimeout<T>(
   queryFn: () => Promise<T>,
-  timeoutMs: number = 30000
+  timeoutMs: number = 30000,
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error(`Query timeout after ${timeoutMs}ms`)), timeoutMs);
+    setTimeout(
+      () => reject(new Error(`Query timeout after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
   });
 
   return Promise.race([queryFn(), timeoutPromise]);
@@ -114,7 +110,7 @@ export async function queryWithTimeout<T>(
 export async function batchUpdate<T>(
   items: T[],
   updateFn: (item: T) => Promise<void>,
-  batchSize: number = 100
+  batchSize: number = 100,
 ): Promise<{ success: number; errors: number }> {
   let success = 0;
   let errors = 0;
@@ -130,7 +126,7 @@ export async function batchUpdate<T>(
         } catch {
           errors++;
         }
-      })
+      }),
     );
   }
 

@@ -5,7 +5,7 @@
  * Optimized Prisma client with connection pooling and query logging
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from ".prisma/hrm-unified-client";
 
 // ════════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -34,14 +34,14 @@ export interface QueryMetrics {
 // ════════════════════════════════════════════════════════════════════════════════
 
 const DEFAULT_CONFIG: DatabaseConfig = {
-  url: process.env.DATABASE_URL || '',
-  maxConnections: parseInt(process.env.DATABASE_MAX_CONNECTIONS || '20'),
-  minConnections: parseInt(process.env.DATABASE_MIN_CONNECTIONS || '5'),
-  connectionTimeout: 10000,  // 10 seconds
-  idleTimeout: 60000,        // 1 minute
-  queryTimeout: 30000,       // 30 seconds
-  logQueries: process.env.NODE_ENV === 'development',
-  logSlowQueries: 500,       // Log queries > 500ms
+  url: process.env.DATABASE_URL || "",
+  maxConnections: parseInt(process.env.DATABASE_MAX_CONNECTIONS || "20"),
+  minConnections: parseInt(process.env.DATABASE_MIN_CONNECTIONS || "5"),
+  connectionTimeout: 10000, // 10 seconds
+  idleTimeout: 60000, // 1 minute
+  queryTimeout: 30000, // 30 seconds
+  logQueries: process.env.NODE_ENV === "development",
+  logSlowQueries: 500, // Log queries > 500ms
 };
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -60,7 +60,7 @@ class QueryMetricsCollector {
   }
 
   getSlowQueries(thresholdMs: number = 500): QueryMetrics[] {
-    return this.metrics.filter(m => m.duration >= thresholdMs);
+    return this.metrics.filter((m) => m.duration >= thresholdMs);
   }
 
   getAverageQueryTime(): number {
@@ -84,10 +84,15 @@ class QueryMetricsCollector {
     p95Duration: number;
   } {
     if (this.metrics.length === 0) {
-      return { totalQueries: 0, avgDuration: 0, slowQueries: 0, p95Duration: 0 };
+      return {
+        totalQueries: 0,
+        avgDuration: 0,
+        slowQueries: 0,
+        p95Duration: 0,
+      };
     }
 
-    const durations = this.metrics.map(m => m.duration).sort((a, b) => a - b);
+    const durations = this.metrics.map((m) => m.duration).sort((a, b) => a - b);
     const p95Index = Math.floor(durations.length * 0.95);
 
     return {
@@ -124,13 +129,13 @@ export class DatabasePool {
   }
 
   private createPrismaClient(): PrismaClient {
-    const logConfig: Prisma.PrismaClientOptions['log'] = [];
+    const logConfig: Prisma.PrismaClientOptions["log"] = [];
 
     if (this.config.logQueries) {
-      logConfig.push({ emit: 'event', level: 'query' });
+      logConfig.push({ emit: "event", level: "query" });
     }
-    logConfig.push({ emit: 'event', level: 'error' });
-    logConfig.push({ emit: 'event', level: 'warn' });
+    logConfig.push({ emit: "event", level: "error" });
+    logConfig.push({ emit: "event", level: "warn" });
 
     // Build connection URL with pooling parameters
     const connectionUrl = this.buildConnectionUrl();
@@ -155,14 +160,23 @@ export class DatabasePool {
       const url = new URL(this.config.url);
 
       // Add connection pool parameters
-      url.searchParams.set('connection_limit', this.config.maxConnections!.toString());
-      url.searchParams.set('pool_timeout', Math.floor(this.config.connectionTimeout! / 1000).toString());
-      url.searchParams.set('connect_timeout', Math.floor(this.config.connectionTimeout! / 1000).toString());
+      url.searchParams.set(
+        "connection_limit",
+        this.config.maxConnections!.toString(),
+      );
+      url.searchParams.set(
+        "pool_timeout",
+        Math.floor(this.config.connectionTimeout! / 1000).toString(),
+      );
+      url.searchParams.set(
+        "connect_timeout",
+        Math.floor(this.config.connectionTimeout! / 1000).toString(),
+      );
 
       // For serverless environments
       if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-        url.searchParams.set('pgbouncer', 'true');
-        url.searchParams.set('connection_limit', '1');
+        url.searchParams.set("pgbouncer", "true");
+        url.searchParams.set("connection_limit", "1");
       }
 
       return url.toString();
@@ -174,30 +188,35 @@ export class DatabasePool {
 
   private setupQueryLogging(prisma: PrismaClient): void {
     // @ts-ignore - Prisma event types
-    prisma.$on('query', (e: { query: string; params: string; duration: number }) => {
-      const metric: QueryMetrics = {
-        query: e.query,
-        duration: e.duration,
-        timestamp: new Date(),
-        params: e.params,
-      };
+    prisma.$on(
+      "query",
+      (e: { query: string; params: string; duration: number }) => {
+        const metric: QueryMetrics = {
+          query: e.query,
+          duration: e.duration,
+          timestamp: new Date(),
+          params: e.params,
+        };
 
-      this.metricsCollector.add(metric);
+        this.metricsCollector.add(metric);
 
-      // Log slow queries
-      if (e.duration >= this.config.logSlowQueries!) {
-        console.warn(`[DB SLOW QUERY] ${e.duration}ms: ${e.query.substring(0, 100)}...`);
-      }
+        // Log slow queries
+        if (e.duration >= this.config.logSlowQueries!) {
+          console.warn(
+            `[DB SLOW QUERY] ${e.duration}ms: ${e.query.substring(0, 100)}...`,
+          );
+        }
+      },
+    );
+
+    // @ts-ignore
+    prisma.$on("error", (e: { message: string }) => {
+      console.error("[DB ERROR]", e.message);
     });
 
     // @ts-ignore
-    prisma.$on('error', (e: { message: string }) => {
-      console.error('[DB ERROR]', e.message);
-    });
-
-    // @ts-ignore
-    prisma.$on('warn', (e: { message: string }) => {
-      console.warn('[DB WARN]', e.message);
+    prisma.$on("warn", (e: { message: string }) => {
+      console.warn("[DB WARN]", e.message);
     });
   }
 
@@ -212,7 +231,7 @@ export class DatabasePool {
       await this.prisma.$connect();
       this.isConnected = true;
     } catch (error) {
-      console.error('[Database] Connection failed:', error);
+      console.error("[Database] Connection failed:", error);
       throw error;
     }
   }
@@ -248,12 +267,14 @@ export class DatabasePool {
       maxWait?: number;
       timeout?: number;
       isolationLevel?: Prisma.TransactionIsolationLevel;
-    }
+    },
   ): Promise<T> {
     return this.prisma.$transaction(fn, {
       maxWait: options?.maxWait || 5000,
       timeout: options?.timeout || this.config.queryTimeout,
-      isolationLevel: options?.isolationLevel || Prisma.TransactionIsolationLevel.ReadCommitted,
+      isolationLevel:
+        options?.isolationLevel ||
+        Prisma.TransactionIsolationLevel.ReadCommitted,
     });
   }
 
@@ -262,7 +283,10 @@ export class DatabasePool {
     const startTime = Date.now();
 
     try {
-      const result = await this.prisma.$queryRawUnsafe<T>(sql, ...(params || []));
+      const result = await this.prisma.$queryRawUnsafe<T>(
+        sql,
+        ...(params || []),
+      );
 
       const duration = Date.now() - startTime;
       this.metricsCollector.add({
@@ -284,7 +308,7 @@ export class DatabasePool {
   // METRICS
   // ─────────────────────────────────────────────────────────────────────────────
 
-  getMetrics(): ReturnType<QueryMetricsCollector['getStats']> {
+  getMetrics(): ReturnType<QueryMetricsCollector["getStats"]> {
     return this.metricsCollector.getStats();
   }
 
@@ -351,7 +375,7 @@ declare global {
 
 export const prisma = global.__prisma || DatabasePool.getInstance().getClient();
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   global.__prisma = prisma;
 }
 

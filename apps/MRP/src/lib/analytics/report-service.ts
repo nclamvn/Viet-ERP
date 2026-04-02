@@ -3,10 +3,10 @@
 // Service for report generation and management
 // =============================================================================
 
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { Prisma } from '@prisma/client';
-import { emailService } from '@/lib/email/email-service';
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { Prisma } from ".prisma/mrp-client";
+import { emailService } from "@/lib/email/email-service";
 import type {
   ReportSchedule,
   ReportScheduleCreateInput,
@@ -15,7 +15,7 @@ import type {
   ReportRecipient,
   ReportFormat,
   ScheduleFrequency,
-} from './types';
+} from "./types";
 
 // =============================================================================
 // REPORT SERVICE CLASS
@@ -27,7 +27,14 @@ class ReportService {
   // ---------------------------------------------------------------------------
 
   async generateReport(input: ReportGenerateInput): Promise<ReportInstance> {
-    const { reportId, format, parameters = {}, recipients, sendEmail = false, generatedBy = 'system' } = input;
+    const {
+      reportId,
+      format,
+      parameters = {},
+      recipients,
+      sendEmail = false,
+      generatedBy = "system",
+    } = input;
 
     // Get the saved report
     const report = await prisma.savedReport.findUnique({
@@ -35,7 +42,7 @@ class ReportService {
     });
 
     if (!report) {
-      throw new Error('Report not found');
+      throw new Error("Report not found");
     }
 
     // Create report instance
@@ -43,22 +50,29 @@ class ReportService {
       data: {
         reportId,
         generatedBy, // Caller provides the current user ID via ReportGenerateInput
-        parameters: { ...(report.filters as Record<string, unknown> || {}), ...parameters } as unknown as Prisma.InputJsonValue,
+        parameters: {
+          ...((report.filters as Record<string, unknown>) || {}),
+          ...parameters,
+        } as unknown as Prisma.InputJsonValue,
         format,
-        status: 'generating',
+        status: "generating",
         recipients: recipients as unknown as Prisma.InputJsonValue,
       },
     });
 
     try {
       // Generate the report based on format
-      const result = await this.executeReportGeneration(report, instance, format);
+      const result = await this.executeReportGeneration(
+        report,
+        instance,
+        format,
+      );
 
       // Update instance with file info
       await prisma.reportInstance.update({
         where: { id: instance.id },
         data: {
-          status: 'completed',
+          status: "completed",
           fileUrl: result.fileUrl,
           fileName: result.fileName,
           fileSize: result.fileSize,
@@ -77,8 +91,8 @@ class ReportService {
       await prisma.reportInstance.update({
         where: { id: instance.id },
         data: {
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          status: "failed",
+          error: error instanceof Error ? error.message : "Unknown error",
         },
       });
 
@@ -89,14 +103,14 @@ class ReportService {
   private async executeReportGeneration(
     report: Prisma.SavedReportGetPayload<Record<string, never>>,
     instance: Prisma.ReportInstanceGetPayload<Record<string, never>>,
-    format: ReportFormat
+    format: ReportFormat,
   ): Promise<{ fileUrl: string; fileName: string; fileSize: number }> {
     // Report generation is delegated to the download endpoint, which queries
     // data based on report filters and streams the file in the requested format
     // (PDF/XLSX/CSV). File storage integration (e.g. S3) can be added later;
     // for now the download endpoint generates on-the-fly.
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `${report.name.replace(/\s+/g, '_')}_${timestamp}.${format}`;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = `${report.name.replace(/\s+/g, "_")}_${timestamp}.${format}`;
 
     return {
       fileUrl: `/api/analytics/reports/instances/${instance.id}/download`,
@@ -115,14 +129,17 @@ class ReportService {
     return this.toReportInstance(instance);
   }
 
-  async getReportInstances(reportId: string, limit = 10): Promise<ReportInstance[]> {
+  async getReportInstances(
+    reportId: string,
+    limit = 10,
+  ): Promise<ReportInstance[]> {
     const instances = await prisma.reportInstance.findMany({
       where: { reportId },
-      orderBy: { generatedAt: 'desc' },
+      orderBy: { generatedAt: "desc" },
       take: limit,
     });
 
-    return instances.map(i => this.toReportInstance(i));
+    return instances.map((i) => this.toReportInstance(i));
   }
 
   async recordDownload(instanceId: string): Promise<void> {
@@ -139,13 +156,16 @@ class ReportService {
   // Report Scheduling
   // ---------------------------------------------------------------------------
 
-  async createSchedule(input: ReportScheduleCreateInput, createdBy: string): Promise<ReportSchedule> {
+  async createSchedule(
+    input: ReportScheduleCreateInput,
+    createdBy: string,
+  ): Promise<ReportSchedule> {
     const nextRunAt = this.calculateNextRunTime(
       input.frequency,
       input.time,
-      input.timezone || 'Asia/Ho_Chi_Minh',
+      input.timezone || "Asia/Ho_Chi_Minh",
       input.dayOfWeek,
-      input.dayOfMonth
+      input.dayOfMonth,
     );
 
     const schedule = await prisma.reportSchedule.create({
@@ -156,9 +176,9 @@ class ReportService {
         dayOfWeek: input.dayOfWeek,
         dayOfMonth: input.dayOfMonth,
         time: input.time,
-        timezone: input.timezone || 'Asia/Ho_Chi_Minh',
+        timezone: input.timezone || "Asia/Ho_Chi_Minh",
         recipients: input.recipients as unknown as Prisma.InputJsonValue,
-        outputFormat: input.outputFormat || 'pdf',
+        outputFormat: input.outputFormat || "pdf",
         parameters: input.parameters as unknown as Prisma.InputJsonValue,
         emailSubject: input.emailSubject,
         emailBody: input.emailBody,
@@ -184,16 +204,19 @@ class ReportService {
   async getSchedulesForReport(reportId: string): Promise<ReportSchedule[]> {
     const schedules = await prisma.reportSchedule.findMany({
       where: { reportId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    return schedules.map(s => this.toReportSchedule(s));
+    return schedules.map((s) => this.toReportSchedule(s));
   }
 
-  async updateSchedule(id: string, data: Partial<ReportScheduleCreateInput>): Promise<ReportSchedule> {
+  async updateSchedule(
+    id: string,
+    data: Partial<ReportScheduleCreateInput>,
+  ): Promise<ReportSchedule> {
     const existing = await prisma.reportSchedule.findUnique({ where: { id } });
     if (!existing) {
-      throw new Error('Schedule not found');
+      throw new Error("Schedule not found");
     }
 
     const frequency = data.frequency || existing.frequency;
@@ -207,7 +230,7 @@ class ReportService {
       time,
       timezone,
       dayOfWeek ?? undefined,
-      dayOfMonth ?? undefined
+      dayOfMonth ?? undefined,
     );
 
     const updated = await prisma.reportSchedule.update({
@@ -248,7 +271,11 @@ class ReportService {
   // Scheduled Execution (Cron Handler)
   // ---------------------------------------------------------------------------
 
-  async runScheduledReports(): Promise<{ processed: number; succeeded: number; failed: number }> {
+  async runScheduledReports(): Promise<{
+    processed: number;
+    succeeded: number;
+    failed: number;
+  }> {
     const now = new Date();
 
     // Find all due schedules
@@ -285,14 +312,14 @@ class ReportService {
           schedule.time,
           schedule.timezone,
           schedule.dayOfWeek ?? undefined,
-          schedule.dayOfMonth ?? undefined
+          schedule.dayOfMonth ?? undefined,
         );
 
         await prisma.reportSchedule.update({
           where: { id: schedule.id },
           data: {
             lastRunAt: now,
-            lastRunStatus: 'success',
+            lastRunStatus: "success",
             nextRunAt,
             runCount: { increment: 1 },
           },
@@ -305,12 +332,15 @@ class ReportService {
           where: { id: schedule.id },
           data: {
             lastRunAt: now,
-            lastRunStatus: 'failed',
+            lastRunStatus: "failed",
           },
         });
 
         failed++;
-        logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'report-service', scheduleId: schedule.id });
+        logger.logError(
+          error instanceof Error ? error : new Error(String(error)),
+          { context: "report-service", scheduleId: schedule.id },
+        );
       }
     }
 
@@ -321,17 +351,20 @@ class ReportService {
   // Email Delivery
   // ---------------------------------------------------------------------------
 
-  async deliverReport(instanceId: string, recipients: ReportRecipient[]): Promise<void> {
+  async deliverReport(
+    instanceId: string,
+    recipients: ReportRecipient[],
+  ): Promise<void> {
     const instance = await prisma.reportInstance.findUnique({
       where: { id: instanceId },
       include: { report: true },
     });
 
-    if (!instance || instance.status !== 'completed') {
-      throw new Error('Report instance not ready for delivery');
+    if (!instance || instance.status !== "completed") {
+      throw new Error("Report instance not ready for delivery");
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const downloadUrl = `${baseUrl}${instance.fileUrl}`;
 
     // Send email to each recipient
@@ -341,7 +374,7 @@ class ReportService {
       try {
         // Get user details if it's an internal user
         let recipientEmail = recipient.email;
-        let recipientName = recipient.name || 'User';
+        let recipientName = recipient.name || "User";
 
         if (recipient.userId) {
           const user = await prisma.user.findUnique({
@@ -350,12 +383,16 @@ class ReportService {
           });
           if (user) {
             recipientEmail = user.email;
-            recipientName = user.name || 'User';
+            recipientName = user.name || "User";
           }
         }
 
         if (!recipientEmail) {
-          results.push({ email: 'unknown', success: false, error: 'No email address' });
+          results.push({
+            email: "unknown",
+            success: false,
+            error: "No email address",
+          });
           continue;
         }
 
@@ -364,14 +401,14 @@ class ReportService {
           recipientName,
           {
             reportName: instance.report.name,
-            reportType: instance.format || 'PDF',
+            reportType: instance.format || "PDF",
             generatedAt: instance.generatedAt.toISOString(),
             downloadUrl,
             attachReport: recipient.attachReport,
             // Note: In production, you would fetch the actual file content here
             // reportContent: await fetchReportContent(instance.fileUrl),
             // reportFilename: instance.fileName || `${instance.report.name}.${instance.format}`,
-          }
+          },
         );
 
         results.push({
@@ -381,30 +418,35 @@ class ReportService {
         });
       } catch (error) {
         results.push({
-          email: recipient.email || 'unknown',
+          email: recipient.email || "unknown",
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
 
     // Check if all emails were sent successfully
-    const allSuccess = results.every(r => r.success);
-    const anySuccess = results.some(r => r.success);
+    const allSuccess = results.every((r) => r.success);
+    const anySuccess = results.some((r) => r.success);
 
     // Update the delivery status
     await prisma.reportInstance.update({
       where: { id: instanceId },
       data: {
         recipients: recipients as unknown as Prisma.InputJsonValue,
-        deliveryStatus: allSuccess ? 'sent' : anySuccess ? 'partial' : 'failed',
+        deliveryStatus: allSuccess ? "sent" : anySuccess ? "partial" : "failed",
       },
     });
 
     // Log results
-    logger.info(`[ReportService] Delivered report ${instanceId} to ${recipients.length} recipients`, {
-      results: results.map(r => `${r.email}: ${r.success ? 'OK' : r.error}`).join(', '),
-    });
+    logger.info(
+      `[ReportService] Delivered report ${instanceId} to ${recipients.length} recipients`,
+      {
+        results: results
+          .map((r) => `${r.email}: ${r.success ? "OK" : r.error}`)
+          .join(", "),
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -416,9 +458,9 @@ class ReportService {
     time: string,
     timezone: string,
     dayOfWeek?: number,
-    dayOfMonth?: number
+    dayOfMonth?: number,
   ): Date {
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = time.split(":").map(Number);
     const now = new Date();
     const next = new Date(now);
 
@@ -431,11 +473,11 @@ class ReportService {
     }
 
     switch (frequency) {
-      case 'daily':
+      case "daily":
         // Already set
         break;
 
-      case 'weekly':
+      case "weekly":
         if (dayOfWeek !== undefined) {
           const currentDay = next.getDay();
           let daysUntil = dayOfWeek - currentDay;
@@ -445,7 +487,7 @@ class ReportService {
         }
         break;
 
-      case 'biweekly':
+      case "biweekly":
         if (dayOfWeek !== undefined) {
           const currentDay = next.getDay();
           let daysUntil = dayOfWeek - currentDay;
@@ -454,7 +496,7 @@ class ReportService {
         }
         break;
 
-      case 'monthly':
+      case "monthly":
         if (dayOfMonth !== undefined) {
           next.setDate(dayOfMonth);
           if (next <= now) {
@@ -463,7 +505,7 @@ class ReportService {
         }
         break;
 
-      case 'quarterly':
+      case "quarterly":
         if (dayOfMonth !== undefined) {
           const currentMonth = next.getMonth();
           const quarterStart = Math.floor(currentMonth / 3) * 3;
@@ -479,7 +521,9 @@ class ReportService {
     return next;
   }
 
-  private toReportSchedule(data: Prisma.ReportScheduleGetPayload<Record<string, never>>): ReportSchedule {
+  private toReportSchedule(
+    data: Prisma.ReportScheduleGetPayload<Record<string, never>>,
+  ): ReportSchedule {
     return {
       id: data.id,
       reportId: data.reportId,
@@ -496,13 +540,15 @@ class ReportService {
       emailBody: data.emailBody ?? undefined,
       isActive: data.isActive,
       lastRunAt: data.lastRunAt ?? undefined,
-      lastRunStatus: data.lastRunStatus as ReportSchedule['lastRunStatus'],
+      lastRunStatus: data.lastRunStatus as ReportSchedule["lastRunStatus"],
       nextRunAt: data.nextRunAt ?? undefined,
       runCount: data.runCount,
     };
   }
 
-  private toReportInstance(data: Prisma.ReportInstanceGetPayload<Record<string, never>>): ReportInstance {
+  private toReportInstance(
+    data: Prisma.ReportInstanceGetPayload<Record<string, never>>,
+  ): ReportInstance {
     return {
       id: data.id,
       scheduleId: data.scheduleId ?? undefined,
@@ -514,12 +560,12 @@ class ReportService {
       fileUrl: data.fileUrl ?? undefined,
       fileName: data.fileName ?? undefined,
       fileSize: data.fileSize ?? undefined,
-      status: data.status as ReportInstance['status'],
+      status: data.status as ReportInstance["status"],
       error: data.error ?? undefined,
       expiresAt: data.expiresAt ?? undefined,
       downloadCount: data.downloadCount,
       recipients: data.recipients as unknown as ReportRecipient[],
-      deliveryStatus: data.deliveryStatus as ReportInstance['deliveryStatus'],
+      deliveryStatus: data.deliveryStatus as ReportInstance["deliveryStatus"],
     };
   }
 }

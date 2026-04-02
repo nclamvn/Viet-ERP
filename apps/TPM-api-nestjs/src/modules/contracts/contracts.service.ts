@@ -6,7 +6,7 @@ import { ContractQueryDto } from './dto/contract-query.dto';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { RecordProgressDto } from './dto/record-progress.dto';
 import { createPaginatedResponse, getPaginationParams } from '../../common/dto/pagination.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/tpm-nestjs-client';
 
 @Injectable()
 export class ContractsService {

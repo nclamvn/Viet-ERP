@@ -1,13 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/prisma'
-import type { User } from '@prisma/client'
+import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
+import type { User } from ".prisma/crm-client";
 
 export class AuthError extends Error {
-  status: number
+  status: number;
   constructor(message: string, status = 401) {
-    super(message)
-    this.name = 'AuthError'
-    this.status = status
+    super(message);
+    this.name = "AuthError";
+    this.status = status;
   }
 }
 
@@ -16,22 +16,25 @@ export class AuthError extends Error {
  * Use in API routes. Throws AuthError if not authenticated.
  */
 export async function getCurrentUser(): Promise<User> {
-  const supabase = await createClient()
-  const { data: { user: authUser }, error } = await supabase.auth.getUser()
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !authUser) {
-    throw new AuthError('Unauthorized')
+    throw new AuthError("Unauthorized");
   }
 
   const user = await prisma.user.findUnique({
     where: { id: authUser.id },
-  })
+  });
 
   if (!user) {
-    throw new AuthError('User not found in database', 404)
+    throw new AuthError("User not found in database", 404);
   }
 
-  return user
+  return user;
 }
 
 /**
@@ -39,8 +42,8 @@ export async function getCurrentUser(): Promise<User> {
  */
 export async function getCurrentUserOrNull(): Promise<User | null> {
   try {
-    return await getCurrentUser()
+    return await getCurrentUser();
   } catch {
-    return null
+    return null;
   }
 }

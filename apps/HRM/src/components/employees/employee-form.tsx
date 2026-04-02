@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { useQuery, useMutation } from "@tanstack/react-query"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
-import { convertToNoAccent } from "@/lib/utils/employee"
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { convertToNoAccent } from "@/lib/utils/employee";
 import {
   EmployeeCreateSchema,
   Step1Schema,
@@ -26,57 +26,66 @@ import {
   Step3Schema,
   Step4Schema,
   type EmployeeCreateInput,
-} from "@/lib/validations/employee"
-import { Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react"
-import { Gender, EmployeeStatus } from "@prisma/client"
+} from "@/lib/validations/employee";
+import { Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Gender, EmployeeStatus } from ".prisma/hrm-client";
 
-interface Department { id: string; name: string; code: string }
-interface Position { id: string; name: string; code: string; departmentId: string | null }
+interface Department {
+  id: string;
+  name: string;
+  code: string;
+}
+interface Position {
+  id: string;
+  name: string;
+  code: string;
+  departmentId: string | null;
+}
 interface EmployeeData {
-  id: string
-  fullName: string
-  gender: Gender
-  dateOfBirth: string | null
-  permanentAddress: string | null
-  currentAddress: string | null
-  phone: string | null
-  nationalId: string | null
-  nationalIdDate: string | null
-  nationalIdPlace: string | null
-  departmentId: string | null
-  positionId: string | null
-  teamManagerId: string | null
-  jobDescription: string | null
-  startDate: string | null
-  status: EmployeeStatus
-  bankAccount: string | null
-  bankBranch: string | null
-  taxCode: string | null
-  taxCodeOld: string | null
-  insuranceCode: string | null
-  companyEmail: string | null
-  personalEmail: string | null
-  vehiclePlate: string | null
-  school: string | null
-  major: string | null
-  hrDocsSubmitted: HrDocs | null
-  resignDate?: string | null
-  resignDecisionNo?: string | null
+  id: string;
+  fullName: string;
+  gender: Gender;
+  dateOfBirth: string | null;
+  permanentAddress: string | null;
+  currentAddress: string | null;
+  phone: string | null;
+  nationalId: string | null;
+  nationalIdDate: string | null;
+  nationalIdPlace: string | null;
+  departmentId: string | null;
+  positionId: string | null;
+  teamManagerId: string | null;
+  jobDescription: string | null;
+  startDate: string | null;
+  status: EmployeeStatus;
+  bankAccount: string | null;
+  bankBranch: string | null;
+  taxCode: string | null;
+  taxCodeOld: string | null;
+  insuranceCode: string | null;
+  companyEmail: string | null;
+  personalEmail: string | null;
+  vehiclePlate: string | null;
+  school: string | null;
+  major: string | null;
+  hrDocsSubmitted: HrDocs | null;
+  resignDate?: string | null;
+  resignDecisionNo?: string | null;
 }
 
 interface HrDocs {
-  cccd?: boolean
-  degree?: boolean
-  cv?: boolean
-  healthCheck?: boolean
-  photo?: boolean
-  other?: string
+  cccd?: boolean;
+  degree?: boolean;
+  cv?: boolean;
+  healthCheck?: boolean;
+  photo?: boolean;
+  other?: string;
 }
 
 interface EmployeeFormProps {
-  mode: "create" | "edit"
-  employeeId?: string
-  initialData?: EmployeeData
+  mode: "create" | "edit";
+  employeeId?: string;
+  initialData?: EmployeeData;
 }
 
 const STEPS = [
@@ -84,15 +93,15 @@ const STEPS = [
   "Thông Tin Công Việc",
   "Tài Chính & Bảo Hiểm",
   "Email & Học Vấn & Hồ Sơ",
-]
+];
 
-const STEP_SCHEMAS = [Step1Schema, Step2Schema, Step3Schema, Step4Schema]
+const STEP_SCHEMAS = [Step1Schema, Step2Schema, Step3Schema, Step4Schema];
 
 const GENDER_OPTIONS = [
   { value: "MALE", label: "Nam" },
   { value: "FEMALE", label: "Nữ" },
   { value: "OTHER", label: "Khác" },
-]
+];
 
 const STATUS_OPTIONS = [
   { value: "PROBATION", label: "Thử việc" },
@@ -101,23 +110,27 @@ const STATUS_OPTIONS = [
   { value: "RESIGNED", label: "Đã nghỉ" },
   { value: "TERMINATED", label: "Đã chấm dứt" },
   { value: "SUSPENDED", label: "Tạm đình chỉ" },
-]
+];
 
 function formatDateForInput(dateStr: string | null | undefined): string {
-  if (!dateStr) return ""
+  if (!dateStr) return "";
   try {
-    const d = new Date(dateStr)
-    return d.toISOString().split("T")[0]
+    const d = new Date(dateStr);
+    return d.toISOString().split("T")[0];
   } catch {
-    return ""
+    return "";
   }
 }
 
-export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProps) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [step, setStep] = useState(0)
-  const [nameNoAccent, setNameNoAccent] = useState("")
+export function EmployeeForm({
+  mode,
+  employeeId,
+  initialData,
+}: EmployeeFormProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [step, setStep] = useState(0);
+  const [nameNoAccent, setNameNoAccent] = useState("");
 
   const {
     register,
@@ -161,7 +174,8 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
             cccd: (initialData.hrDocsSubmitted as HrDocs)?.cccd ?? false,
             degree: (initialData.hrDocsSubmitted as HrDocs)?.degree ?? false,
             cv: (initialData.hrDocsSubmitted as HrDocs)?.cv ?? false,
-            healthCheck: (initialData.hrDocsSubmitted as HrDocs)?.healthCheck ?? false,
+            healthCheck:
+              (initialData.hrDocsSubmitted as HrDocs)?.healthCheck ?? false,
             photo: (initialData.hrDocsSubmitted as HrDocs)?.photo ?? false,
             other: (initialData.hrDocsSubmitted as HrDocs)?.other || "",
           },
@@ -178,57 +192,60 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
             other: "",
           },
         },
-  })
+  });
 
-  const fullName = watch("fullName")
-  const selectedDeptId = watch("departmentId")
+  const fullName = watch("fullName");
+  const selectedDeptId = watch("departmentId");
 
   // Auto-convert fullName to nameNoAccent
   useEffect(() => {
     if (fullName) {
-      setNameNoAccent(convertToNoAccent(fullName))
+      setNameNoAccent(convertToNoAccent(fullName));
     } else {
-      setNameNoAccent("")
+      setNameNoAccent("");
     }
-  }, [fullName])
+  }, [fullName]);
 
   const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ["departments"],
     queryFn: () => fetch("/api/departments").then((r) => r.json()),
-  })
+  });
 
   const { data: positions = [] } = useQuery<Position[]>({
     queryKey: ["positions", selectedDeptId],
     queryFn: () => {
       const url = selectedDeptId
         ? `/api/positions?departmentId=${selectedDeptId}`
-        : "/api/positions"
-      return fetch(url).then((r) => r.json())
+        : "/api/positions";
+      return fetch(url).then((r) => r.json());
     },
-  })
+  });
 
-  const { data: employees = [] } = useQuery<Array<{ id: string; fullName: string; employeeCode: string }>>({
+  const { data: employees = [] } = useQuery<
+    Array<{ id: string; fullName: string; employeeCode: string }>
+  >({
     queryKey: ["employees-for-manager"],
     queryFn: () =>
       fetch("/api/employees?limit=100")
         .then((r) => r.json())
         .then((r) => r.data || []),
-  })
+  });
 
   const mutation = useMutation({
     mutationFn: async (data: EmployeeCreateInput) => {
-      const url = mode === "create" ? "/api/employees" : `/api/employees/${employeeId}`
-      const method = mode === "create" ? "POST" : "PUT"
+      const url =
+        mode === "create" ? "/api/employees" : `/api/employees/${employeeId}`;
+      const method = mode === "create" ? "POST" : "PUT";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      })
+      });
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "Lỗi server")
+        const err = await res.json();
+        throw new Error(err.error || "Lỗi server");
       }
-      return res.json()
+      return res.json();
     },
     onSuccess: (data) => {
       toast({
@@ -237,47 +254,49 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
           mode === "create"
             ? `Đã thêm nhân viên ${data.employeeCode}`
             : "Thông tin nhân viên đã được cập nhật",
-      })
-      router.push(`/employees/${data.id}`)
+      });
+      router.push(`/employees/${data.id}`);
     },
     onError: (error: Error) => {
       toast({
         title: "Lỗi",
         description: error.message,
         variant: "destructive",
-      })
+      });
     },
-  })
+  });
 
   const validateStep = useCallback(async () => {
-    const schema = STEP_SCHEMAS[step]
-    const values = getValues()
-    const result = schema.safeParse(values)
+    const schema = STEP_SCHEMAS[step];
+    const values = getValues();
+    const result = schema.safeParse(values);
     if (!result.success) {
       // Trigger react-hook-form errors for current step fields
-      const stepFields = Object.keys(schema.shape) as Array<keyof EmployeeCreateInput>
-      await trigger(stepFields)
-      return false
+      const stepFields = Object.keys(schema.shape) as Array<
+        keyof EmployeeCreateInput
+      >;
+      await trigger(stepFields);
+      return false;
     }
-    return true
-  }, [step, getValues, trigger])
+    return true;
+  }, [step, getValues, trigger]);
 
   const handleNext = async () => {
-    const valid = await validateStep()
+    const valid = await validateStep();
     if (valid && step < STEPS.length - 1) {
-      setStep(step + 1)
+      setStep(step + 1);
     }
-  }
+  };
 
   const handlePrev = () => {
-    if (step > 0) setStep(step - 1)
-  }
+    if (step > 0) setStep(step - 1);
+  };
 
   const onSubmit = (data: EmployeeCreateInput) => {
     // Only allow submission from the final step
-    if (step !== STEPS.length - 1) return
-    mutation.mutate(data)
-  }
+    if (step !== STEPS.length - 1) return;
+    mutation.mutate(data);
+  };
 
   return (
     <div>
@@ -290,8 +309,8 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                 i < step
                   ? "bg-green-500 text-white"
                   : i === step
-                  ? "text-white"
-                  : "bg-slate-200 text-slate-500"
+                    ? "text-white"
+                    : "bg-slate-200 text-slate-500"
               }`}
               style={i === step ? { backgroundColor: "#1E3A5F" } : undefined}
             >
@@ -328,7 +347,9 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                     placeholder="Nguyễn Văn An"
                   />
                   {errors.fullName && (
-                    <p className="text-sm text-red-500 mt-1">{errors.fullName.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.fullName.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -353,36 +374,70 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="dateOfBirth">Ngày Sinh</Label>
-                  <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    {...register("dateOfBirth")}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="phone">Điện Thoại</Label>
-                  <Input id="phone" {...register("phone")} placeholder="0901234567" inputMode="tel" autoCorrect="off" autoCapitalize="off" />
+                  <Input
+                    id="phone"
+                    {...register("phone")}
+                    placeholder="0901234567"
+                    inputMode="tel"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                  />
                   {errors.phone && (
-                    <p className="text-sm text-red-500 mt-1">{errors.phone.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.phone.message}
+                    </p>
                   )}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="nationalId">CCCD/CMND</Label>
-                  <Input id="nationalId" {...register("nationalId")} placeholder="0123456789XX" maxLength={12} autoCorrect="off" autoCapitalize="off" inputMode="numeric" />
+                  <Input
+                    id="nationalId"
+                    {...register("nationalId")}
+                    placeholder="0123456789XX"
+                    maxLength={12}
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    inputMode="numeric"
+                  />
                   {errors.nationalId && (
-                    <p className="text-sm text-red-500 mt-1">{errors.nationalId.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.nationalId.message}
+                    </p>
                   )}
                 </div>
                 <div>
                   <Label htmlFor="nationalIdDate">Ngày Cấp</Label>
-                  <Input id="nationalIdDate" type="date" {...register("nationalIdDate")} />
+                  <Input
+                    id="nationalIdDate"
+                    type="date"
+                    {...register("nationalIdDate")}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="nationalIdPlace">Nơi Cấp</Label>
-                  <Input id="nationalIdPlace" {...register("nationalIdPlace")} placeholder="TP.HCM" />
+                  <Input
+                    id="nationalIdPlace"
+                    {...register("nationalIdPlace")}
+                    placeholder="TP.HCM"
+                  />
                 </div>
               </div>
               <div>
                 <Label htmlFor="permanentAddress">Địa Chỉ Thường Trú</Label>
-                <Input id="permanentAddress" {...register("permanentAddress")} />
+                <Input
+                  id="permanentAddress"
+                  {...register("permanentAddress")}
+                />
               </div>
               <div>
                 <Label htmlFor="currentAddress">Địa Chỉ Hiện Tại</Label>
@@ -400,8 +455,8 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                   <Select
                     value={watch("departmentId") || ""}
                     onValueChange={(v) => {
-                      setValue("departmentId", v === "none" ? "" : v)
-                      setValue("positionId", "")
+                      setValue("departmentId", v === "none" ? "" : v);
+                      setValue("positionId", "");
                     }}
                   >
                     <SelectTrigger>
@@ -421,7 +476,9 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                   <Label>Chức Vụ</Label>
                   <Select
                     value={watch("positionId") || ""}
-                    onValueChange={(v) => setValue("positionId", v === "none" ? "" : v)}
+                    onValueChange={(v) =>
+                      setValue("positionId", v === "none" ? "" : v)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn chức vụ" />
@@ -442,7 +499,9 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                   <Label>Quản Lý Trực Tiếp</Label>
                   <Select
                     value={watch("teamManagerId") || ""}
-                    onValueChange={(v) => setValue("teamManagerId", v === "none" ? "" : v)}
+                    onValueChange={(v) =>
+                      setValue("teamManagerId", v === "none" ? "" : v)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn quản lý" />
@@ -461,9 +520,15 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                 </div>
                 <div>
                   <Label htmlFor="startDate">Ngày Vào Làm *</Label>
-                  <Input id="startDate" type="date" {...register("startDate")} />
+                  <Input
+                    id="startDate"
+                    type="date"
+                    {...register("startDate")}
+                  />
                   {errors.startDate && (
-                    <p className="text-sm text-red-500 mt-1">{errors.startDate.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.startDate.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -472,7 +537,9 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                   <Label>Trạng Thái</Label>
                   <Select
                     value={watch("status")}
-                    onValueChange={(v) => setValue("status", v as EmployeeStatus)}
+                    onValueChange={(v) =>
+                      setValue("status", v as EmployeeStatus)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -488,12 +555,20 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                 </div>
                 <div>
                   <Label htmlFor="vehiclePlate">Biển Số Xe</Label>
-                  <Input id="vehiclePlate" {...register("vehiclePlate")} placeholder="59-XX 123.45" />
+                  <Input
+                    id="vehiclePlate"
+                    {...register("vehiclePlate")}
+                    placeholder="59-XX 123.45"
+                  />
                 </div>
               </div>
               <div>
                 <Label htmlFor="jobDescription">Mô Tả Công Việc</Label>
-                <Textarea id="jobDescription" {...register("jobDescription")} rows={3} />
+                <Textarea
+                  id="jobDescription"
+                  {...register("jobDescription")}
+                  rows={3}
+                />
               </div>
             </>
           )}
@@ -508,12 +583,18 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                   </Label>
                   <Input id="bankAccount" {...register("bankAccount")} />
                   {errors.bankAccount && (
-                    <p className="text-sm text-red-500 mt-1">{errors.bankAccount.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.bankAccount.message}
+                    </p>
                   )}
                 </div>
                 <div>
                   <Label htmlFor="bankBranch">Phòng GD/CN</Label>
-                  <Input id="bankBranch" {...register("bankBranch")} placeholder="Techcombank - HCM" />
+                  <Input
+                    id="bankBranch"
+                    {...register("bankBranch")}
+                    placeholder="Techcombank - HCM"
+                  />
                 </div>
               </div>
               <div>
@@ -543,16 +624,24 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="companyEmail">Email Công Ty</Label>
-                  <Input id="companyEmail" {...register("companyEmail")} placeholder="ten@rtr.vn" />
+                  <Input
+                    id="companyEmail"
+                    {...register("companyEmail")}
+                    placeholder="ten@rtr.vn"
+                  />
                   {errors.companyEmail && (
-                    <p className="text-sm text-red-500 mt-1">{errors.companyEmail.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.companyEmail.message}
+                    </p>
                   )}
                 </div>
                 <div>
                   <Label htmlFor="personalEmail">Email Cá Nhân</Label>
                   <Input id="personalEmail" {...register("personalEmail")} />
                   {errors.personalEmail && (
-                    <p className="text-sm text-red-500 mt-1">{errors.personalEmail.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.personalEmail.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -576,10 +665,15 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
                     { key: "healthCheck", label: "Giấy khám sức khỏe" },
                     { key: "photo", label: "Ảnh 3x4" },
                   ].map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <label
+                      key={key}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
                       <input
                         type="checkbox"
-                        {...register(`hrDocsSubmitted.${key as "cccd" | "degree" | "cv" | "healthCheck" | "photo"}` as const)}
+                        {...register(
+                          `hrDocsSubmitted.${key as "cccd" | "degree" | "cv" | "healthCheck" | "photo"}` as const,
+                        )}
                         className="rounded border-gray-300"
                       />
                       <span className="text-sm">{label}</span>
@@ -640,5 +734,5 @@ export function EmployeeForm({ mode, employeeId, initialData }: EmployeeFormProp
         )}
       </div>
     </div>
-  )
+  );
 }

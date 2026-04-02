@@ -3,8 +3,8 @@
 // Prisma query patterns for optimal performance
 // =============================================================================
 
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { Prisma } from ".prisma/mrp-client";
+import { prisma } from "@/lib/prisma";
 
 // =============================================================================
 // TYPES
@@ -17,7 +17,7 @@ export interface PaginationOptions {
 
 export interface SortOptions {
   sortBy: string;
-  sortOrder: 'asc' | 'desc';
+  sortOrder: "asc" | "desc";
 }
 
 export interface QueryOptions extends PaginationOptions, SortOptions {
@@ -46,7 +46,7 @@ export function getPaginationParams(options: PaginationOptions) {
   const { page, pageSize } = options;
   const skip = (page - 1) * pageSize;
   const take = pageSize;
-  
+
   return { skip, take };
 }
 
@@ -56,11 +56,11 @@ export function getPaginationParams(options: PaginationOptions) {
 export function createPaginatedResult<T>(
   items: T[],
   total: number,
-  options: PaginationOptions
+  options: PaginationOptions,
 ): PaginatedResult<T> {
   const { page, pageSize } = options;
   const totalPages = Math.ceil(total / pageSize);
-  
+
   return {
     items,
     total,
@@ -82,21 +82,23 @@ export function createPaginatedResult<T>(
  */
 export function buildSelect<T extends string>(
   fields: T[],
-  allowedFields: T[]
+  allowedFields: T[],
 ): Record<T, true> | undefined {
   if (!fields || fields.length === 0) {
     return undefined;
   }
-  
+
   const select: Record<string, true> = {};
-  
+
   for (const field of fields) {
     if (allowedFields.includes(field)) {
       select[field] = true;
     }
   }
-  
-  return Object.keys(select).length > 0 ? select as Record<T, true> : undefined;
+
+  return Object.keys(select).length > 0
+    ? (select as Record<T, true>)
+    : undefined;
 }
 
 /**
@@ -134,7 +136,7 @@ export const DEFAULT_SELECTS = {
       updatedAt: true,
     },
   },
-  
+
   workOrder: {
     list: {
       id: true,
@@ -154,7 +156,7 @@ export const DEFAULT_SELECTS = {
     },
     detail: true, // Full detail
   },
-  
+
   inventory: {
     list: {
       id: true,
@@ -189,9 +191,11 @@ export const DEFAULT_SELECTS = {
  * Reduces database round trips
  */
 export async function batchQueries<T extends Prisma.PrismaPromise<unknown>[]>(
-  queries: [...T]
+  queries: [...T],
 ): Promise<{ [K in keyof T]: Awaited<T[K]> }> {
-  return prisma.$transaction(queries) as Promise<{ [K in keyof T]: Awaited<T[K]> }>;
+  return prisma.$transaction(queries) as Promise<{
+    [K in keyof T]: Awaited<T[K]>;
+  }>;
 }
 
 /**
@@ -201,41 +205,41 @@ export async function batchQueries<T extends Prisma.PrismaPromise<unknown>[]>(
 export class BatchLoader<T> {
   private batchMap = new Map<string, Promise<Map<string, T>>>();
   private batchTimeout = 10; // ms
-  
+
   constructor(
     private loadFn: (ids: string[]) => Promise<T[]>,
-    private getKey: (item: T) => string
+    private getKey: (item: T) => string,
   ) {}
-  
+
   async load(id: string): Promise<T | null> {
     const batchKey = Math.floor(Date.now() / this.batchTimeout).toString();
-    
+
     if (!this.batchMap.has(batchKey)) {
       const pendingIds: string[] = [];
-      
+
       const promise = new Promise<Map<string, T>>((resolve) => {
         setTimeout(async () => {
           const items = await this.loadFn(pendingIds);
           const map = new Map<string, T>();
-          
+
           for (const item of items) {
             map.set(this.getKey(item), item);
           }
-          
+
           resolve(map);
           this.batchMap.delete(batchKey);
         }, this.batchTimeout);
       });
-      
+
       this.batchMap.set(batchKey, promise);
     }
-    
+
     const map = await this.batchMap.get(batchKey)!;
     return map.get(id) || null;
   }
-  
+
   async loadMany(ids: string[]): Promise<(T | null)[]> {
-    return Promise.all(ids.map(id => this.load(id)));
+    return Promise.all(ids.map((id) => this.load(id)));
   }
 }
 
@@ -250,7 +254,7 @@ export class BatchLoader<T> {
 export interface CursorPaginationOptions {
   cursor?: string;
   take: number;
-  direction?: 'forward' | 'backward';
+  direction?: "forward" | "backward";
 }
 
 export interface CursorPaginatedResult<T> {
@@ -262,12 +266,12 @@ export interface CursorPaginatedResult<T> {
 
 export function buildCursorPagination(
   options: CursorPaginationOptions,
-  cursorField: string = 'id'
+  cursorField: string = "id",
 ) {
-  const { cursor, take, direction = 'forward' } = options;
-  
+  const { cursor, take, direction = "forward" } = options;
+
   return {
-    take: direction === 'forward' ? take + 1 : -(take + 1),
+    take: direction === "forward" ? take + 1 : -(take + 1),
     ...(cursor && {
       cursor: { [cursorField]: cursor },
       skip: 1,
@@ -278,18 +282,19 @@ export function buildCursorPagination(
 export function processCursorResult<T extends { id: string }>(
   items: T[],
   take: number,
-  direction: 'forward' | 'backward' = 'forward'
+  direction: "forward" | "backward" = "forward",
 ): CursorPaginatedResult<T> {
   const hasMore = items.length > take;
   const resultItems = hasMore ? items.slice(0, take) : items;
-  
-  if (direction === 'backward') {
+
+  if (direction === "backward") {
     resultItems.reverse();
   }
-  
+
   return {
     items: resultItems,
-    nextCursor: resultItems.length > 0 ? resultItems[resultItems.length - 1].id : null,
+    nextCursor:
+      resultItems.length > 0 ? resultItems[resultItems.length - 1].id : null,
     previousCursor: resultItems.length > 0 ? resultItems[0].id : null,
     hasMore,
   };
@@ -305,23 +310,23 @@ export function processCursorResult<T extends { id: string }>(
  */
 export function buildSearchConditions(
   search: string | undefined,
-  fields: string[]
+  fields: string[],
 ): { OR: Record<string, unknown>[] } | undefined {
   if (!search || search.trim().length === 0) {
     return undefined;
   }
-  
+
   const searchTerm = search.trim();
-  
+
   // For short searches, use startsWith (index-friendly)
   // For longer searches, use contains
-  const mode = searchTerm.length <= 3 ? 'startsWith' : 'contains';
-  
+  const mode = searchTerm.length <= 3 ? "startsWith" : "contains";
+
   return {
-    OR: fields.map(field => ({
+    OR: fields.map((field) => ({
       [field]: {
         [mode]: searchTerm,
-        mode: 'insensitive',
+        mode: "insensitive",
       },
     })),
   };
@@ -333,19 +338,19 @@ export function buildSearchConditions(
  */
 export function buildFullTextSearch(
   search: string | undefined,
-  field: string = 'searchVector'
+  field: string = "searchVector",
 ) {
   if (!search || search.trim().length === 0) {
     return undefined;
   }
-  
+
   // Convert to tsquery format
   const tsQuery = search
     .trim()
     .split(/\s+/)
-    .map(word => `${word}:*`)
-    .join(' & ');
-  
+    .map((word) => `${word}:*`)
+    .join(" & ");
+
   return {
     [field]: {
       search: tsQuery,
@@ -362,9 +367,11 @@ export function buildFullTextSearch(
  */
 export async function countWithFilters(
   model: { count: (...args: never[]) => Promise<number> },
-  where: Record<string, unknown>
+  where: Record<string, unknown>,
 ): Promise<number> {
-  const countFn = model.count as (args: { where: Record<string, unknown> }) => Promise<number>;
+  const countFn = model.count as (args: {
+    where: Record<string, unknown>;
+  }) => Promise<number>;
   return countFn({ where });
 }
 
@@ -382,7 +389,10 @@ export async function countWithFilters(
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma delegates have complex generic signatures
 export async function findManyWithCount<T = Record<string, unknown>>(
-  model: { findMany: (...args: never[]) => Prisma.PrismaPromise<unknown[]>; count: (...args: never[]) => Prisma.PrismaPromise<number> },
+  model: {
+    findMany: (...args: never[]) => Prisma.PrismaPromise<unknown[]>;
+    count: (...args: never[]) => Prisma.PrismaPromise<number>;
+  },
   args: {
     where?: Record<string, unknown>;
     select?: Record<string, unknown>;
@@ -390,10 +400,14 @@ export async function findManyWithCount<T = Record<string, unknown>>(
     orderBy?: Record<string, unknown>;
     skip?: number;
     take?: number;
-  }
+  },
 ): Promise<{ items: T[]; total: number }> {
-  const findManyFn = model.findMany as (args: Record<string, unknown>) => Prisma.PrismaPromise<unknown[]>;
-  const countFn = model.count as (args: Record<string, unknown>) => Prisma.PrismaPromise<number>;
+  const findManyFn = model.findMany as (
+    args: Record<string, unknown>,
+  ) => Prisma.PrismaPromise<unknown[]>;
+  const countFn = model.count as (
+    args: Record<string, unknown>,
+  ) => Prisma.PrismaPromise<number>;
 
   const [items, total] = await prisma.$transaction([
     findManyFn(args),
@@ -414,7 +428,7 @@ export function buildAggregation(
     _avg?: { [field: string]: boolean };
     _min?: { [field: string]: boolean };
     _max?: { [field: string]: boolean };
-  }
+  },
 ) {
   return {
     by: groupBy,
@@ -431,12 +445,12 @@ export function buildAggregation(
  */
 export function withTimeout<T>(
   query: Promise<T>,
-  timeoutMs: number = 30000
+  timeoutMs: number = 30000,
 ): Promise<T> {
   return Promise.race([
     query,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Query timeout')), timeoutMs)
+      setTimeout(() => reject(new Error("Query timeout")), timeoutMs),
     ),
   ]);
 }
@@ -447,35 +461,43 @@ export function withTimeout<T>(
 export async function chunkOperation<T, R>(
   items: T[],
   chunkSize: number,
-  operation: (chunk: T[]) => Promise<R[]>
+  operation: (chunk: T[]) => Promise<R[]>,
 ): Promise<R[]> {
   const results: R[] = [];
-  
+
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);
     const chunkResults = await operation(chunk);
     results.push(...chunkResults);
   }
-  
+
   return results;
 }
 
 /**
  * Bulk upsert with conflict handling
  */
-export async function bulkUpsert<T extends Record<string, unknown> & { id?: string }>(
-  model: { upsert: (args: { where: Record<string, unknown>; create: T; update: T }) => Prisma.PrismaPromise<unknown> },
+export async function bulkUpsert<
+  T extends Record<string, unknown> & { id?: string },
+>(
+  model: {
+    upsert: (args: {
+      where: Record<string, unknown>;
+      create: T;
+      update: T;
+    }) => Prisma.PrismaPromise<unknown>;
+  },
   data: T[],
-  uniqueField: string
+  uniqueField: string,
 ): Promise<number> {
   await prisma.$transaction(
-    data.map(item =>
+    data.map((item) =>
       model.upsert({
         where: { [uniqueField]: item[uniqueField] },
         create: item,
         update: item,
-      })
-    )
+      }),
+    ),
   );
 
   return data.length;

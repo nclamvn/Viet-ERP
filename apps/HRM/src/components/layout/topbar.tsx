@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { signOut } from "next-auth/react"
-import { Menu, LogOut, Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { NotificationBell } from "./notification-bell"
-import { CommandPalette } from "@/components/search/command-palette"
-import type { UserRole } from "@prisma/client"
+import { signOut } from "next-auth/react";
+import { Menu, LogOut, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "./notification-bell";
+import { CommandPalette } from "@/components/search/command-palette";
+import type { UserRole } from ".prisma/hrm-client";
 
 const roleLabels: Record<UserRole, string> = {
   SUPER_ADMIN: "Quản trị viên",
@@ -15,12 +15,12 @@ const roleLabels: Record<UserRole, string> = {
   DEPT_MANAGER: "Quản lý phòng ban",
   EMPLOYEE: "Nhân viên",
   ACCOUNTANT: "Kế toán",
-}
+};
 
 interface TopbarProps {
-  userName: string
-  role: UserRole
-  onMenuClick: () => void
+  userName: string;
+  role: UserRole;
+  onMenuClick: () => void;
 }
 
 export function Topbar({ userName, role, onMenuClick }: TopbarProps) {
@@ -43,7 +43,9 @@ export function Topbar({ userName, role, onMenuClick }: TopbarProps) {
         className="md:hidden"
         aria-label="Tìm kiếm"
         onClick={() => {
-          window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "k", metaKey: true }),
+          );
         }}
       >
         <Search className="h-5 w-5" />
@@ -52,13 +54,17 @@ export function Topbar({ userName, role, onMenuClick }: TopbarProps) {
       {/* Search trigger */}
       <button
         onClick={() => {
-          window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "k", metaKey: true }),
+          );
         }}
         className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm text-slate-400 hover:bg-slate-50 transition-colors"
       >
         <Search className="h-4 w-4" />
         <span>{"Tìm kiếm..."}</span>
-        <kbd className="ml-4 text-[10px] border rounded px-1.5 py-0.5 bg-slate-50">{"⌘K"}</kbd>
+        <kbd className="ml-4 text-[10px] border rounded px-1.5 py-0.5 bg-slate-50">
+          {"⌘K"}
+        </kbd>
       </button>
       <div className="flex-1 md:hidden" />
 
@@ -83,5 +89,5 @@ export function Topbar({ userName, role, onMenuClick }: TopbarProps) {
         </Button>
       </div>
     </header>
-  )
+  );
 }

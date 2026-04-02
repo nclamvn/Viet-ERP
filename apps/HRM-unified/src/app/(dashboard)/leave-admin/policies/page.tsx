@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Loader2, Plus, Edit, Trash2, FileText } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { useEffect, useState } from "react";
+import { Loader2, Plus, Edit, Trash2, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,83 +31,84 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { useToast } from '@/hooks/use-toast'
-import { LEAVE_TYPE_CONFIG } from '@/lib/leave/constants'
-import type { LeaveType } from '@prisma/client'
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { LEAVE_TYPE_CONFIG } from "@/lib/leave/constants";
+import type { LeaveType } from ".prisma/hrm-unified-client";
 
 interface LeavePolicy {
-  id: string
-  name: string
-  code: string
-  leaveType: LeaveType
-  defaultDays: number
-  maxCarryOver: number
-  requiresApproval: boolean
-  isActive: boolean
-  createdAt: string
+  id: string;
+  name: string;
+  code: string;
+  leaveType: LeaveType;
+  defaultDays: number;
+  maxCarryOver: number;
+  requiresApproval: boolean;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export default function LeavePoliciesPage() {
-  const { toast } = useToast()
-  const [policies, setPolicies] = useState<LeavePolicy[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast();
+  const [policies, setPolicies] = useState<LeavePolicy[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchPolicies = async () => {
     try {
-      const response = await fetch('/api/leave/policies')
+      const response = await fetch("/api/leave/policies");
       if (response.ok) {
-        const data = await response.json()
-        setPolicies(data.data || [])
+        const data = await response.json();
+        setPolicies(data.data || []);
       }
     } catch {
       toast({
-        title: 'Lỗi',
-        description: 'Không thể tải danh sách chính sách',
-        variant: 'destructive',
-      })
+        title: "Lỗi",
+        description: "Không thể tải danh sách chính sách",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchPolicies()
-  }, [])
+    fetchPolicies();
+  }, []);
 
   const handleDelete = async (id: string) => {
     try {
       const response = await fetch(`/api/leave/policies/${id}`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to delete policy')
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete policy");
       }
 
       toast({
-        title: 'Thành công',
-        description: 'Đã xóa chính sách',
-      })
+        title: "Thành công",
+        description: "Đã xóa chính sách",
+      });
 
-      fetchPolicies()
+      fetchPolicies();
     } catch (error) {
       toast({
-        title: 'Lỗi',
-        description: error instanceof Error ? error.message : 'Không thể xóa chính sách',
-        variant: 'destructive',
-      })
+        title: "Lỗi",
+        description:
+          error instanceof Error ? error.message : "Không thể xóa chính sách",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   return (
@@ -158,8 +159,12 @@ export default function LeavePoliciesPage() {
                 <TableRow>
                   <TableHead>Tên chính sách</TableHead>
                   <TableHead>Loại phép</TableHead>
-                  <TableHead className="text-center">Số ngày mặc định</TableHead>
-                  <TableHead className="text-center">Chuyển năm tối đa</TableHead>
+                  <TableHead className="text-center">
+                    Số ngày mặc định
+                  </TableHead>
+                  <TableHead className="text-center">
+                    Chuyển năm tối đa
+                  </TableHead>
                   <TableHead className="text-center">Cần phê duyệt</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
@@ -167,13 +172,15 @@ export default function LeavePoliciesPage() {
               </TableHeader>
               <TableBody>
                 {policies.map((policy) => {
-                  const typeConfig = LEAVE_TYPE_CONFIG[policy.leaveType]
+                  const typeConfig = LEAVE_TYPE_CONFIG[policy.leaveType];
                   return (
                     <TableRow key={policy.id}>
                       <TableCell>
                         <div>
                           <p className="font-medium">{policy.name}</p>
-                          <p className="text-sm text-muted-foreground">{policy.code}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {policy.code}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -182,14 +189,20 @@ export default function LeavePoliciesPage() {
                           <span>{typeConfig?.label || policy.leaveType}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">{policy.defaultDays}</TableCell>
-                      <TableCell className="text-center">{policy.maxCarryOver}</TableCell>
                       <TableCell className="text-center">
-                        {policy.requiresApproval ? 'Có' : 'Không'}
+                        {policy.defaultDays}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {policy.maxCarryOver}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {policy.requiresApproval ? "Có" : "Không"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={policy.isActive ? 'default' : 'secondary'}>
-                          {policy.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                        <Badge
+                          variant={policy.isActive ? "default" : "secondary"}
+                        >
+                          {policy.isActive ? "Hoạt động" : "Tạm dừng"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -205,10 +218,13 @@ export default function LeavePoliciesPage() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Xóa chính sách?</AlertDialogTitle>
+                                <AlertDialogTitle>
+                                  Xóa chính sách?
+                                </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Bạn có chắc muốn xóa chính sách &quot;{policy.name}&quot;?
-                                  Hành động này không thể hoàn tác.
+                                  Bạn có chắc muốn xóa chính sách &quot;
+                                  {policy.name}&quot;? Hành động này không thể
+                                  hoàn tác.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -224,7 +240,7 @@ export default function LeavePoliciesPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })}
               </TableBody>
             </Table>
@@ -232,5 +248,5 @@ export default function LeavePoliciesPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

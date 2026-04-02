@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma } from ".prisma/mrp-client";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -18,14 +18,14 @@ import {
   AuthUser,
 } from "@/lib/api/with-permission";
 
-import { checkReadEndpointLimit } from '@/lib/rate-limit';
+import { checkReadEndpointLimit } from "@/lib/rate-limit";
 
 /** Parse date string ensuring UTC for date-only strings (YYYY-MM-DD) */
 function parseDate(value: string | Date): Date {
   if (value instanceof Date) return value;
   // Date-only strings: explicitly append UTC timezone to avoid local-time parsing
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return new Date(value + 'T00:00:00.000Z');
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(value + "T00:00:00.000Z");
   }
   return new Date(value);
 }
@@ -35,21 +35,34 @@ function parseDate(value: string | Date): Date {
 // =============================================================================
 
 const createOrderSchema = z.object({
-  orderNumber: z.string().min(1, 'Số đơn hàng là bắt buộc'),
-  customerId: z.string().min(1, 'Khách hàng là bắt buộc'),
+  orderNumber: z.string().min(1, "Số đơn hàng là bắt buộc"),
+  customerId: z.string().min(1, "Khách hàng là bắt buộc"),
   orderDate: z.string().or(z.date()),
   requiredDate: z.string().or(z.date()),
   promisedDate: z.string().or(z.date()).optional().nullable(),
-  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
-  status: z.enum(['draft', 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled']).default('draft'),
-  currency: z.string().default('USD'),
+  priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
+  status: z
+    .enum([
+      "draft",
+      "pending",
+      "confirmed",
+      "in_progress",
+      "completed",
+      "cancelled",
+    ])
+    .default("draft"),
+  currency: z.string().default("USD"),
   notes: z.string().optional().nullable(),
-  lines: z.array(z.object({
-    productId: z.string(),
-    quantity: z.number().int().min(1).max(999999),
-    unitPrice: z.number().min(0).max(999999999),
-    discount: z.number().min(0).max(100).default(0),
-  })).optional(),
+  lines: z
+    .array(
+      z.object({
+        productId: z.string(),
+        quantity: z.number().int().min(1).max(999999),
+        unitPrice: z.number().min(0).max(999999999),
+        discount: z.number().min(0).max(100).default(0),
+      }),
+    )
+    .optional(),
 });
 
 // =============================================================================
@@ -58,11 +71,11 @@ const createOrderSchema = z.object({
 
 async function getHandler(
   request: NextRequest,
-  { user }: { params?: Record<string, string>; user: AuthUser }
+  { user }: { params?: Record<string, string>; user: AuthUser },
 ) {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   const startTime = Date.now();
 
@@ -80,8 +93,8 @@ async function getHandler(
     if (priority) where.priority = priority;
     if (search) {
       where.OR = [
-        { orderNumber: { contains: search, mode: 'insensitive' } },
-        { customer: { name: { contains: search, mode: 'insensitive' } } },
+        { orderNumber: { contains: search, mode: "insensitive" } },
+        { customer: { name: { contains: search, mode: "insensitive" } } },
       ];
     }
 
@@ -95,22 +108,28 @@ async function getHandler(
           : { orderDate: "desc" },
         include: {
           customer: { select: { id: true, code: true, name: true } },
-          lines: { include: { product: { select: { id: true, sku: true, name: true } } } },
+          lines: {
+            include: {
+              product: { select: { id: true, sku: true, name: true } },
+            },
+          },
           _count: { select: { lines: true } },
         },
       }),
     ]);
 
     return paginatedSuccess(
-      buildPaginatedResponse(orders, totalCount, params, startTime)
+      buildPaginatedResponse(orders, totalCount, params, startTime),
     );
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'GET /api/sales-orders' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "GET /api/sales-orders",
+    });
     return paginatedError("Failed to fetch sales orders", 500);
   }
 }
 
-export const GET = withPermission(getHandler, { read: 'orders:view' });
+export const GET = withPermission(getHandler, { read: "orders:view" });
 
 // =============================================================================
 // POST - Create sales order
@@ -118,20 +137,20 @@ export const GET = withPermission(getHandler, { read: 'orders:view' });
 
 async function postHandler(
   request: NextRequest,
-  { user }: { params?: Record<string, string>; user: AuthUser }
+  { user }: { params?: Record<string, string>; user: AuthUser },
 ) {
   let body;
   try {
     body = await request.json();
   } catch {
-    return errorResponse('Invalid JSON body', 400);
+    return errorResponse("Invalid JSON body", 400);
   }
 
   const validation = createOrderSchema.safeParse(body);
   if (!validation.success) {
     const errors: Record<string, string[]> = {};
     validation.error.issues.forEach((err) => {
-      const path = err.path.join('.');
+      const path = err.path.join(".");
       if (!errors[path]) errors[path] = [];
       errors[path].push(err.message);
     });
@@ -142,13 +161,13 @@ async function postHandler(
   const exists = await prisma.salesOrder.findUnique({
     where: { orderNumber: validation.data.orderNumber },
   });
-  if (exists) return errorResponse('Số đơn hàng đã tồn tại', 409);
+  if (exists) return errorResponse("Số đơn hàng đã tồn tại", 409);
 
   // Check customer exists
   const customer = await prisma.customer.findUnique({
     where: { id: validation.data.customerId },
   });
-  if (!customer) return errorResponse('Khách hàng không tồn tại', 400);
+  if (!customer) return errorResponse("Khách hàng không tồn tại", 400);
 
   const { lines, ...orderData } = validation.data;
 
@@ -156,7 +175,8 @@ async function postHandler(
   let totalAmount = 0;
   if (lines && lines.length > 0) {
     totalAmount = lines.reduce((sum, line) => {
-      const lineTotal = line.quantity * line.unitPrice * (1 - line.discount / 100);
+      const lineTotal =
+        line.quantity * line.unitPrice * (1 - line.discount / 100);
       return sum + lineTotal;
     }, 0);
   }
@@ -166,18 +186,23 @@ async function postHandler(
       ...orderData,
       orderDate: parseDate(orderData.orderDate),
       requiredDate: parseDate(orderData.requiredDate),
-      promisedDate: orderData.promisedDate ? parseDate(orderData.promisedDate) : null,
+      promisedDate: orderData.promisedDate
+        ? parseDate(orderData.promisedDate)
+        : null,
       totalAmount,
-      lines: lines ? {
-        create: lines.map((line, index) => ({
-          lineNumber: index + 1,
-          productId: line.productId,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          discount: line.discount,
-          lineTotal: line.quantity * line.unitPrice * (1 - line.discount / 100),
-        })),
-      } : undefined,
+      lines: lines
+        ? {
+            create: lines.map((line, index) => ({
+              lineNumber: index + 1,
+              productId: line.productId,
+              quantity: line.quantity,
+              unitPrice: line.unitPrice,
+              discount: line.discount,
+              lineTotal:
+                line.quantity * line.unitPrice * (1 - line.discount / 100),
+            })),
+          }
+        : undefined,
     },
     include: {
       customer: true,
@@ -188,4 +213,4 @@ async function postHandler(
   return successResponse(order, 201);
 }
 
-export const POST = withPermission(postHandler, { create: 'orders:create' });
+export const POST = withPermission(postHandler, { create: "orders:create" });

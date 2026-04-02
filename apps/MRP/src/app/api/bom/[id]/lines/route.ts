@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from '@/lib/api/with-auth';
-import { BomType } from "@prisma/client";
+import { withAuth } from "@/lib/api/with-auth";
+import { BomType } from ".prisma/mrp-client";
 import { logger } from "@/lib/logger";
 
 const bomLinePostSchema = z.object({
   id: z.string().optional(),
-  partId: z.string().min(1, 'partId là bắt buộc'),
-  quantity: z.number().positive('Số lượng phải lớn hơn 0'),
+  partId: z.string().min(1, "partId là bắt buộc"),
+  quantity: z.number().positive("Số lượng phải lớn hơn 0"),
   unit: z.string().optional().default("EA"),
   lineNumber: z.number().int().optional(),
   moduleCode: z.string().nullish(),
@@ -35,19 +35,22 @@ const bomLinePostSchema = z.object({
   sequence: z.number().int().optional().default(0),
 });
 
-import { checkReadEndpointLimit, checkWriteEndpointLimit } from '@/lib/rate-limit';
+import {
+  checkReadEndpointLimit,
+  checkWriteEndpointLimit,
+} from "@/lib/rate-limit";
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
 // GET - Get all lines for a BOM
 export const GET = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkReadEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkReadEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const { id } = await context.params;
+    const { id } = await context.params;
 
     const lines = await prisma.bomLine.findMany({
       where: { bomId: id },
@@ -63,28 +66,34 @@ const { id } = await context.params;
 
     return NextResponse.json(lines);
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'GET /api/bom/[id]/lines' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "GET /api/bom/[id]/lines",
+    });
     return NextResponse.json(
       { error: "Failed to fetch BOM lines" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
 
 // POST - Add new line to BOM
 export const POST = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const { id } = await context.params;
+    const { id } = await context.params;
     const body = await request.json();
     const parsed = bomLinePostSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: 'Dữ liệu không hợp lệ', errors: parsed.error.issues },
-        { status: 400 }
+        {
+          success: false,
+          error: "Dữ liệu không hợp lệ",
+          errors: parsed.error.issues,
+        },
+        { status: 400 },
       );
     }
     const data = parsed.data;
@@ -97,7 +106,7 @@ const { id } = await context.params;
     if (!bomHeader) {
       return NextResponse.json(
         { error: "BOM header not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -131,8 +140,11 @@ const { id } = await context.params;
         positionZ: data.positionZ,
 
         // Manufacturing - scrapRate is decimal (0.02 = 2%), scrapPercent is percentage (2 = 2%)
-        scrapRate: data.scrapPercent ? data.scrapPercent / 100 : (data.scrapRate ?? 0),
-        scrapPercent: data.scrapPercent ?? (data.scrapRate ? data.scrapRate * 100 : 0),
+        scrapRate: data.scrapPercent
+          ? data.scrapPercent / 100
+          : (data.scrapRate ?? 0),
+        scrapPercent:
+          data.scrapPercent ?? (data.scrapRate ? data.scrapRate * 100 : 0),
         operationSeq: data.operationSeq,
 
         // Effectivity & Revision
@@ -164,28 +176,30 @@ const { id } = await context.params;
 
     return NextResponse.json(line, { status: 201 });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'POST /api/bom/[id]/lines' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "POST /api/bom/[id]/lines",
+    });
     return NextResponse.json(
       { error: "Failed to create BOM line" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
 
 // PUT - Update multiple lines (batch update)
 export const PUT = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const { id } = await context.params;
+    const { id } = await context.params;
     const data = await request.json();
 
     if (!Array.isArray(data.lines)) {
       return NextResponse.json(
         { error: "lines array is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -208,8 +222,12 @@ const { id } = await context.params;
             positionY: lineData.positionY as number,
             positionZ: lineData.positionZ as number,
             // Sync both scrap fields - scrapRate is decimal, scrapPercent is percentage
-            scrapRate: lineData.scrapPercent ? (lineData.scrapPercent as number) / 100 : (lineData.scrapRate as number ?? 0),
-            scrapPercent: lineData.scrapPercent as number ?? ((lineData.scrapRate as number ?? 0) * 100),
+            scrapRate: lineData.scrapPercent
+              ? (lineData.scrapPercent as number) / 100
+              : ((lineData.scrapRate as number) ?? 0),
+            scrapPercent:
+              (lineData.scrapPercent as number) ??
+              ((lineData.scrapRate as number) ?? 0) * 100,
             operationSeq: lineData.operationSeq as number,
             revision: lineData.revision as string,
             alternateGroup: lineData.alternateGroup as string,
@@ -221,32 +239,34 @@ const { id } = await context.params;
             sequence: lineData.sequence as number,
           },
         });
-      })
+      }),
     );
 
     return NextResponse.json(results);
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'PUT /api/bom/[id]/lines' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "PUT /api/bom/[id]/lines",
+    });
     return NextResponse.json(
       { error: "Failed to update BOM lines" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });
 
 // DELETE - Delete a line from BOM (by line ID in body)
 export const DELETE = withAuth(async (request, context, session) => {
-    // Rate limiting
-    const rateLimitResult = await checkWriteEndpointLimit(request);
-    if (rateLimitResult) return rateLimitResult;
+  // Rate limiting
+  const rateLimitResult = await checkWriteEndpointLimit(request);
+  if (rateLimitResult) return rateLimitResult;
 
   try {
-const data = await request.json();
+    const data = await request.json();
 
     if (!data.lineId) {
       return NextResponse.json(
         { error: "lineId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -256,10 +276,12 @@ const data = await request.json();
 
     return NextResponse.json({ message: "Line deleted successfully" });
   } catch (error) {
-    logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'DELETE /api/bom/[id]/lines' });
+    logger.logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "DELETE /api/bom/[id]/lines",
+    });
     return NextResponse.json(
       { error: "Failed to delete BOM line" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

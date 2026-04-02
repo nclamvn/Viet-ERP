@@ -1,28 +1,28 @@
-'use client'
+"use client";
 
-import { formatDistanceToNow } from 'date-fns'
-import { vi } from 'date-fns/locale'
-import { Bell, CheckCircle, Clock, XCircle, Info } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import type { NotificationType } from '@prisma/client'
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
+import { Bell, CheckCircle, Clock, XCircle, Info } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { NotificationType } from ".prisma/hrm-unified-client";
 
 interface Notification {
-  id: string
-  type: NotificationType
-  title: string
-  message: string
-  isRead: boolean
-  link?: string | null
-  createdAt: string | Date
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  link?: string | null;
+  createdAt: string | Date;
 }
 
 interface NotificationListProps {
-  notifications: Notification[]
-  onMarkAsRead: (id: string) => void
-  onMarkAllAsRead: () => void
-  onNotificationClick?: (notification: Notification) => void
+  notifications: Notification[];
+  onMarkAsRead: (id: string) => void;
+  onMarkAllAsRead: () => void;
+  onNotificationClick?: (notification: Notification) => void;
 }
 
 const NOTIFICATION_ICONS: Record<NotificationType, React.ReactNode> = {
@@ -34,7 +34,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, React.ReactNode> = {
   DELEGATION_ASSIGNED: <Info className="h-5 w-5 text-purple-500" />,
   BALANCE_LOW: <Bell className="h-5 w-5 text-orange-500" />,
   GENERAL: <Info className="h-5 w-5 text-gray-500" />,
-}
+};
 
 export function NotificationList({
   notifications,
@@ -42,7 +42,7 @@ export function NotificationList({
   onMarkAllAsRead,
   onNotificationClick,
 }: NotificationListProps) {
-  const unreadCount = notifications.filter((n) => !n.isRead).length
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -67,14 +67,14 @@ export function NotificationList({
               <div
                 key={notification.id}
                 className={cn(
-                  'flex gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors',
-                  !notification.isRead && 'bg-muted/30'
+                  "flex gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors",
+                  !notification.isRead && "bg-muted/30",
                 )}
                 onClick={() => {
                   if (!notification.isRead) {
-                    onMarkAsRead(notification.id)
+                    onMarkAsRead(notification.id);
                   }
-                  onNotificationClick?.(notification)
+                  onNotificationClick?.(notification);
                 }}
               >
                 <div className="flex-shrink-0 mt-0.5">
@@ -83,8 +83,8 @@ export function NotificationList({
                 <div className="flex-1 min-w-0">
                   <p
                     className={cn(
-                      'text-sm',
-                      !notification.isRead && 'font-medium'
+                      "text-sm",
+                      !notification.isRead && "font-medium",
                     )}
                   >
                     {notification.title}
@@ -110,5 +110,5 @@ export function NotificationList({
         )}
       </ScrollArea>
     </div>
-  )
+  );
 }

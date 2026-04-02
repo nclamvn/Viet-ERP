@@ -1,29 +1,29 @@
 // src/services/notification.service.ts
 // Notification Service
 
-import { db } from '@/lib/db'
-import type { NotificationType, Prisma } from '@prisma/client'
-import type { PaginatedResponse } from '@/types'
+import { db } from "@/lib/db";
+import type { NotificationType, Prisma } from ".prisma/hrm-ai-client";
+import type { PaginatedResponse } from "@/types";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
 
 export interface CreateNotificationInput {
-  userId: string
-  type: NotificationType
-  title: string
-  message: string
-  referenceType?: string
-  referenceId?: string
-  actionUrl?: string
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  referenceType?: string;
+  referenceId?: string;
+  actionUrl?: string;
 }
 
 export interface NotificationFilters {
-  isRead?: boolean
-  type?: NotificationType
-  page?: number
-  pageSize?: number
+  isRead?: boolean;
+  type?: NotificationType;
+  page?: number;
+  pageSize?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -46,7 +46,7 @@ export const notificationService = {
         referenceId: data.referenceId,
         actionUrl: data.actionUrl,
       },
-    })
+    });
   },
 
   /**
@@ -54,7 +54,7 @@ export const notificationService = {
    */
   async createMany(tenantId: string, notifications: CreateNotificationInput[]) {
     return db.notification.createMany({
-      data: notifications.map(n => ({
+      data: notifications.map((n) => ({
         tenantId,
         userId: n.userId,
         type: n.type,
@@ -64,7 +64,7 @@ export const notificationService = {
         referenceId: n.referenceId,
         actionUrl: n.actionUrl,
       })),
-    })
+    });
   },
 
   /**
@@ -72,27 +72,27 @@ export const notificationService = {
    */
   async getByUser(
     userId: string,
-    filters: NotificationFilters = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    filters: NotificationFilters = {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<PaginatedResponse<any>> {
-    const { isRead, type, page = 1, pageSize = 20 } = filters
-    const skip = (page - 1) * pageSize
+    const { isRead, type, page = 1, pageSize = 20 } = filters;
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.NotificationWhereInput = {
       userId,
       ...(isRead !== undefined && { isRead }),
       ...(type && { type }),
-    }
+    };
 
     const [data, total] = await Promise.all([
       db.notification.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
       }),
       db.notification.count({ where }),
-    ])
+    ]);
 
     return {
       data,
@@ -102,7 +102,7 @@ export const notificationService = {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
-    }
+    };
   },
 
   /**
@@ -111,7 +111,7 @@ export const notificationService = {
   async getUnreadCount(userId: string): Promise<number> {
     return db.notification.count({
       where: { userId, isRead: false },
-    })
+    });
   },
 
   /**
@@ -121,7 +121,7 @@ export const notificationService = {
     return db.notification.updateMany({
       where: { id: notificationId, userId },
       data: { isRead: true, readAt: new Date() },
-    })
+    });
   },
 
   /**
@@ -131,7 +131,7 @@ export const notificationService = {
     return db.notification.updateMany({
       where: { userId, isRead: false },
       data: { isRead: true, readAt: new Date() },
-    })
+    });
   },
 
   /**
@@ -140,22 +140,22 @@ export const notificationService = {
   async delete(notificationId: string, userId: string) {
     return db.notification.deleteMany({
       where: { id: notificationId, userId },
-    })
+    });
   },
 
   /**
    * Delete old notifications (cleanup)
    */
   async deleteOld(daysOld: number = 90) {
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - daysOld)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
     return db.notification.deleteMany({
       where: {
         createdAt: { lt: cutoffDate },
         isRead: true,
       },
-    })
+    });
   },
 
   /**
@@ -166,17 +166,17 @@ export const notificationService = {
     approverId: string,
     approvalId: string,
     requesterName: string,
-    requestType: string
+    requestType: string,
   ) {
     return this.create(tenantId, {
       userId: approverId,
-      type: 'PENDING_APPROVAL',
-      title: 'Yêu cầu cần duyệt',
+      type: "PENDING_APPROVAL",
+      title: "Yêu cầu cần duyệt",
       message: `${requesterName} có ${requestType} cần bạn xử lý`,
-      referenceType: 'APPROVAL',
+      referenceType: "APPROVAL",
       referenceId: approvalId,
       actionUrl: `/approvals/${approvalId}`,
-    })
+    });
   },
 
   /**
@@ -186,16 +186,16 @@ export const notificationService = {
     tenantId: string,
     userId: string,
     requestType: string,
-    referenceId: string
+    referenceId: string,
   ) {
     return this.create(tenantId, {
       userId,
-      type: 'REQUEST_APPROVED',
-      title: 'Yêu cầu được duyệt',
+      type: "REQUEST_APPROVED",
+      title: "Yêu cầu được duyệt",
       message: `${requestType} của bạn đã được duyệt`,
       referenceType: requestType,
       referenceId,
-    })
+    });
   },
 
   /**
@@ -206,17 +206,17 @@ export const notificationService = {
     userId: string,
     requestType: string,
     referenceId: string,
-    reason?: string
+    reason?: string,
   ) {
     return this.create(tenantId, {
       userId,
-      type: 'REQUEST_REJECTED',
-      title: 'Yêu cầu bị từ chối',
+      type: "REQUEST_REJECTED",
+      title: "Yêu cầu bị từ chối",
       message: reason
         ? `${requestType} của bạn bị từ chối: ${reason}`
         : `${requestType} của bạn bị từ chối`,
       referenceType: requestType,
       referenceId,
-    })
+    });
   },
-}
+};

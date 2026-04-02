@@ -3,10 +3,10 @@
  * Supports in-app and email notifications
  */
 
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { NotificationChannel } from '@prisma/client';
-import { emailService } from '@/lib/email/email-service';
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { NotificationChannel } from ".prisma/mrp-client";
+import { emailService } from "@/lib/email/email-service";
 
 export interface NotificationPayload {
   recipientId: string;
@@ -36,7 +36,7 @@ export class NotificationService {
    */
   async sendNotification(
     instanceId: string,
-    payload: NotificationPayload
+    payload: NotificationPayload,
   ): Promise<{ success: boolean; notificationId?: string; error?: string }> {
     try {
       const notification = await prisma.workflowNotification.create({
@@ -44,26 +44,32 @@ export class NotificationService {
           instanceId,
           recipientId: payload.recipientId,
           type: payload.type,
-          channel: payload.channel || 'IN_APP',
+          channel: payload.channel || "IN_APP",
           title: payload.title,
           message: payload.message,
           actionUrl: payload.actionUrl,
           sentAt: new Date(),
-          deliveryStatus: 'sent',
+          deliveryStatus: "sent",
         },
       });
 
       // If email channel, trigger email sending
-      if (payload.channel === 'EMAIL') {
+      if (payload.channel === "EMAIL") {
         await this.sendEmailNotification(payload);
       }
 
       return { success: true, notificationId: notification.id };
     } catch (error) {
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'notification-service', operation: 'send' });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        { context: "notification-service", operation: "send" },
+      );
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to send notification',
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to send notification",
       };
     }
   }
@@ -73,19 +79,19 @@ export class NotificationService {
    */
   async sendBulkNotifications(
     instanceId: string,
-    payload: BulkNotificationPayload
+    payload: BulkNotificationPayload,
   ): Promise<{ success: boolean; count: number }> {
     try {
-      const notifications = payload.recipientIds.map(recipientId => ({
+      const notifications = payload.recipientIds.map((recipientId) => ({
         instanceId,
         recipientId,
         type: payload.type,
-        channel: payload.channel || ('IN_APP' as NotificationChannel),
+        channel: payload.channel || ("IN_APP" as NotificationChannel),
         title: payload.title,
         message: payload.message,
         actionUrl: payload.actionUrl,
         sentAt: new Date(),
-        deliveryStatus: 'sent',
+        deliveryStatus: "sent",
       }));
 
       const result = await prisma.workflowNotification.createMany({
@@ -94,7 +100,10 @@ export class NotificationService {
 
       return { success: true, count: result.count };
     } catch (error) {
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'notification-service', operation: 'bulkSend' });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        { context: "notification-service", operation: "bulkSend" },
+      );
       return { success: false, count: 0 };
     }
   }
@@ -110,7 +119,10 @@ export class NotificationService {
       });
       return true;
     } catch (error) {
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'notification-service', operation: 'markRead' });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        { context: "notification-service", operation: "markRead" },
+      );
       return false;
     }
   }
@@ -129,7 +141,10 @@ export class NotificationService {
       });
       return result.count;
     } catch (error) {
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'notification-service', operation: 'markAllRead' });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        { context: "notification-service", operation: "markAllRead" },
+      );
       return 0;
     }
   }
@@ -150,7 +165,7 @@ export class NotificationService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
     });
   }
@@ -160,7 +175,7 @@ export class NotificationService {
    */
   async getNotifications(
     userId: string,
-    options: { page?: number; limit?: number; unreadOnly?: boolean } = {}
+    options: { page?: number; limit?: number; unreadOnly?: boolean } = {},
   ) {
     const { page = 1, limit = 20, unreadOnly = false } = options;
     const skip = (page - 1) * limit;
@@ -180,7 +195,7 @@ export class NotificationService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
@@ -221,7 +236,7 @@ export class NotificationService {
       // Find overdue pending approvals
       const overdueApprovals = await prisma.workflowApproval.findMany({
         where: {
-          decision: 'PENDING',
+          decision: "PENDING",
           dueDate: {
             lt: new Date(),
           },
@@ -244,7 +259,7 @@ export class NotificationService {
         try {
           await this.sendNotification(approval.instanceId, {
             recipientId: approval.approverId,
-            type: 'REMINDER',
+            type: "REMINDER",
             title: `Overdue Approval: ${approval.instance.workflow.name}`,
             message: `Your approval for ${approval.step.name} is overdue. Please review as soon as possible.`,
             actionUrl: `/approvals/${approval.instanceId}`,
@@ -264,7 +279,10 @@ export class NotificationService {
         }
       }
     } catch (error) {
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'notification-service', operation: 'reminder' });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        { context: "notification-service", operation: "reminder" },
+      );
     }
 
     return { sent, errors };
@@ -290,7 +308,9 @@ export class NotificationService {
   /**
    * Send email notification using the email service
    */
-  private async sendEmailNotification(payload: NotificationPayload): Promise<void> {
+  private async sendEmailNotification(
+    payload: NotificationPayload,
+  ): Promise<void> {
     try {
       // Get user email
       const user = await prisma.user.findUnique({
@@ -299,52 +319,49 @@ export class NotificationService {
       });
 
       if (!user?.email) {
-        logger.warn('[NotificationService] No email for user', { context: 'notification-service', recipientId: payload.recipientId });
+        logger.warn("[NotificationService] No email for user", {
+          context: "notification-service",
+          recipientId: payload.recipientId,
+        });
         return;
       }
 
       // Determine email type and send appropriate template
-      const recipientName = user.name || 'User';
+      const recipientName = user.name || "User";
 
       switch (payload.type) {
-        case 'APPROVAL_REQUEST':
-          await emailService.sendWorkflowApproval(
-            user.email,
-            recipientName,
-            {
-              workflowName: payload.title,
-              instanceId: payload.metadata?.instanceId as string || '',
-              stepName: payload.metadata?.stepName as string || 'Approval',
-              submittedBy: payload.metadata?.submittedBy as string || 'System',
-            }
-          );
+        case "APPROVAL_REQUEST":
+          await emailService.sendWorkflowApproval(user.email, recipientName, {
+            workflowName: payload.title,
+            instanceId: (payload.metadata?.instanceId as string) || "",
+            stepName: (payload.metadata?.stepName as string) || "Approval",
+            submittedBy: (payload.metadata?.submittedBy as string) || "System",
+          });
           break;
 
-        case 'REMINDER':
-          await emailService.sendOverdueReminder(
-            user.email,
-            recipientName,
-            {
-              workflowName: payload.title,
-              instanceId: payload.metadata?.instanceId as string || '',
-              stepName: payload.metadata?.stepName as string || 'Approval',
-              dueDate: payload.metadata?.dueDate as string || new Date().toISOString(),
-            }
-          );
+        case "REMINDER":
+          await emailService.sendOverdueReminder(user.email, recipientName, {
+            workflowName: payload.title,
+            instanceId: (payload.metadata?.instanceId as string) || "",
+            stepName: (payload.metadata?.stepName as string) || "Approval",
+            dueDate:
+              (payload.metadata?.dueDate as string) || new Date().toISOString(),
+          });
           break;
 
-        case 'ALERT':
-          await emailService.sendAlertNotification(
-            user.email,
-            recipientName,
-            {
-              alertType: payload.metadata?.alertType as string || 'System',
-              title: payload.title,
-              message: payload.message,
-              severity: (payload.metadata?.severity as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-              actionUrl: payload.actionUrl,
-            }
-          );
+        case "ALERT":
+          await emailService.sendAlertNotification(user.email, recipientName, {
+            alertType: (payload.metadata?.alertType as string) || "System",
+            title: payload.title,
+            message: payload.message,
+            severity:
+              (payload.metadata?.severity as
+                | "low"
+                | "medium"
+                | "high"
+                | "critical") || "medium",
+            actionUrl: payload.actionUrl,
+          });
           break;
 
         default:
@@ -375,7 +392,7 @@ export class NotificationService {
                     <p>Hi ${recipientName},</p>
                     <h2>${payload.title}</h2>
                     <p>${payload.message}</p>
-                    ${payload.actionUrl ? `<a href="${payload.actionUrl}" class="button">View Details</a>` : ''}
+                    ${payload.actionUrl ? `<a href="${payload.actionUrl}" class="button">View Details</a>` : ""}
                   </div>
                   <div class="footer">
                     <p>This is an automated message from VietERP MRP System.</p>
@@ -391,7 +408,7 @@ ${payload.title}
 
 ${payload.message}
 
-${payload.actionUrl ? `View details at: ${payload.actionUrl}` : ''}
+${payload.actionUrl ? `View details at: ${payload.actionUrl}` : ""}
 
 This is an automated message from VietERP MRP System.
             `,
@@ -399,9 +416,14 @@ This is an automated message from VietERP MRP System.
           break;
       }
 
-      logger.info('[NotificationService] Email sent successfully', { to: user.email });
+      logger.info("[NotificationService] Email sent successfully", {
+        to: user.email,
+      });
     } catch (error) {
-      logger.logError(error instanceof Error ? error : new Error(String(error)), { context: 'notification-service', operation: 'sendEmail' });
+      logger.logError(
+        error instanceof Error ? error : new Error(String(error)),
+        { context: "notification-service", operation: "sendEmail" },
+      );
       // Don't throw - email failure shouldn't block notification creation
     }
   }

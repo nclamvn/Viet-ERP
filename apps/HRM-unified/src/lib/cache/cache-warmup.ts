@@ -5,9 +5,9 @@
  * Pre-warm cache with frequently accessed data
  */
 
-import { getCacheManager, CacheManager, CacheTTL } from './cache-manager';
-import { CacheKeys } from './cache-keys';
-import { PrismaClient } from '@prisma/client';
+import { getCacheManager, CacheManager, CacheTTL } from "./cache-manager";
+import { CacheKeys } from "./cache-keys";
+import { PrismaClient } from ".prisma/hrm-unified-client";
 
 // ════════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -38,7 +38,11 @@ export class CacheWarmer {
   private prisma: PrismaClient;
   private concurrency: number;
 
-  constructor(prisma: PrismaClient, cache?: CacheManager, concurrency?: number) {
+  constructor(
+    prisma: PrismaClient,
+    cache?: CacheManager,
+    concurrency?: number,
+  ) {
     this.prisma = prisma;
     this.cache = cache || getCacheManager();
     this.concurrency = concurrency || 5;
@@ -65,31 +69,39 @@ export class CacheWarmer {
     };
 
     if (shouldWarm.departments) {
-      tasks.push(this.warmDepartments().catch(e => {
-        errors.push(`Departments: ${e.message}`);
-        return 0;
-      }));
+      tasks.push(
+        this.warmDepartments().catch((e) => {
+          errors.push(`Departments: ${e.message}`);
+          return 0;
+        }),
+      );
     }
 
     if (shouldWarm.positions) {
-      tasks.push(this.warmPositions().catch(e => {
-        errors.push(`Positions: ${e.message}`);
-        return 0;
-      }));
+      tasks.push(
+        this.warmPositions().catch((e) => {
+          errors.push(`Positions: ${e.message}`);
+          return 0;
+        }),
+      );
     }
 
     if (shouldWarm.systemConfig) {
-      tasks.push(this.warmSystemConfig().catch(e => {
-        errors.push(`System Config: ${e.message}`);
-        return 0;
-      }));
+      tasks.push(
+        this.warmSystemConfig().catch((e) => {
+          errors.push(`System Config: ${e.message}`);
+          return 0;
+        }),
+      );
     }
 
     if (shouldWarm.statistics) {
-      tasks.push(this.warmStatistics().catch(e => {
-        errors.push(`Statistics: ${e.message}`);
-        return 0;
-      }));
+      tasks.push(
+        this.warmStatistics().catch((e) => {
+          errors.push(`Statistics: ${e.message}`);
+          return 0;
+        }),
+      );
     }
 
     // Wait for all warmup tasks
@@ -108,7 +120,7 @@ export class CacheWarmer {
     const duration = Date.now() - startTime;
 
     if (errors.length > 0) {
-      console.warn('[CacheWarmer] Errors:', errors);
+      console.warn("[CacheWarmer] Errors:", errors);
     }
 
     return {
@@ -127,31 +139,28 @@ export class CacheWarmer {
     // Fetch all departments
     const departments = await this.prisma.department.findMany({
       where: { isActive: true },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     // Cache department list
-    await this.cache.set(
-      CacheKeys.department.list(),
-      departments,
-      { ttl: CacheTTL.LONG, tags: ['departments'] }
-    );
+    await this.cache.set(CacheKeys.department.list(), departments, {
+      ttl: CacheTTL.LONG,
+      tags: ["departments"],
+    });
 
     // Cache department tree
     const tree = this.buildDepartmentTree(departments);
-    await this.cache.set(
-      CacheKeys.department.tree(),
-      tree,
-      { ttl: CacheTTL.LONG, tags: ['departments'] }
-    );
+    await this.cache.set(CacheKeys.department.tree(), tree, {
+      ttl: CacheTTL.LONG,
+      tags: ["departments"],
+    });
 
     // Cache individual departments
     for (const dept of departments) {
-      await this.cache.set(
-        CacheKeys.department.byId(dept.id),
-        dept,
-        { ttl: CacheTTL.LONG, tags: ['departments', `department:${dept.id}`] }
-      );
+      await this.cache.set(CacheKeys.department.byId(dept.id), dept, {
+        ttl: CacheTTL.LONG,
+        tags: ["departments", `department:${dept.id}`],
+      });
     }
 
     return departments.length + 2; // +2 for list and tree
@@ -162,12 +171,12 @@ export class CacheWarmer {
     const roots: any[] = [];
 
     // Create map
-    departments.forEach(dept => {
+    departments.forEach((dept) => {
       map.set(dept.id, { ...dept, children: [] });
     });
 
     // Build tree
-    departments.forEach(dept => {
+    departments.forEach((dept) => {
       const node = map.get(dept.id)!;
       if (dept.parentId && map.has(dept.parentId)) {
         map.get(dept.parentId)!.children.push(node);
@@ -186,21 +195,19 @@ export class CacheWarmer {
   private async warmPositions(): Promise<number> {
     const positions = await this.prisma.position.findMany({
       where: { isActive: true },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
-    await this.cache.set(
-      'position:list',
-      positions,
-      { ttl: CacheTTL.VERY_LONG, tags: ['positions'] }
-    );
+    await this.cache.set("position:list", positions, {
+      ttl: CacheTTL.VERY_LONG,
+      tags: ["positions"],
+    });
 
     for (const position of positions) {
-      await this.cache.set(
-        `position:${position.id}`,
-        position,
-        { ttl: CacheTTL.VERY_LONG, tags: ['positions', `position:${position.id}`] }
-      );
+      await this.cache.set(`position:${position.id}`, position, {
+        ttl: CacheTTL.VERY_LONG,
+        tags: ["positions", `position:${position.id}`],
+      });
     }
 
     return positions.length + 1;
@@ -218,7 +225,7 @@ export class CacheWarmer {
 
     while (hasMore) {
       const employees = await this.prisma.employee.findMany({
-        where: { status: 'ACTIVE' },
+        where: { status: "ACTIVE" },
         select: {
           id: true,
           employeeCode: true,
@@ -231,7 +238,7 @@ export class CacheWarmer {
         },
         skip: page * pageSize,
         take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       });
 
       if (employees.length === 0) {
@@ -243,19 +250,18 @@ export class CacheWarmer {
       await this.cache.set(
         `employee:list:page:${page + 1}:limit:${pageSize}`,
         employees,
-        { ttl: CacheTTL.MEDIUM, tags: ['employees', 'employee-list'] }
+        { ttl: CacheTTL.MEDIUM, tags: ["employees", "employee-list"] },
       );
 
       // Cache first few pages of employees individually
       if (page < 3) {
         await Promise.all(
-          employees.map(emp =>
-            this.cache.set(
-              CacheKeys.employee.byId(emp.id),
-              emp,
-              { ttl: CacheTTL.MEDIUM, tags: ['employees', `employee:${emp.id}`] }
-            )
-          )
+          employees.map((emp) =>
+            this.cache.set(CacheKeys.employee.byId(emp.id), emp, {
+              ttl: CacheTTL.MEDIUM,
+              tags: ["employees", `employee:${emp.id}`],
+            }),
+          ),
         );
       }
 
@@ -274,13 +280,12 @@ export class CacheWarmer {
 
     // Cache employee count
     const count = await this.prisma.employee.count({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
     });
-    await this.cache.set(
-      CacheKeys.employee.count(),
-      count,
-      { ttl: CacheTTL.MEDIUM, tags: ['employees'] }
-    );
+    await this.cache.set(CacheKeys.employee.count(), count, {
+      ttl: CacheTTL.MEDIUM,
+      tags: ["employees"],
+    });
 
     return warmed + 1;
   }
@@ -296,16 +301,18 @@ export class CacheWarmer {
       const settings = await (this.prisma as any).systemSetting?.findMany?.();
 
       if (settings && settings.length > 0) {
-        const configMap = settings.reduce((acc: Record<string, string>, s: any) => {
-          acc[s.key] = s.value;
-          return acc;
-        }, {});
-
-        await this.cache.set(
-          CacheKeys.system.settings(),
-          configMap,
-          { ttl: CacheTTL.VERY_LONG, tags: ['config'] }
+        const configMap = settings.reduce(
+          (acc: Record<string, string>, s: any) => {
+            acc[s.key] = s.value;
+            return acc;
+          },
+          {},
         );
+
+        await this.cache.set(CacheKeys.system.settings(), configMap, {
+          ttl: CacheTTL.VERY_LONG,
+          tags: ["config"],
+        });
 
         return 1;
       }
@@ -325,30 +332,28 @@ export class CacheWarmer {
 
     // Employee counts by department
     const deptCounts = await this.prisma.employee.groupBy({
-      by: ['departmentId'],
+      by: ["departmentId"],
       _count: true,
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
     });
 
-    await this.cache.set(
-      'stats:employee-count-by-department',
-      deptCounts,
-      { ttl: CacheTTL.MEDIUM, tags: ['stats', 'employees'] }
-    );
+    await this.cache.set("stats:employee-count-by-department", deptCounts, {
+      ttl: CacheTTL.MEDIUM,
+      tags: ["stats", "employees"],
+    });
     warmed++;
 
     // Employee counts by position
     const posCounts = await this.prisma.employee.groupBy({
-      by: ['positionId'],
+      by: ["positionId"],
       _count: true,
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
     });
 
-    await this.cache.set(
-      'stats:employee-count-by-position',
-      posCounts,
-      { ttl: CacheTTL.MEDIUM, tags: ['stats', 'employees'] }
-    );
+    await this.cache.set("stats:employee-count-by-position", posCounts, {
+      ttl: CacheTTL.MEDIUM,
+      tags: ["stats", "employees"],
+    });
     warmed++;
 
     // Recent hires count (last 30 days)
@@ -358,15 +363,14 @@ export class CacheWarmer {
     const recentHires = await this.prisma.employee.count({
       where: {
         hireDate: { gte: thirtyDaysAgo },
-        status: 'ACTIVE',
+        status: "ACTIVE",
       },
     });
 
-    await this.cache.set(
-      'stats:recent-hires',
-      recentHires,
-      { ttl: CacheTTL.MEDIUM, tags: ['stats', 'employees'] }
-    );
+    await this.cache.set("stats:recent-hires", recentHires, {
+      ttl: CacheTTL.MEDIUM,
+      tags: ["stats", "employees"],
+    });
     warmed++;
 
     return warmed;
@@ -386,8 +390,10 @@ export class CacheWarmer {
 // STARTUP HOOK
 // ════════════════════════════════════════════════════════════════════════════════
 
-export async function initializeCacheWarmup(prisma: PrismaClient): Promise<void> {
-  if (process.env.SKIP_CACHE_WARMUP === 'true') {
+export async function initializeCacheWarmup(
+  prisma: PrismaClient,
+): Promise<void> {
+  if (process.env.SKIP_CACHE_WARMUP === "true") {
     return;
   }
 
@@ -395,10 +401,13 @@ export async function initializeCacheWarmup(prisma: PrismaClient): Promise<void>
     const result = await CacheWarmer.warmupOnStartup(prisma);
 
     if (!result.success) {
-      console.warn('[CacheWarmer] Warmup completed with errors:', result.errors);
+      console.warn(
+        "[CacheWarmer] Warmup completed with errors:",
+        result.errors,
+      );
     }
   } catch (error) {
-    console.error('[CacheWarmer] Warmup failed:', error);
+    console.error("[CacheWarmer] Warmup failed:", error);
     // Don't throw - warmup failure shouldn't prevent app startup
   }
 }

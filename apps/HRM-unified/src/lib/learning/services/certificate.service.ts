@@ -1,38 +1,38 @@
 // src/lib/learning/services/certificate.service.ts
 // Certificate Service - Manage course completion certificates
 
-import { db } from '@/lib/db'
-import { EnrollmentStatus, Prisma } from '@prisma/client'
-import crypto from 'crypto'
+import { db } from "@/lib/db";
+import { EnrollmentStatus, Prisma } from ".prisma/hrm-unified-client";
+import crypto from "crypto";
 
 // Types
 export interface CertificateData {
-  enrollmentId: string
-  employeeId: string
-  employeeName: string
-  courseId: string
-  courseTitle: string
-  courseCode: string
-  completionDate: Date
-  score?: number
-  passed: boolean
-  certificateNumber: string
-  certificateUrl: string
+  enrollmentId: string;
+  employeeId: string;
+  employeeName: string;
+  courseId: string;
+  courseTitle: string;
+  courseCode: string;
+  completionDate: Date;
+  score?: number;
+  passed: boolean;
+  certificateNumber: string;
+  certificateUrl: string;
 }
 
 export interface CertificateFilters {
-  employeeId?: string
-  courseId?: string
-  fromDate?: Date
-  toDate?: Date
+  employeeId?: string;
+  courseId?: string;
+  fromDate?: Date;
+  toDate?: Date;
 }
 
 export interface CertificateTemplate {
-  id: string
-  name: string
-  htmlTemplate: string
-  cssStyles?: string
-  isDefault: boolean
+  id: string;
+  name: string;
+  htmlTemplate: string;
+  cssStyles?: string;
+  isDefault: boolean;
 }
 
 export class CertificateService {
@@ -42,9 +42,9 @@ export class CertificateService {
    * Generate certificate number
    */
   private generateCertificateNumber(): string {
-    const timestamp = Date.now().toString(36).toUpperCase()
-    const random = crypto.randomBytes(4).toString('hex').toUpperCase()
-    return `CERT-${timestamp}-${random}`
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = crypto.randomBytes(4).toString("hex").toUpperCase();
+    return `CERT-${timestamp}-${random}`;
   }
 
   /**
@@ -64,31 +64,33 @@ export class CertificateService {
           select: { id: true, title: true, code: true, durationHours: true },
         },
       },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Enrollment not found')
+      throw new Error("Enrollment not found");
     }
 
     if (enrollment.status !== EnrollmentStatus.COMPLETED) {
-      throw new Error('Certificate can only be issued for completed enrollments')
+      throw new Error(
+        "Certificate can only be issued for completed enrollments",
+      );
     }
 
     if (!enrollment.passed) {
-      throw new Error('Certificate can only be issued for passed enrollments')
+      throw new Error("Certificate can only be issued for passed enrollments");
     }
 
     if (enrollment.certificateIssued) {
-      throw new Error('Certificate already issued for this enrollment')
+      throw new Error("Certificate already issued for this enrollment");
     }
 
     // Generate certificate number
-    const certificateNumber = this.generateCertificateNumber()
+    const certificateNumber = this.generateCertificateNumber();
 
     // In a real implementation, you would generate a PDF certificate
     // and upload to storage, returning the URL
     // For now, we use a placeholder URL pattern
-    const certificateUrl = `/api/certificates/${enrollmentId}/download`
+    const certificateUrl = `/api/certificates/${enrollmentId}/download`;
 
     // Update enrollment with certificate info
     const updated = await db.enrollment.update({
@@ -97,20 +99,22 @@ export class CertificateService {
         certificateIssued: true,
         certificateUrl,
       },
-    })
+    });
 
     return {
       enrollment: updated,
       certificateNumber,
       certificateUrl,
       issuedAt: new Date(),
-    }
+    };
   }
 
   /**
    * Get certificate data for an enrollment
    */
-  async getCertificateData(enrollmentId: string): Promise<CertificateData | null> {
+  async getCertificateData(
+    enrollmentId: string,
+  ): Promise<CertificateData | null> {
     const enrollment = await db.enrollment.findFirst({
       where: {
         id: enrollmentId,
@@ -125,10 +129,10 @@ export class CertificateService {
           select: { id: true, title: true, code: true },
         },
       },
-    })
+    });
 
     if (!enrollment) {
-      return null
+      return null;
     }
 
     return {
@@ -143,13 +147,15 @@ export class CertificateService {
       passed: enrollment.passed ?? false,
       certificateNumber: this.generateCertificateNumber(), // Would be stored in DB
       certificateUrl: enrollment.certificateUrl!,
-    }
+    };
   }
 
   /**
    * Verify certificate is valid
    */
-  async verify(enrollmentId: string): Promise<{ valid: boolean; data?: CertificateData; reason?: string }> {
+  async verify(
+    enrollmentId: string,
+  ): Promise<{ valid: boolean; data?: CertificateData; reason?: string }> {
     const enrollment = await db.enrollment.findFirst({
       where: {
         id: enrollmentId,
@@ -163,22 +169,25 @@ export class CertificateService {
           select: { id: true, title: true, code: true },
         },
       },
-    })
+    });
 
     if (!enrollment) {
-      return { valid: false, reason: 'Enrollment not found' }
+      return { valid: false, reason: "Enrollment not found" };
     }
 
     if (!enrollment.certificateIssued) {
-      return { valid: false, reason: 'No certificate issued for this enrollment' }
+      return {
+        valid: false,
+        reason: "No certificate issued for this enrollment",
+      };
     }
 
     if (enrollment.status !== EnrollmentStatus.COMPLETED) {
-      return { valid: false, reason: 'Enrollment is not completed' }
+      return { valid: false, reason: "Enrollment is not completed" };
     }
 
     if (!enrollment.passed) {
-      return { valid: false, reason: 'Course was not passed' }
+      return { valid: false, reason: "Course was not passed" };
     }
 
     return {
@@ -196,7 +205,7 @@ export class CertificateService {
         certificateNumber: this.generateCertificateNumber(),
         certificateUrl: enrollment.certificateUrl!,
       },
-    }
+    };
   }
 
   /**
@@ -209,15 +218,15 @@ export class CertificateService {
         employeeId,
         certificateIssued: true,
       },
-      orderBy: { completedAt: 'desc' },
+      orderBy: { completedAt: "desc" },
       include: {
         course: {
           select: { id: true, title: true, code: true, thumbnailUrl: true },
         },
       },
-    })
+    });
 
-    return enrollments.map(e => ({
+    return enrollments.map((e) => ({
       enrollmentId: e.id,
       courseId: e.courseId,
       courseTitle: e.course.title,
@@ -226,43 +235,47 @@ export class CertificateService {
       completedAt: e.completedAt,
       score: e.score ? Number(e.score) : null,
       certificateUrl: e.certificateUrl,
-    }))
+    }));
   }
 
   /**
    * List all issued certificates
    */
-  async list(filters: CertificateFilters = {}, page: number = 1, pageSize: number = 20) {
-    const skip = (page - 1) * pageSize
+  async list(
+    filters: CertificateFilters = {},
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.EnrollmentWhereInput = {
       tenantId: this.tenantId,
       certificateIssued: true,
-    }
+    };
 
     if (filters.employeeId) {
-      where.employeeId = filters.employeeId
+      where.employeeId = filters.employeeId;
     }
 
     if (filters.courseId) {
-      where.courseId = filters.courseId
+      where.courseId = filters.courseId;
     }
 
     if (filters.fromDate) {
-      where.completedAt = { gte: filters.fromDate }
+      where.completedAt = { gte: filters.fromDate };
     }
 
     if (filters.toDate) {
       where.completedAt = {
-        ...(where.completedAt as object || {}),
+        ...((where.completedAt as object) || {}),
         lte: filters.toDate,
-      }
+      };
     }
 
     const [enrollments, total] = await Promise.all([
       db.enrollment.findMany({
         where,
-        orderBy: { completedAt: 'desc' },
+        orderBy: { completedAt: "desc" },
         skip,
         take: pageSize,
         include: {
@@ -279,10 +292,10 @@ export class CertificateService {
         },
       }),
       db.enrollment.count({ where }),
-    ])
+    ]);
 
     return {
-      data: enrollments.map(e => ({
+      data: enrollments.map((e) => ({
         enrollmentId: e.id,
         employeeId: e.employeeId,
         employeeName: e.employee.fullName,
@@ -298,7 +311,7 @@ export class CertificateService {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-    }
+    };
   }
 
   /**
@@ -311,10 +324,10 @@ export class CertificateService {
         tenantId: this.tenantId,
         certificateIssued: true,
       },
-    })
+    });
 
     if (!enrollment) {
-      throw new Error('Certificate not found')
+      throw new Error("Certificate not found");
     }
 
     // In a real implementation, you might have a separate revocation table
@@ -326,9 +339,9 @@ export class CertificateService {
         certificateUrl: null,
         // Could add revocation reason to a notes field or separate table
       },
-    })
+    });
 
-    return { success: true, reason }
+    return { success: true, reason };
   }
 
   /**
@@ -340,10 +353,10 @@ export class CertificateService {
       status: EnrollmentStatus.COMPLETED,
       passed: true,
       certificateIssued: false,
-    }
+    };
 
     if (courseId) {
-      where.courseId = courseId
+      where.courseId = courseId;
     }
 
     const eligibleEnrollments = await db.enrollment.findMany({
@@ -352,36 +365,36 @@ export class CertificateService {
         employee: { select: { id: true, fullName: true } },
         course: { select: { id: true, title: true } },
       },
-    })
+    });
 
-    const results = []
+    const results = [];
     for (const enrollment of eligibleEnrollments) {
       try {
-        const result = await this.issue(enrollment.id)
+        const result = await this.issue(enrollment.id);
         results.push({
           enrollmentId: enrollment.id,
           employeeName: enrollment.employee.fullName,
           courseTitle: enrollment.course.title,
           success: true,
           certificateUrl: result.certificateUrl,
-        })
+        });
       } catch (error) {
         results.push({
           enrollmentId: enrollment.id,
           employeeName: enrollment.employee.fullName,
           courseTitle: enrollment.course.title,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        })
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
     }
 
     return {
       total: eligibleEnrollments.length,
-      issued: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
+      issued: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
       results,
-    }
+    };
   }
 
   /**
@@ -391,23 +404,23 @@ export class CertificateService {
     const where: Prisma.EnrollmentWhereInput = {
       tenantId: this.tenantId,
       certificateIssued: true,
-    }
+    };
 
     if (dateRange) {
       where.completedAt = {
         gte: dateRange.from,
         lte: dateRange.to,
-      }
+      };
     }
 
     const [total, byCourse, byDepartment] = await Promise.all([
       db.enrollment.count({ where }),
 
       db.enrollment.groupBy({
-        by: ['courseId'],
+        by: ["courseId"],
         where,
         _count: true,
-        orderBy: { _count: { courseId: 'desc' } },
+        orderBy: { _count: { courseId: "desc" } },
         take: 10,
       }),
 
@@ -421,49 +434,52 @@ export class CertificateService {
           },
         },
       }),
-    ])
+    ]);
 
     // Get course names
-    const courseIds = byCourse.map(c => c.courseId)
+    const courseIds = byCourse.map((c) => c.courseId);
     const courses = await db.course.findMany({
       where: { id: { in: courseIds } },
       select: { id: true, title: true },
-    })
-    const courseMap = new Map(courses.map(c => [c.id, c.title]))
+    });
+    const courseMap = new Map(courses.map((c) => [c.id, c.title]));
 
     // Count by department
-    const deptCounts: Record<string, { id: string; name: string; count: number }> = {}
-    byDepartment.forEach(e => {
+    const deptCounts: Record<
+      string,
+      { id: string; name: string; count: number }
+    > = {};
+    byDepartment.forEach((e) => {
       if (e.employee.department) {
-        const deptId = e.employee.department.id
+        const deptId = e.employee.department.id;
         if (!deptCounts[deptId]) {
           deptCounts[deptId] = {
             id: deptId,
             name: e.employee.department.name,
             count: 0,
-          }
+          };
         }
-        deptCounts[deptId].count++
+        deptCounts[deptId].count++;
       }
-    })
+    });
 
     return {
       totalCertificates: total,
-      topCourses: byCourse.map(c => ({
+      topCourses: byCourse.map((c) => ({
         courseId: c.courseId,
-        courseTitle: courseMap.get(c.courseId) || 'Unknown',
+        courseTitle: courseMap.get(c.courseId) || "Unknown",
         count: c._count,
       })),
       byDepartment: Object.values(deptCounts).sort((a, b) => b.count - a.count),
-    }
+    };
   }
 
   /**
    * Get expiring certifications (for courses with recertification requirements)
    */
   async getExpiringCertificates(daysAhead: number = 30) {
-    const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + daysAhead)
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
 
     // Get courses with recertification requirements
     const coursesWithRecert = await db.course.findMany({
@@ -472,16 +488,18 @@ export class CertificateService {
         recertificationMonths: { not: null },
       },
       select: { id: true, title: true, recertificationMonths: true },
-    })
+    });
 
-    const expiringCerts = []
+    const expiringCerts = [];
 
     for (const course of coursesWithRecert) {
-      if (!course.recertificationMonths) continue
+      if (!course.recertificationMonths) continue;
 
-      const expirationThreshold = new Date()
-      expirationThreshold.setMonth(expirationThreshold.getMonth() - course.recertificationMonths)
-      expirationThreshold.setDate(expirationThreshold.getDate() + daysAhead)
+      const expirationThreshold = new Date();
+      expirationThreshold.setMonth(
+        expirationThreshold.getMonth() - course.recertificationMonths,
+      );
+      expirationThreshold.setDate(expirationThreshold.getDate() + daysAhead);
 
       const enrollments = await db.enrollment.findMany({
         where: {
@@ -498,13 +516,15 @@ export class CertificateService {
             select: { id: true, fullName: true, workEmail: true },
           },
         },
-      })
+      });
 
       for (const enrollment of enrollments) {
-        if (!enrollment.completedAt) continue
+        if (!enrollment.completedAt) continue;
 
-        const expirationDate = new Date(enrollment.completedAt)
-        expirationDate.setMonth(expirationDate.getMonth() + course.recertificationMonths)
+        const expirationDate = new Date(enrollment.completedAt);
+        expirationDate.setMonth(
+          expirationDate.getMonth() + course.recertificationMonths,
+        );
 
         if (expirationDate <= futureDate) {
           expiringCerts.push({
@@ -516,17 +536,21 @@ export class CertificateService {
             courseTitle: course.title,
             completedAt: enrollment.completedAt,
             expirationDate,
-            daysUntilExpiration: Math.ceil((expirationDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-          })
+            daysUntilExpiration: Math.ceil(
+              (expirationDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+            ),
+          });
         }
       }
     }
 
-    return expiringCerts.sort((a, b) => a.daysUntilExpiration - b.daysUntilExpiration)
+    return expiringCerts.sort(
+      (a, b) => a.daysUntilExpiration - b.daysUntilExpiration,
+    );
   }
 }
 
 // Factory function
 export function createCertificateService(tenantId: string): CertificateService {
-  return new CertificateService(tenantId)
+  return new CertificateService(tenantId);
 }
