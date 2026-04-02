@@ -13,7 +13,6 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  url        = env("DATABASE_URL")
   extensions = [uuid_ossp(map: "uuid-ossp"), pg_trgm]
 }
 
@@ -219,7 +218,6 @@ model Item {
   bomItems           BomItem[]
   workOrders         WorkOrder[]
   quotations         Quotation[]
-  costingHistories   CostingHistory[]
 
   @@index([itemCode], map: "idx_items_code")
   @@index([itemGroupName], map: "idx_items_group")
