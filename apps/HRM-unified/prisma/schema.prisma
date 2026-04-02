@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -340,6 +339,14 @@ model Tenant {
   internalApplications InternalApplication[]
   careerProfiles       CareerProfile[]
 
+  // Migrated from HRM
+  kpiPeriods           KPIPeriod[]
+  kpiScores            KPIScore[]
+  disciplinaryRecords  DisciplinaryRecord[]
+  salaryAdvances       SalaryAdvance[]
+  importSessions       ImportSession[]
+  systemSettings       SystemSetting[]
+
   @@map("tenants")
 }
 
@@ -443,6 +450,12 @@ model User {
 
   // Phase 7: Custom Roles
   customRoles UserCustomRole[]
+
+  // Migrated from HRM
+  kpiPeriodsCreated KPIPeriod[]    @relation("KPICreator")
+  kpiScoresEntered  KPIScore[]     @relation("KPIEnterer")
+  advancesApproved  SalaryAdvance[] @relation("AdvanceApprover")
+  importSessions    ImportSession[] @relation("ImportUser")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -708,6 +721,11 @@ model Employee {
   jobPostingsAsHiringManager InternalJobPosting[]    @relation("PostingHiringManager")
   internalApplications       InternalApplication[]
   careerProfile              CareerProfile?
+
+  // Migrated from HRM
+  kpiScores           KPIScore[]
+  disciplinaryRecords DisciplinaryRecord[]
+  salaryAdvances      SalaryAdvance[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId, status])
@@ -7204,7 +7222,7 @@ enum ImportType {
   POSITIONS
 }
 
-enum ImportStatus {
+enum DataImportStatus {
   DRY_RUN
   PREVIEWING
   EXECUTING
@@ -7217,7 +7235,7 @@ model ImportSession {
   id            String       @id @default(cuid())
   tenantId      String       @map("tenant_id")
   type          ImportType
-  status        ImportStatus @default(DRY_RUN)
+  status        DataImportStatus @default(DRY_RUN)
   fileName      String       @map("file_name")
   fileSize      Int          @map("file_size")
   totalRows     Int          @map("total_rows")
