@@ -54,7 +54,7 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get('JWT_REFRESH_SECRET') || 'refresh-secret',
+        secret: this.requireSecret('JWT_REFRESH_SECRET'),
       });
 
       const user = await this.prisma.user.findUnique({
@@ -77,16 +77,26 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  private requireSecret(key: string): string {
+    const value = this.configService.get<string>(key);
+    if (!value) {
+      throw new Error(
+        `${key} is not set. Refusing to start with an insecure default secret.`,
+      );
+    }
+    return value;
+  }
+
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get('JWT_ACCESS_SECRET') || 'your-secret-key',
+        secret: this.requireSecret('JWT_ACCESS_SECRET'),
         expiresIn: '15m',
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get('JWT_REFRESH_SECRET') || 'refresh-secret',
+        secret: this.requireSecret('JWT_REFRESH_SECRET'),
         expiresIn: '7d',
       }),
     ]);
